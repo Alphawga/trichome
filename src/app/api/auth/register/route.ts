@@ -2,29 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { UserRole, UserStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-
-interface RegisterRequest {
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-}
+import { signUpSchema } from '@/lib/validations/user'
+import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
-    // Following CODING_RULES.md - proper validation and error handling
-    const body: RegisterRequest = await request.json()
+    
+    const body = await request.json()
 
-    if (!body.firstName || !body.lastName || !body.email || !body.password) {
-      return NextResponse.json(
-        { message: 'All fields are required' },
-        { status: 400 }
-      )
-    }
+    
+    const validatedData = signUpSchema.parse(body)
 
-    // Check if user already exists using Prisma-generated types
+    
     const existingUser = await prisma.user.findUnique({
-      where: { email: body.email }
+      where: { email: validatedData.email }
     })
 
     if (existingUser) {
@@ -35,15 +26,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password following security best practices
-    const hashedPassword = await bcrypt.hash(body.password, 12)
+    // TODO: Store hashed password once password field is added to User model
+    await bcrypt.hash(validatedData.password, 12)
 
     // Create new user using Prisma-generated types
     const newUser = await prisma.user.create({
       data: {
-        email: body.email,
-        first_name: body.firstName,
-        last_name: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
+        email: validatedData.email,
+        first_name: validatedData.first_name,
+        last_name: validatedData.last_name,
+        name: `${validatedData.first_name} ${validatedData.last_name}`,
+        phone: validatedData.phone,
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
         emailVerified: new Date(),
@@ -68,6 +61,19 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     // Following CODING_RULES.md - proper error handling
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          message: 'Validation error',
+          errors: error.issues.map((issue) => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+
     console.error('Registration error:', error)
     return NextResponse.json(
       { message: 'Internal server error' },

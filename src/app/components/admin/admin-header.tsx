@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { LogoIcon, ChevronDownIcon } from '../ui/icons';
+import Image from 'next/image';
 
 interface AdminHeaderProps {
   onExitAdmin?: () => void;
@@ -34,9 +35,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-20 h-20 flex items-center px-6 lg:px-8 flex-shrink-0">
       <div className="flex items-center">
-        <LogoIcon />
-        <span className="ml-2 text-xl font-medium text-[#4CAF50]">TRICHOMES</span>
-        <span className="ml-3 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">Admin</span>
+       <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>   <span className="ml-3 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">Admin</span>
       </div>
 
       <div className="ml-auto flex items-center space-x-4">

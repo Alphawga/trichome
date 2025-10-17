@@ -5,10 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogoIcon, EyeIcon, GoogleIcon, CheckCircleIcon } from '../../components/ui/icons';
 import { useAuth } from '../../contexts/auth-context';
+import Image from 'next/image';
+import { signUpSchema, type SignUpInput } from '@/lib/validations/user';
+import { ZodError } from 'zod';
 
 interface SignUpForm {
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   password: string;
@@ -36,8 +39,8 @@ export default function SignUpPage() {
   }, []);
 
   const [form, setForm] = useState<SignUpForm>({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     password: '',
@@ -76,24 +79,30 @@ export default function SignUpPage() {
   const validateForm = (): boolean => {
     const newErrors: Partial<SignUpForm> = {};
 
-    if (!form.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!form.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!form.email.trim()) newErrors.email = 'Email is required';
-    if (form.email && !/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Invalid email address';
-    if (!form.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!form.password) newErrors.password = 'Password is required';
-    if (form.password && form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    try {
+      // Following CODING_RULES.md - use Zod schema aligned with Prisma model
+      signUpSchema.parse({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        acceptTerms: form.acceptTerms,
+        newsletterOptIn: form.newsletterOptIn,
+      });
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof ZodError) {
+        error.issues.forEach((issue) => {
+          const field = issue.path[0] as keyof SignUpForm;
+          newErrors[field] = issue.message as never;
+        });
+      }
+      setErrors(newErrors);
+      return false;
     }
-    if (!form.acceptTerms) newErrors.acceptTerms = 'You must accept the terms and conditions';
-
-    const passwordStrength = getPasswordStrength(form.password);
-    if (form.password && passwordStrength.score < 3) {
-      newErrors.password = 'Password is too weak';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,10 +124,10 @@ export default function SignUpPage() {
     if (!validateForm()) return;
 
     try {
-      // Use NextAuth registration
+      // Following CODING_RULES.md - data aligned with Prisma model
       await signUpWithCredentials({
-        firstName: form.firstName,
-        lastName: form.lastName,
+        first_name: form.first_name,
+        last_name: form.last_name,
         email: form.email,
         password: form.password,
       });
@@ -148,7 +157,7 @@ export default function SignUpPage() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      // Following CODING_RULES.md - proper error handling
+      
       console.error('Google sign-up failed:', error);
       setErrors({ email: 'Google sign-up failed. Please try again.' });
     }
@@ -164,9 +173,10 @@ export default function SignUpPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <LogoIcon />
-            <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-          </div>
+          <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
+            </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h1>
           <p className="text-gray-600">Join us for the best skincare experience</p>
         </div>
@@ -177,39 +187,39 @@ export default function SignUpPage() {
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
                   First Name
                 </label>
                 <input
                   type="text"
-                  id="firstName"
-                  name="firstName"
-                  value={form.firstName}
+                  id="first_name"
+                  name="first_name"
+                  value={form.first_name}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
-                    errors.firstName ? 'border-red-500' : 'border-gray-300'
+                    errors.first_name ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="First name"
                 />
-                {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                {errors.first_name && <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>}
               </div>
 
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
                   Last Name
                 </label>
                 <input
                   type="text"
-                  id="lastName"
-                  name="lastName"
-                  value={form.lastName}
+                  id="last_name"
+                  name="last_name"
+                  value={form.last_name}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
-                    errors.lastName ? 'border-red-500' : 'border-gray-300'
+                    errors.last_name ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Last name"
                 />
-                {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                {errors.last_name && <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>}
               </div>
             </div>
 

@@ -60,6 +60,12 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gray-900 transition-all duration-300 ease-out group-hover:w-full group-hover:left-0"></span>
               </span>
             </Link>
+            <Link href="/auth/signin" className="relative text-sm text-gray-600 hover:text-gray-900 transition-colors group flex items-center h-full">
+              <span className="relative pb-1">
+                Sign In
+                <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gray-900 transition-all duration-300 ease-out group-hover:w-full group-hover:left-0"></span>
+              </span>
+            </Link>
           </nav>
 
           {/* Right side: Search and Icons */}

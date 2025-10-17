@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogoIcon, EyeIcon, CheckCircleIcon } from '../../components/ui/icons';
+import Image from 'next/image';
 
 interface ResetPasswordForm {
   password: string;
@@ -148,9 +149,10 @@ export default function ResetPasswordPage() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <LogoIcon />
-              <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-            </div>
+             <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
+           </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -192,9 +194,10 @@ export default function ResetPasswordPage() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <LogoIcon />
-              <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-            </div>
+              <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
+           </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -229,9 +232,9 @@ export default function ResetPasswordPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <LogoIcon />
-            <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-          </div>
+            <Link href="/" className="flex items-center h-full">
+                      <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+                     </Link>  </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset your password</h1>
           <p className="text-gray-600">Enter your new password below</p>
         </div>

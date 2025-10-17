@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { LogoIcon, MailIcon, CheckCircleIcon } from '../../components/ui/icons';
+import Image from 'next/image';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -49,9 +50,10 @@ export default function ForgotPasswordPage() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <LogoIcon />
-              <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-            </div>
+              <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
+           </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -105,9 +107,10 @@ export default function ForgotPasswordPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <LogoIcon />
-            <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
-          </div>
+            <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
+           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Forgot password?</h1>
           <p className="text-gray-600">No worries, we'll send you reset instructions</p>
         </div>

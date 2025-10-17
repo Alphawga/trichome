@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogoIcon, EyeIcon, GoogleIcon } from '../../components/ui/icons';
 import { useAuth } from '../../contexts/auth-context';
+import Image from 'next/image';
 
 interface SignInForm {
   email: string;
@@ -94,8 +95,9 @@ export default function SignInPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <LogoIcon />
-            <span className="ml-2 text-2xl font-bold text-[#4CAF50]">TRICHOMES</span>
+           <Link href="/" className="flex items-center h-full">
+           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
+          </Link>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h1>
           <p className="text-gray-600">Sign in to your account to continue</p>
