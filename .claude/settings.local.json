@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm src/server/routers/product-router.ts src/server/routers/user-router.ts src/server/routers/order-router.ts)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -28,7 +28,7 @@ export default function SignInPage() {
   const isLoading = authLoading;
 
   useEffect(() => {
-    // Check if user came from cart and should redirect to checkout after login
+    
     const checkoutRedirect = localStorage.getItem('trichomes_checkout_redirect');
     if (checkoutRedirect === 'true') {
       setShouldRedirectToCheckout(true);

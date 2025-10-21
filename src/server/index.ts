@@ -1,6 +1,6 @@
-import { orderRouter } from './routers/order-router-new'
-import { productRouter } from './routers/product-router-new'
-import { userRouter } from './routers/user-router-new'
+import { orderRouter } from './routers/order-router'
+import { productRouter } from './routers/product-router'
+import { userRouter } from './routers/user-router'
 import { createTRPCRouter } from './trpc'
 
 export const appRouter = createTRPCRouter({

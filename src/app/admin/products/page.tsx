@@ -5,18 +5,17 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { SearchIcon, FilterIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon } from '../../components/ui/icons';
 import { trpc } from '@/utils/trpc';
-import { ProductStatus, type Product, type Category } from '@prisma/client';
+import { ProductStatus } from '@prisma/client';
 import type { RouterOutputs } from '@/utils/trpc';
 
-// Use Prisma-generated types
-type ProductWithCategory = RouterOutputs['product']['getAll']['data'][0];
-type ProductStats = RouterOutputs['product']['getStats'];
+// Use tRPC inferred types
+type ProductsResponse = RouterOutputs['product']['getAll'];
+type ProductFromAPI = ProductsResponse['items'][number];
 
-// Admin display interface extending Prisma types
-interface AdminProductDisplay extends ProductWithCategory {
+interface AdminProductDisplay extends ProductFromAPI {
   imageUrl: string;
   stock: number;
-  statusDisplay: 'Active' | 'Draft' | 'Inactive' | 'Out of stock';
+  statusDisplay: string;
   sales: number;
 }
 
@@ -129,19 +128,19 @@ export default function AdminProductsPage() {
   });
 
   // Transform backend data to admin display format
-  const transformToAdminDisplay = (products: ProductWithCategory[]): AdminProductDisplay[] => {
+  const transformToAdminDisplay = (products: ProductFromAPI[]): AdminProductDisplay[] => {
     return products.map(product => ({
       ...product,
       imageUrl: product.images?.[0]?.url || `https://picsum.photos/seed/${product.id}/80/80`,
-      stock: product.quantity,
-      statusDisplay: product.quantity === 0 ? 'Out of stock' :
+      stock: product.stock_quantity,
+      statusDisplay: product.stock_quantity === 0 ? 'Out of stock' :
                     product.status === ProductStatus.ACTIVE ? 'Active' :
                     product.status === ProductStatus.DRAFT ? 'Draft' : 'Inactive',
-      sales: product.sale_count
+      sales: product._count?.orderItems || 0
     }));
   };
 
-  const adminProducts = productsQuery.data?.data ? transformToAdminDisplay(productsQuery.data.data) : [];
+  const adminProducts = productsQuery.data?.items ? transformToAdminDisplay(productsQuery.data.items) : [];
 
   // Client-side filtering for category (if needed)
   const filteredProducts = adminProducts.filter(product => {
