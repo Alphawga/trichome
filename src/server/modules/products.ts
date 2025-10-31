@@ -3,7 +3,7 @@ import { publicProcedure, staffProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
 import { ProductStatus } from '@prisma/client'
 
-// Get all products (public with filters)
+
 export const getProducts = publicProcedure
   .input(
     z.object({
@@ -94,7 +94,7 @@ export const getProducts = publicProcedure
     }
   })
 
-// Get product by slug
+
 export const getProductBySlug = publicProcedure
   .input(z.object({ slug: z.string() }))
   .query(async ({ input, ctx }) => {

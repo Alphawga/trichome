@@ -7,7 +7,7 @@ import { httpBatchLink } from '@trpc/client'
 import { useState } from 'react'
 import superjson from 'superjson'
 import { SessionProvider } from 'next-auth/react'
-import { AuthProvider } from '../contexts/auth-context'
+import { AuthProvider } from '@/app/contexts/auth-context'
 import { Toaster } from '@/components/ui/sonner'
 
 interface ProvidersProps {

@@ -1,9 +1,9 @@
 "use client"
 
 import { useRouter } from "next/navigation";
-import ProductGrid from "../components/product-grid";
-import { Hero } from "../components/sections/hero";
-import { ChevronRightIcon } from "../components/ui/icons";
+import ProductGrid from "@/components/product-grid";
+import { Hero } from "@/components/sections/hero";
+import { ChevronRightIcon } from "@/components/ui/icons";
 import { mockProducts } from "@/utils/mock-data";
 
 export default function Page() {

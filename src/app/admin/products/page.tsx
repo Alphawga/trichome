@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { SearchIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
 import { ProductStatus, type Product, type Category, type ProductImage } from '@prisma/client';
 import { ProductFormSheet } from './ProductFormSheet';
+import { ProductViewSheet } from './ProductViewSheet';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { toast } from 'sonner';
 
@@ -20,14 +20,16 @@ type ProductWithRelations = Product & {
 }
 
 export default function AdminProductsPage() {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'All'>('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | undefined>(undefined);
+  const [viewingProductId, setViewingProductId] = useState<string | undefined>(undefined);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const productsQuery = trpc.getProducts.useQuery({
     page: currentPage,
@@ -104,7 +106,9 @@ export default function AdminProductsPage() {
   };
 
   const handleViewProduct = (id: string) => {
-    router.push(`/products/${adminProducts.find(p => p.id === id)?.slug}`);
+    setViewingProductId(id);
+    setViewSheetOpen(true);
+    setOpenDropdownId(null);
   };
 
   const handleExportCSV = () => {
@@ -181,37 +185,72 @@ export default function AdminProductsPage() {
     {
       header: 'Actions',
       cell: (product) => (
-        <div className="flex items-center space-x-2">
+        <div className="relative">
           <button
-            onClick={() => handleViewProduct(product.id)}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-            title="View product"
+            onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Actions"
           >
-            <EyeIcon className="w-4 h-4" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
           </button>
-          <button
-            onClick={() => handleEditProduct(product.id)}
-            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-            title="Edit product"
-          >
-            <EditIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteProduct(product.id)}
-            disabled={deletingProductId === product.id}
-            className="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-            title="Delete product"
-          >
-            {deletingProductId === product.id ? (
-              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <TrashIcon className="w-4 h-4" />
-            )}
-          </button>
+
+          {openDropdownId === product.id && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setOpenDropdownId(null)}
+              />
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                <button
+                  onClick={() => {
+                    handleViewProduct(product.id);
+                    setOpenDropdownId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  View Details
+                </button>
+                <button
+                  onClick={() => {
+                    handleEditProduct(product.id);
+                    setOpenDropdownId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <EditIcon className="w-4 h-4" />
+                  Edit Product
+                </button>
+                <div className="border-t border-gray-100 my-1" />
+                <button
+                  onClick={() => {
+                    handleDeleteProduct(product.id);
+                    setOpenDropdownId(null);
+                  }}
+                  disabled={deletingProductId === product.id}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {deletingProductId === product.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="w-4 h-4" />
+                      Delete Product
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )
     }
-  ], [deletingProductId]);
+  ], [deletingProductId, openDropdownId]);
 
   return (
     <div>
@@ -354,6 +393,12 @@ export default function AdminProductsPage() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onSuccess={handleFormSuccess}
+      />
+
+      <ProductViewSheet
+        productId={viewingProductId}
+        open={viewSheetOpen}
+        onOpenChange={setViewSheetOpen}
       />
     </div>
   );

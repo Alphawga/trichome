@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { ArrowUpIcon, ViewAllArrowIcon, SearchIcon, FilterIcon, ExportIcon, DocumentTextIcon, OrdersIcon, CustomersIcon, ProductsIcon } from '../components/ui/icons';
+import { ArrowUpIcon, ViewAllArrowIcon, SearchIcon, FilterIcon, ExportIcon, DocumentTextIcon, OrdersIcon, CustomersIcon, ProductsIcon } from '@/components/ui/icons';
 
 interface AdminProduct {
   id: number;

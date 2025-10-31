@@ -23,7 +23,7 @@ interface ProductFormSheetProps {
 }
 
 export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: ProductFormSheetProps) {
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateProductInput>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<CreateProductInput>({
     resolver: zodResolver(createProductSchema),
     defaultValues: {
       name: '',
@@ -31,6 +31,14 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
       sku: '',
       price: 0,
       category_id: '',
+      status: ProductStatus.DRAFT,
+      track_quantity: true,
+      quantity: 0,
+      low_stock_threshold: 10,
+      is_featured: false,
+      is_digital: false,
+      requires_shipping: true,
+      taxable: true,
     },
   });
 
@@ -64,32 +72,72 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
     },
   });
 
+  // Auto-generate slug from product name (only for new products)
+  const productName = watch('name');
   useEffect(() => {
-    if (productQuery.data) {
-      const product = productQuery.data;
-      setValue('name', product.name);
-      setValue('slug', product.slug);
-      setValue('description', product.description || '');
-      setValue('short_description', product.short_description || '');
-      setValue('sku', product.sku);
-      setValue('barcode', product.barcode || '');
-      setValue('price', Number(product.price));
-      setValue('compare_price', Number(product.compare_price || 0));
-      setValue('cost_price', Number(product.cost_price || 0));
-      setValue('track_quantity', product.track_quantity);
-      setValue('quantity', product.quantity);
-      setValue('low_stock_threshold', product.low_stock_threshold);
-      setValue('weight', Number(product.weight || 0));
-      setValue('status', product.status);
-      setValue('is_featured', product.is_featured);
-      setValue('is_digital', product.is_digital);
-      setValue('requires_shipping', product.requires_shipping);
-      setValue('taxable', product.taxable);
-      setValue('seo_title', product.seo_title || '');
-      setValue('seo_description', product.seo_description || '');
-      setValue('category_id', product.category_id);
+    if (productName && !productId) {
+      const slug = productName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      setValue('slug', slug);
     }
-  }, [productQuery.data, setValue]);
+  }, [productName, productId, setValue]);
+
+  // Load product data when editing
+  useEffect(() => {
+    if (open && productId && productQuery.data) {
+      const product = productQuery.data;
+      reset({
+        name: product.name,
+        slug: product.slug,
+        description: product.description || '',
+        short_description: product.short_description || '',
+        sku: product.sku,
+        barcode: product.barcode || '',
+        price: Number(product.price),
+        compare_price: Number(product.compare_price || 0),
+        cost_price: Number(product.cost_price || 0),
+        track_quantity: product.track_quantity,
+        quantity: product.quantity,
+        low_stock_threshold: product.low_stock_threshold,
+        weight: Number(product.weight || 0),
+        status: product.status,
+        is_featured: product.is_featured,
+        is_digital: product.is_digital,
+        requires_shipping: product.requires_shipping,
+        taxable: product.taxable,
+        seo_title: product.seo_title || '',
+        seo_description: product.seo_description || '',
+        category_id: product.category_id,
+      });
+    } else if (open && !productId) {
+      // Reset to default values when creating new product
+      reset({
+        name: '',
+        slug: '',
+        sku: '',
+        price: 0,
+        category_id: '',
+        status: ProductStatus.DRAFT,
+        track_quantity: true,
+        quantity: 0,
+        low_stock_threshold: 10,
+        is_featured: false,
+        is_digital: false,
+        requires_shipping: true,
+        taxable: true,
+        description: '',
+        short_description: '',
+        barcode: '',
+        compare_price: 0,
+        cost_price: 0,
+        weight: 0,
+        seo_title: '',
+        seo_description: '',
+      });
+    }
+  }, [open, productId, productQuery.data, reset]);
 
   const onSubmit = async (data: CreateProductInput) => {
     try {
@@ -105,9 +153,12 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  const isLoadingProduct = productId && productQuery.isLoading;
+  const hasError = productId && productQuery.error;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl p-5 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{productId ? 'Edit Product' : 'Add New Product'}</SheetTitle>
           <SheetDescription>
@@ -115,7 +166,35 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+        {isLoadingProduct ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-12 h-12 border-4 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-gray-600">Loading product data...</p>
+            </div>
+          </div>
+        ) : hasError ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-gray-900 font-medium">Failed to load product</p>
+                <p className="text-gray-600 text-sm mt-1">{productQuery.error.message}</p>
+              </div>
+              <button
+                onClick={() => productQuery.refetch()}
+                className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -313,6 +392,7 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
             </button>
           </div>
         </form>
+        )}
       </SheetContent>
     </Sheet>
   );
