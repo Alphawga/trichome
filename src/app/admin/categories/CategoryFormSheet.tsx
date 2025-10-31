@@ -48,8 +48,8 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
     },
   });
 
-  const categoryQuery = trpc.getCategoryBySlug.useQuery(
-    { slug: categoryId! },
+  const categoryQuery = trpc.getCategoryById.useQuery(
+    { id: categoryId! },
     { enabled: !!categoryId }
   );
 
@@ -78,30 +78,44 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
     },
   });
 
-  const name = watch('name');
-
+  // Auto-generate slug from category name (only for new categories)
+  const categoryName = watch('name');
   useEffect(() => {
-    if (name && !categoryId) {
-      const slug = name
+    if (categoryName && !categoryId) {
+      const slug = categoryName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       setValue('slug', slug);
     }
-  }, [name, categoryId, setValue]);
+  }, [categoryName, categoryId, setValue]);
 
+  // Load category data when editing
   useEffect(() => {
-    if (categoryQuery.data) {
+    if (open && categoryId && categoryQuery.data) {
       const category = categoryQuery.data;
-      setValue('name', category.name);
-      setValue('slug', category.slug);
-      setValue('description', category.description || '');
-      setValue('image', category.image || '');
-      setValue('status', category.status);
-      setValue('sort_order', category.sort_order);
-      setValue('parent_id', category.parent_id || '');
+      reset({
+        name: category.name,
+        slug: category.slug,
+        description: category.description || '',
+        image: category.image || '',
+        status: category.status,
+        sort_order: category.sort_order,
+        parent_id: category.parent_id || '',
+      });
+    } else if (open && !categoryId) {
+      // Reset to default values when creating new category
+      reset({
+        name: '',
+        slug: '',
+        description: '',
+        image: '',
+        status: ProductStatus.ACTIVE,
+        sort_order: 0,
+        parent_id: '',
+      });
     }
-  }, [categoryQuery.data, setValue]);
+  }, [open, categoryId, categoryQuery.data, reset]);
 
   const onSubmit = async (data: CategoryInput) => {
     try {
@@ -122,6 +136,10 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
     }
   };
 
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isLoadingCategory = categoryId && categoryQuery.isLoading;
+  const hasError = categoryId && categoryQuery.error;
+
   const parentCategories = categoriesQuery.data?.filter(c => !c.parent_id && c.id !== categoryId) || [];
 
   return (
@@ -134,7 +152,35 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+        {isLoadingCategory ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-12 h-12 border-4 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-gray-600">Loading category data...</p>
+            </div>
+          </div>
+        ) : hasError ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-gray-900 font-medium">Failed to load category</p>
+                <p className="text-gray-600 text-sm mt-1">{categoryQuery.error.message}</p>
+              </div>
+              <button
+                onClick={() => categoryQuery.refetch()}
+                className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
               Category Name
@@ -241,18 +287,20 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
               type="button"
               onClick={() => onOpenChange(false)}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+              disabled={isLoading || isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading || isSubmitting}
               className="flex-1 bg-[#38761d] text-white py-3 px-4 rounded-lg hover:bg-opacity-90 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Saving...' : categoryId ? 'Update Category' : 'Create Category'}
+              {isLoading || isSubmitting ? 'Saving...' : categoryId ? 'Update Category' : 'Create Category'}
             </button>
           </div>
         </form>
+        )}
       </SheetContent>
     </Sheet>
   );

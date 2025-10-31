@@ -30,9 +30,11 @@ interface OrderRowProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onTrack: (id: string) => void;
+  openDropdownId: string | null;
+  setOpenDropdownId: (id: string | null) => void;
 }
 
-const OrderRow: React.FC<OrderRowProps> = ({ order, onView, onEdit, onTrack }) => (
+const OrderRow: React.FC<OrderRowProps> = ({ order, onView, onEdit, onTrack, openDropdownId, setOpenDropdownId }) => (
   <tr className="border-b last:border-0 hover:bg-gray-50">
     <td className="p-4">
       <div>
@@ -78,29 +80,61 @@ const OrderRow: React.FC<OrderRowProps> = ({ order, onView, onEdit, onTrack }) =
       </span>
     </td>
     <td className="p-4">
-      <div className="flex items-center space-x-2">
+      <div className="relative">
         <button
-          onClick={() => onView(order.id)}
-          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-          title="View order details"
+          onClick={() => setOpenDropdownId(openDropdownId === order.id ? null : order.id)}
+          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          title="Actions"
         >
-          <EyeIcon className="w-4 h-4" />
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+          </svg>
         </button>
-        <button
-          onClick={() => onEdit(order.id)}
-          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-          title="Edit order"
-        >
-          <EditIcon className="w-4 h-4" />
-        </button>
-        {(order.status === 'Shipped' || order.status === 'Delivered') && (
-          <button
-            onClick={() => onTrack(order.id)}
-            className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-            title="Track shipment"
-          >
-            <TruckIcon className="w-4 h-4" />
-          </button>
+
+        {openDropdownId === order.id && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setOpenDropdownId(null)}
+            />
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+              <button
+                onClick={() => {
+                  onView(order.id);
+                  setOpenDropdownId(null);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <EyeIcon className="w-4 h-4" />
+                View Details
+              </button>
+              <button
+                onClick={() => {
+                  onEdit(order.id);
+                  setOpenDropdownId(null);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <EditIcon className="w-4 h-4" />
+                Edit Order
+              </button>
+              {(order.status === 'Shipped' || order.status === 'Delivered') && (
+                <>
+                  <div className="border-t border-gray-100 my-1" />
+                  <button
+                    onClick={() => {
+                      onTrack(order.id);
+                      setOpenDropdownId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <TruckIcon className="w-4 h-4" />
+                    Track Shipment
+                  </button>
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
     </td>
@@ -112,6 +146,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [dateRange, setDateRange] = useState('All');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   // Mock data - will be replaced with tRPC calls
   const mockOrders: AdminOrder[] = Array.from({ length: 20 }, (_, i) => {
@@ -312,6 +347,8 @@ export default function AdminOrdersPage() {
                   onView={handleViewOrder}
                   onEdit={handleEditOrder}
                   onTrack={handleTrackOrder}
+                  openDropdownId={openDropdownId}
+                  setOpenDropdownId={setOpenDropdownId}
                 />
               ))
             ) : (

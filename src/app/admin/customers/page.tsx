@@ -33,9 +33,11 @@ interface CustomerRowProps {
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onContact: (email: string) => void;
+  openDropdownId: number | null;
+  setOpenDropdownId: (id: number | null) => void;
 }
 
-const CustomerRow: React.FC<CustomerRowProps> = ({ customer, onView, onEdit, onContact }) => (
+const CustomerRow: React.FC<CustomerRowProps> = ({ customer, onView, onEdit, onContact, openDropdownId, setOpenDropdownId }) => (
   <tr className="border-b last:border-0 hover:bg-gray-50">
     <td className="p-4 flex items-center">
       <div className="relative w-10 h-10 mr-4 flex-shrink-0">
@@ -72,28 +74,58 @@ const CustomerRow: React.FC<CustomerRowProps> = ({ customer, onView, onEdit, onC
     </td>
     <td className="p-4 text-gray-600">{customer.lastOrder}</td>
     <td className="p-4">
-      <div className="flex items-center space-x-2">
+      <div className="relative">
         <button
-          onClick={() => onView(customer.id)}
-          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-          title="View customer details"
+          onClick={() => setOpenDropdownId(openDropdownId === customer.id ? null : customer.id)}
+          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          title="Actions"
         >
-          <EyeIcon className="w-4 h-4" />
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+          </svg>
         </button>
-        <button
-          onClick={() => onEdit(customer.id)}
-          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-          title="Edit customer"
-        >
-          <EditIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onContact(customer.email)}
-          className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-          title="Contact customer"
-        >
-          <MailIcon className="w-4 h-4" />
-        </button>
+
+        {openDropdownId === customer.id && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setOpenDropdownId(null)}
+            />
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+              <button
+                onClick={() => {
+                  onView(customer.id);
+                  setOpenDropdownId(null);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <EyeIcon className="w-4 h-4" />
+                View Details
+              </button>
+              <button
+                onClick={() => {
+                  onEdit(customer.id);
+                  setOpenDropdownId(null);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <EditIcon className="w-4 h-4" />
+                Edit Customer
+              </button>
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                onClick={() => {
+                  onContact(customer.email);
+                  setOpenDropdownId(null);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <MailIcon className="w-4 h-4" />
+                Contact Customer
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </td>
   </tr>
@@ -104,6 +136,7 @@ export default function AdminCustomersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
   const [sortBy, setSortBy] = useState('joinDate');
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   // Mock data - will be replaced with tRPC calls
   const locations = ['Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Enugu'];
@@ -330,6 +363,8 @@ export default function AdminCustomersPage() {
                   onView={handleViewCustomer}
                   onEdit={handleEditCustomer}
                   onContact={handleContactCustomer}
+                  openDropdownId={openDropdownId}
+                  setOpenDropdownId={setOpenDropdownId}
                 />
               ))
             ) : (

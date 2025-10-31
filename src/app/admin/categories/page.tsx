@@ -2,12 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
+import { PlusIcon, EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
 import { ProductStatus, type Category } from '@prisma/client';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { toast } from 'sonner';
 import { CategoryFormSheet } from './CategoryFormSheet';
+import { CategoryViewSheet } from './CategoryViewSheet';
 
 type CategoryWithRelations = Category & {
   parent: Category | null;
@@ -20,8 +21,11 @@ type CategoryWithRelations = Category & {
 export default function AdminCategoriesPage() {
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | undefined>(undefined);
+  const [viewingCategoryId, setViewingCategoryId] = useState<string | undefined>(undefined);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const categoriesQuery = trpc.getCategories.useQuery({}, {
     staleTime: 30000,
@@ -60,6 +64,12 @@ export default function AdminCategoriesPage() {
       await deleteCategoryMutation.mutateAsync({ id });
     } catch (error) {
     }
+  };
+
+  const handleViewCategory = (slug: string) => {
+    setViewingCategoryId(slug);
+    setViewSheetOpen(true);
+    setOpenDropdownId(null);
   };
 
   const handleFormSuccess = () => {
@@ -109,30 +119,72 @@ export default function AdminCategoriesPage() {
     {
       header: 'Actions',
       cell: (category) => (
-        <div className="flex items-center space-x-2">
+        <div className="relative">
           <button
-            onClick={() => handleEditCategory(category.id)}
-            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-            title="Edit category"
+            onClick={() => setOpenDropdownId(openDropdownId === category.id ? null : category.id)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Actions"
           >
-            <EditIcon className="w-4 h-4" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
           </button>
-          <button
-            onClick={() => handleDeleteCategory(category.id)}
-            disabled={deletingCategoryId === category.id}
-            className="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-            title="Delete category"
-          >
-            {deletingCategoryId === category.id ? (
-              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <TrashIcon className="w-4 h-4" />
-            )}
-          </button>
+
+          {openDropdownId === category.id && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setOpenDropdownId(null)}
+              />
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                <button
+                  onClick={() => {
+                    handleViewCategory(category.slug);
+                    setOpenDropdownId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  View Details
+                </button>
+                <button
+                  onClick={() => {
+                    handleEditCategory(category.id);
+                    setOpenDropdownId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <EditIcon className="w-4 h-4" />
+                  Edit Category
+                </button>
+                <div className="border-t border-gray-100 my-1" />
+                <button
+                  onClick={() => {
+                    handleDeleteCategory(category.id);
+                    setOpenDropdownId(null);
+                  }}
+                  disabled={deletingCategoryId === category.id}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {deletingCategoryId === category.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="w-4 h-4" />
+                      Delete Category
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )
     }
-  ], [deletingCategoryId]);
+  ], [deletingCategoryId, openDropdownId]);
 
   return (
     <div>
@@ -223,6 +275,12 @@ export default function AdminCategoriesPage() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onSuccess={handleFormSuccess}
+      />
+
+      <CategoryViewSheet
+        categoryId={viewingCategoryId}
+        open={viewSheetOpen}
+        onOpenChange={setViewSheetOpen}
       />
     </div>
   );
