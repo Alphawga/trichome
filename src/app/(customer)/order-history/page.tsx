@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ViewIcon, RefundIcon } from '../../components/ui/icons';
+import { ViewIcon, RefundIcon } from '@/components/ui/icons';
 
 // Mock order history data
 const orderHistory = [

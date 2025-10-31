@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { SearchIcon, FilterIcon, ExportIcon, EyeIcon, EditIcon, MailIcon, PhoneIcon } from '../../components/ui/icons';
+import { SearchIcon, FilterIcon, ExportIcon, EyeIcon, EditIcon, MailIcon, PhoneIcon } from '@/components/ui/icons';
 
 // Temporary interfaces for migration
 interface CustomerOrder {

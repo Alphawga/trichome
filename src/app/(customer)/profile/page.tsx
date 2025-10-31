@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { PlusIcon, EditIcon, TrashIcon, ChevronRightIcon } from '../../components/ui/icons';
+import { PlusIcon, EditIcon, TrashIcon, ChevronRightIcon } from '@/components/ui/icons';
 
 export default function ProfilePage() {
   return (

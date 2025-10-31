@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Header } from '../components/layout/header';
-import { Footer } from '../components/admin/footer';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/admin/footer';
 
 export default function CustomerLayout({
   children,

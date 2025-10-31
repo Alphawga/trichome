@@ -4,9 +4,9 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Header } from '../../components/layout/header';
-import { ProductGrid } from '../../components/product/product-grid';
-import { PlusIcon, MinusIcon, HeartIcon, ChevronDownIcon, ChevronUpIcon } from '../../components/ui/icons';
+import { Header } from '../@/components/layout/header';
+import { ProductGrid } from '../@/components/product/product-grid';
+import { PlusIcon, MinusIcon, HeartIcon, ChevronDownIcon, ChevronUpIcon } from '../@/components/ui/icons';
 
 // Mock data - will be replaced with tRPC calls
 const mockProducts = [

@@ -8,6 +8,7 @@ import { useState } from 'react'
 import superjson from 'superjson'
 import { SessionProvider } from 'next-auth/react'
 import { AuthProvider } from '../contexts/auth-context'
+import { Toaster } from '@/components/ui/sonner'
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -39,6 +40,7 @@ export default function Providers({ children }: ProvidersProps) {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             {children}
+            <Toaster />
           </AuthProvider>
         </QueryClientProvider>
       </trpc.Provider>

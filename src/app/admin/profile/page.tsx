@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { UserIcon, MailIcon, PhoneIcon, EditIcon, EyeIcon, ShieldIcon } from '../../components/ui/icons';
+import { UserIcon, MailIcon, PhoneIcon, EditIcon, EyeIcon, ShieldIcon } from '@/components/ui/icons';
 
 // Temporary interfaces for migration
 interface AdminProfile {

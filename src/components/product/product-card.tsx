@@ -3,25 +3,26 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { HeartIcon, PlusIcon, MinusIcon } from '../ui/icons';
+import type { Product, Category, ProductImage } from '@prisma/client';
 
-// Temporary interface for migration - will be replaced with Prisma types
-interface Product {
-  id: number;
-  name: string;
-  price: number;
+type ProductWithRelations = Product & {
+  category: Pick<Category, 'id' | 'name' | 'slug'>;
+  images: ProductImage[];
+};
+
+interface ProductForDisplay extends ProductWithRelations {
   currency: string;
   imageUrl: string;
-  description?: string;
   brand?: string;
-  inStock?: boolean;
+  inStock: boolean;
 }
 
 interface ProductCardProps {
-  product: Product;
-  onProductClick: (product: Product) => void;
-  onAddToCart: (product: Product, quantity: number) => void;
-  wishlist: Product[];
-  onToggleWishlist: (product: Product) => void;
+  product: ProductForDisplay;
+  onProductClick: (product: ProductForDisplay) => void;
+  onAddToCart: (product: ProductForDisplay, quantity: number) => void;
+  wishlist: ProductForDisplay[];
+  onToggleWishlist: (product: ProductForDisplay) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -72,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div className="flex-grow">
         <h3 className="text-base font-medium text-gray-800 mb-2 h-12">{product.name}</h3>
         <p className="text-lg font-semibold text-gray-900 mb-4">
-          {product.currency}{product.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {product.currency}{Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       </div>
       <div className="flex items-center space-x-2 mt-auto">

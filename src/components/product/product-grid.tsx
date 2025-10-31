@@ -2,25 +2,26 @@
 
 import React from 'react';
 import { ProductCard } from './product-card';
+import type { Product, Category, ProductImage } from '@prisma/client';
 
-// Temporary interface for migration - will be replaced with Prisma types
-interface Product {
-  id: number;
-  name: string;
-  price: number;
+type ProductWithRelations = Product & {
+  category: Pick<Category, 'id' | 'name' | 'slug'>;
+  images: ProductImage[];
+};
+
+interface ProductForDisplay extends ProductWithRelations {
   currency: string;
   imageUrl: string;
-  description?: string;
   brand?: string;
-  inStock?: boolean;
+  inStock: boolean;
 }
 
 interface ProductGridProps {
-  products: Product[];
-  onProductClick: (product: Product) => void;
-  onAddToCart: (product: Product, quantity: number) => void;
-  wishlist: Product[];
-  onToggleWishlist: (product: Product) => void;
+  products: ProductForDisplay[];
+  onProductClick: (product: ProductForDisplay) => void;
+  onAddToCart: (product: ProductForDisplay, quantity: number) => void;
+  wishlist: ProductForDisplay[];
+  onToggleWishlist: (product: ProductForDisplay) => void;
 }
 
 export const ProductGrid: React.FC<ProductGridProps> = ({

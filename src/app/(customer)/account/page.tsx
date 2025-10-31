@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { GoogleIcon } from '../../components/ui/icons';
+import { GoogleIcon } from '@/components/ui/icons';
 
 export default function AccountPage() {
   const handleGoogleSignUp = () => {

@@ -1,8 +1,12 @@
-import { prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
 
 export async function createTRPCContext() {
+  const session = await getServerSession()
+
   return {
     prisma,
+    session,
   }
 }
 

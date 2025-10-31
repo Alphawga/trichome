@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogoIcon, EyeIcon, GoogleIcon, CheckCircleIcon } from '../../components/ui/icons';
+import { LogoIcon, EyeIcon, GoogleIcon, CheckCircleIcon } from '@/components/ui/icons';
 import { useAuth } from '../../contexts/auth-context';
 import Image from 'next/image';
 import { signUpSchema, type SignUpInput } from '@/lib/validations/user';
@@ -196,7 +196,7 @@ export default function SignUpPage() {
                   name="first_name"
                   value={form.first_name}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
                     errors.first_name ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="First name"
@@ -214,7 +214,7 @@ export default function SignUpPage() {
                   name="last_name"
                   value={form.last_name}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
                     errors.last_name ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Last name"
@@ -234,7 +234,7 @@ export default function SignUpPage() {
                 name="email"
                 value={form.email}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter your email"
@@ -253,7 +253,7 @@ export default function SignUpPage() {
                 name="phone"
                 value={form.phone}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
                   errors.phone ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="+234 801 234 5678"
@@ -273,7 +273,7 @@ export default function SignUpPage() {
                   name="password"
                   value={form.password}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
                     errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Create a password"
@@ -326,7 +326,7 @@ export default function SignUpPage() {
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
                     errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Confirm your password"

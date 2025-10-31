@@ -3,49 +3,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ProductGrid } from '../../components/product/product-grid';
-import { FilterSidebar } from '../../components/filters/filter-sidebar';
-import { ChevronRightIcon } from '../../components/ui/icons';
+import { ProductGrid } from '@/components/product/product-grid';
+import { FilterSidebar } from '@/components/filters/filter-sidebar';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
-import { ProductStatus, type Product, type Category } from '@prisma/client';
-import type { RouterOutputs } from '@/utils/trpc';
+import { ProductStatus, type Product, type Category, type ProductImage } from '@prisma/client';
 
-// Prisma types from backend
-type ProductWithCategory = RouterOutputs['product']['getAll']['data'][0];
-
-// Mock categories for now - TODO: Replace with tRPC call
-const mockCategories = [
-  {
-    name: 'Skin care',
-    subcategories: ['Cleansers', 'Moisturizers', 'Serums', 'Masks'],
-  },
-  {
-    name: 'Sun care',
-    subcategories: ['Sunscreen', 'After-sun'],
-  },
-  {
-    name: 'Hair care',
-    subcategories: ['Shampoo', 'Conditioner', 'Treatments'],
-  },
-  {
-    name: 'Body care',
-    subcategories: ['Body Wash', 'Lotions', 'Scrubs'],
-  },
-  {
-    name: 'Perfume',
-    subcategories: ['For Her', 'For Him', 'Unisex'],
-  },
-  {
-    name: 'Decorative care',
-    subcategories: ['Makeup', 'Nail Polish'],
-  },
-];
-
-// Mock filter options for now - TODO: Replace with dynamic data from backend
-const mockFilterOptions = {
-  brands: ['CeraVe', 'Touch', 'Good Molecules', 'Bolden', '2Sponin', 'Timeless', 'Dr Teal\'s', 'Black girl', 'Medix 5.5', 'Eczema save', 'Anself', 'Skin Aqua', 'Dove', 'Dr V', 'Face facts'],
-  concerns: ['Acne & Blemishes', 'Anti-aging', 'Dark spots', 'Discoloration', 'Eczema', 'Itchy skin', 'Ingrown hairs', 'Bumpy skin', 'Stretch marks'],
-  ingredients: ['Glycolic acid', 'Hyaluronic acid', 'Hydroquinone', 'Lactic acid', 'Niacinamide', 'Retinol', 'Vitamin C']
+type ProductWithRelations = Product & {
+  category: Pick<Category, 'id' | 'name' | 'slug'>;
+  images: ProductImage[];
 };
 
 const sortOptions = [
@@ -64,7 +30,7 @@ interface FilterState {
   category?: string;
 }
 
-interface ProductForDisplay extends ProductWithCategory {
+interface ProductForDisplay extends ProductWithRelations {
   currency: string;
   imageUrl: string;
   brand?: string;
@@ -99,30 +65,41 @@ export default function ProductsPage() {
     } : null
   );
 
-  // tRPC query for products with filters
-  const productsQuery = trpc.product.getAll.useQuery({
+  const productsQuery = trpc.getProducts.useQuery({
     page: currentPage,
     limit: 12,
     search: searchTerm.trim() || undefined,
-    priceMax: activeFilters?.price || undefined,
+    max_price: activeFilters?.price || undefined,
     status: ProductStatus.ACTIVE,
-    inStock: true
   }, {
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
     refetchOnWindowFocus: false
   });
 
-  // Transform backend data to display format
-  const transformedProducts = useMemo((): ProductForDisplay[] => {
-    if (!productsQuery.data?.data) return [];
+  const categoriesQuery = trpc.getCategoryTree.useQuery(undefined, {
+    staleTime: 60000,
+    refetchOnWindowFocus: false
+  });
 
-    return productsQuery.data.data.map(product => ({
+  const transformedCategories = useMemo(() => {
+    if (!categoriesQuery.data) return [];
+
+    return categoriesQuery.data.map(cat => ({
+      name: cat.name,
+      subcategories: cat.children.map(child => child.name)
+    }));
+  }, [categoriesQuery.data]);
+
+  const transformedProducts = useMemo((): ProductForDisplay[] => {
+    if (!productsQuery.data?.products) return [];
+
+    return productsQuery.data.products.map(product => ({
       ...product,
       currency: '₦',
-      imageUrl: product.images?.[0]?.url || `https://picsum.photos/seed/${product.id}/400/400`,
-      brand: 'Generic Brand', // TODO: Add brand field to Prisma schema
-      concerns: ['General Care'], // TODO: Add concerns field to Prisma schema
-      ingredients: ['Natural Ingredients'], // TODO: Add ingredients field to Prisma schema
+      imageUrl: product.images?.[0]?.url || `https://placehold.co/400x400/38761d/white?text=${product.name.charAt(0)}`,
+      brand: 'Generic Brand',
+      concerns: ['General Care'],
+      ingredients: ['Natural Ingredients'],
       inStock: product.quantity > 0
     }));
   }, [productsQuery.data]);
@@ -180,7 +157,7 @@ export default function ProductsPage() {
   };
 
   const canLoadMore = productsQuery.data ?
-    currentPage < Math.ceil(productsQuery.data.total / 12) : false;
+    currentPage < productsQuery.data.pagination.pages : false;
 
   const handleProductClick = (product: ProductForDisplay) => {
     router.push(`/products/${product.slug}`);
@@ -271,8 +248,12 @@ export default function ProductsPage() {
           selectedIngredients={selectedIngredients}
           onToggleFilter={handleToggleFilter}
           onApplyFilters={handleApplyFilters}
-          categories={mockCategories}
-          filterOptions={mockFilterOptions}
+          categories={transformedCategories}
+          filterOptions={{
+            brands: [],
+            concerns: [],
+            ingredients: []
+          }}
         />
 
         <div className="w-full">
@@ -288,7 +269,7 @@ export default function ProductsPage() {
                 <p className="text-red-600">Error loading products</p>
               ) : (
                 <p className="text-gray-600">
-                  Showing {filteredAndSortedProducts.length} of {productsQuery.data?.total || 0} products
+                  Showing {filteredAndSortedProducts.length} of {productsQuery.data?.pagination.total || 0} products
                 </p>
               )}
             </div>

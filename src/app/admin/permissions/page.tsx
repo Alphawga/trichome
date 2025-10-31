@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { SearchIcon, FilterIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, UserIcon, ShieldIcon } from '../../components/ui/icons';
+import { SearchIcon, FilterIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, UserIcon, ShieldIcon } from '@/components/ui/icons';
 
 // Temporary interfaces for migration
 interface Permission {

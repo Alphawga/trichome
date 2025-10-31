@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { PlusIcon, MinusIcon, HeartIcon, TrashIcon } from '../../components/ui/icons';
+import { PlusIcon, MinusIcon, HeartIcon, TrashIcon } from '@/components/ui/icons';
 import { useAuth } from '../../contexts/auth-context';
 
 // Temporary interface for migration

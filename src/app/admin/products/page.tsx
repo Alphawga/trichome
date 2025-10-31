@@ -1,94 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { SearchIcon, FilterIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon } from '../../components/ui/icons';
+import { SearchIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
-import { ProductStatus } from '@prisma/client';
-import type { RouterOutputs } from '@/utils/trpc';
+import { ProductStatus, type Product, type Category, type ProductImage } from '@prisma/client';
+import { ProductFormSheet } from './ProductFormSheet';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { toast } from 'sonner';
 
-// Use tRPC inferred types
-type ProductsResponse = RouterOutputs['product']['getAll'];
-type ProductFromAPI = ProductsResponse['items'][number];
-
-interface AdminProductDisplay extends ProductFromAPI {
+type ProductWithRelations = Product & {
+  category: Pick<Category, 'id' | 'name' | 'slug'>;
+  images: ProductImage[];
   imageUrl: string;
   stock: number;
   statusDisplay: string;
   sales: number;
 }
-
-interface ProductRowProps {
-  product: AdminProductDisplay;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onView: (id: string) => void;
-  isDeleting: boolean;
-}
-
-const ProductRow: React.FC<ProductRowProps> = ({ product, onEdit, onDelete, onView, isDeleting }) => (
-  <tr className="border-b last:border-0 hover:bg-gray-50">
-    <td className="p-4 flex items-center">
-      <div className="relative w-12 h-12 mr-4 flex-shrink-0">
-        <Image
-          src={product.imageUrl}
-          alt={product.name}
-          fill
-          className="rounded-md object-cover"
-        />
-      </div>
-      <div>
-        <span className="font-medium text-gray-900">{product.name}</span>
-        <p className="text-sm text-gray-500">SKU: {product.sku}</p>
-      </div>
-    </td>
-    <td className="p-4 text-gray-600">{product.category.name}</td>
-    <td className="p-4 text-gray-900 font-medium">₦{Number(product.price).toLocaleString()}</td>
-    <td className="p-4 text-gray-600">{product.stock} units</td>
-    <td className="p-4">
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-        product.statusDisplay === 'Active' ? 'bg-green-100 text-green-800' :
-        product.statusDisplay === 'Draft' ? 'bg-yellow-100 text-yellow-800' :
-        'bg-red-100 text-red-800'
-      }`}>
-        {product.statusDisplay}
-      </span>
-    </td>
-    <td className="p-4 text-gray-600">{product.sales}</td>
-    <td className="p-4 text-gray-600">{new Date(product.created_at).toLocaleDateString()}</td>
-    <td className="p-4">
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => onView(product.id)}
-          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-          title="View product"
-        >
-          <EyeIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onEdit(product.id)}
-          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-          title="Edit product"
-        >
-          <EditIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(product.id)}
-          disabled={isDeleting}
-          className="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-          title="Delete product"
-        >
-          {isDeleting ? (
-            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <TrashIcon className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-    </td>
-  </tr>
-);
 
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -97,63 +26,69 @@ export default function AdminProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | undefined>(undefined);
 
-  // tRPC queries with proper Prisma types
-  const productsQuery = trpc.product.getAll.useQuery({
+  const productsQuery = trpc.getProducts.useQuery({
     page: currentPage,
     limit: 20,
     search: searchTerm.trim() || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
-    inStock: undefined
   }, {
     staleTime: 30000,
     refetchOnWindowFocus: false
   });
 
-  const statsQuery = trpc.product.getStats.useQuery(undefined, {
+  const statsQuery = trpc.getProducts.useQuery({
+    page: 1,
+    limit: 1000,
+  }, {
     staleTime: 60000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    select: (data) => ({
+      total: data.pagination.total,
+      active: data.products.filter(p => p.status === 'ACTIVE').length,
+      outOfStock: data.products.filter(p => p.quantity === 0).length,
+      featured: data.products.filter(p => p.is_featured).length,
+    })
   });
 
-  const deleteProductMutation = trpc.product.delete.useMutation({
+  const deleteProductMutation = trpc.deleteProduct.useMutation({
     onSuccess: () => {
       productsQuery.refetch();
-      statsQuery.refetch();
       setDeletingProductId(null);
+      toast.success('Product deleted successfully');
     },
     onError: (error) => {
       console.error('Failed to delete product:', error);
+      toast.error('Failed to delete product: ' + error.message);
       setDeletingProductId(null);
     }
   });
 
-  // Transform backend data to admin display format
-  const transformToAdminDisplay = (products: ProductFromAPI[]): AdminProductDisplay[] => {
-    return products.map(product => ({
-      ...product,
-      imageUrl: product.images?.[0]?.url || `https://picsum.photos/seed/${product.id}/80/80`,
-      stock: product.stock_quantity,
-      statusDisplay: product.stock_quantity === 0 ? 'Out of stock' :
-                    product.status === ProductStatus.ACTIVE ? 'Active' :
-                    product.status === ProductStatus.DRAFT ? 'Draft' : 'Inactive',
-      sales: product._count?.orderItems || 0
-    }));
-  };
+  const adminProducts = productsQuery.data?.products?.map(product => ({
+    ...product,
+    imageUrl: product.images?.[0]?.url || `https://placehold.co/80x80/38761d/white?text=${product.name.charAt(0)}`,
+    stock: product.quantity,
+    statusDisplay: product.quantity === 0 ? 'Out of stock' :
+                  product.status === 'ACTIVE' ? 'Active' :
+                  product.status === 'DRAFT' ? 'Draft' : 'Inactive',
+    sales: product.sale_count || 0
+  })) || [];
 
-  const adminProducts = productsQuery.data?.items ? transformToAdminDisplay(productsQuery.data.items) : [];
-
-  // Client-side filtering for category (if needed)
   const filteredProducts = adminProducts.filter(product => {
     const matchesCategory = categoryFilter === 'All' || product.category.name === categoryFilter;
     return matchesCategory;
   });
 
   const handleAddProduct = () => {
-    router.push('/admin/products/form');
+    setEditingProductId(undefined);
+    setSheetOpen(true);
   };
 
   const handleEditProduct = (id: string) => {
-    router.push(`/admin/products/form?id=${id}`);
+    setEditingProductId(id);
+    setSheetOpen(true);
   };
 
   const handleDeleteProduct = async (id: string) => {
@@ -165,7 +100,6 @@ export default function AdminProductsPage() {
     try {
       await deleteProductMutation.mutateAsync({ id });
     } catch (error) {
-      // Error handling is done in mutation callbacks
     }
   };
 
@@ -175,21 +109,112 @@ export default function AdminProductsPage() {
 
   const handleExportCSV = () => {
     console.log('Export products CSV');
-    // TODO: Implement CSV export
+  };
+
+  const handleFormSuccess = () => {
+    productsQuery.refetch();
+    statsQuery.refetch();
   };
 
   const categories = ['All', ...Array.from(new Set(adminProducts.map(p => p.category.name)))];
-  const statuses: (ProductStatus | 'All')[] = ['All', ProductStatus.ACTIVE, ProductStatus.DRAFT, ProductStatus.INACTIVE];
-  const statusLabels = {
+  const statuses = ['All', 'ACTIVE', 'DRAFT', 'INACTIVE', 'ARCHIVED'] as const;
+  const statusLabels: Record<string, string> = {
     All: 'All Status',
-    [ProductStatus.ACTIVE]: 'Active',
-    [ProductStatus.DRAFT]: 'Draft',
-    [ProductStatus.INACTIVE]: 'Inactive'
+    ACTIVE: 'Active',
+    DRAFT: 'Draft',
+    INACTIVE: 'Inactive',
+    ARCHIVED: 'Archived'
   };
+
+  const columns: Column<ProductWithRelations>[] = useMemo(() => [
+    {
+      header: 'Product',
+      cell: (product) => (
+        <div className="flex items-center">
+          <div className="relative w-12 h-12 mr-4 flex-shrink-0">
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="rounded-md object-cover"
+            />
+          </div>
+          <div>
+            <span className="font-medium text-gray-900">{product.name}</span>
+            <p className="text-sm text-gray-500">SKU: {product.sku}</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Category',
+      cell: (product) => <span className="text-gray-600">{product.category.name}</span>
+    },
+    {
+      header: 'Price',
+      cell: (product) => <span className="text-gray-900 font-medium">₦{Number(product.price).toLocaleString()}</span>
+    },
+    {
+      header: 'Stock',
+      cell: (product) => <span className="text-gray-600">{product.stock} units</span>
+    },
+    {
+      header: 'Status',
+      cell: (product) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          product.statusDisplay === 'Active' ? 'bg-green-100 text-green-800' :
+          product.statusDisplay === 'Draft' ? 'bg-yellow-100 text-yellow-800' :
+          'bg-red-100 text-red-800'
+        }`}>
+          {product.statusDisplay}
+        </span>
+      )
+    },
+    {
+      header: 'Sales',
+      cell: (product) => <span className="text-gray-600">{product.sales}</span>
+    },
+    {
+      header: 'Date Added',
+      cell: (product) => <span className="text-gray-600">{new Date(product.created_at).toLocaleDateString()}</span>
+    },
+    {
+      header: 'Actions',
+      cell: (product) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleViewProduct(product.id)}
+            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+            title="View product"
+          >
+            <EyeIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleEditProduct(product.id)}
+            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+            title="Edit product"
+          >
+            <EditIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteProduct(product.id)}
+            disabled={deletingProductId === product.id}
+            className="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+            title="Delete product"
+          >
+            {deletingProductId === product.id ? (
+              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <TrashIcon className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )
+    }
+  ], [deletingProductId]);
 
   return (
     <div>
-      {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products Management</h1>
@@ -204,7 +229,6 @@ export default function AdminProductsPage() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg border border-gray-200">
           <div className="flex items-center">
@@ -213,7 +237,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Total Products</p>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900">
                 {statsQuery.isLoading ? '...' : statsQuery.data?.total || 0}
               </p>
             </div>
@@ -227,7 +251,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Active Products</p>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900">
                 {statsQuery.isLoading ? '...' : statsQuery.data?.active || 0}
               </p>
             </div>
@@ -241,7 +265,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Out of Stock</p>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900">
                 {statsQuery.isLoading ? '...' : statsQuery.data?.outOfStock || 0}
               </p>
             </div>
@@ -255,7 +279,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Featured Products</p>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900">
                 {statsQuery.isLoading ? '...' : statsQuery.data?.featured || 0}
               </p>
             </div>
@@ -263,7 +287,6 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Filters and Search */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
@@ -308,69 +331,15 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-lg border overflow-x-auto">
-        {productsQuery.isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-pulse space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gray-200 rounded"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : productsQuery.error ? (
-          <div className="p-8 text-center text-red-600">
-            <p>Error loading products</p>
-            <button
-              onClick={() => productsQuery.refetch()}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Retry
-            </button>
-          </div>
-        ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="p-4 font-semibold text-sm text-gray-700">Product</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Category</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Price</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Stock</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Status</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Sales</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Date Added</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map(product => (
-                  <ProductRow
-                    key={product.id}
-                    product={product}
-                    onEdit={handleEditProduct}
-                    onDelete={handleDeleteProduct}
-                    onView={handleViewProduct}
-                    isDeleting={deletingProductId === product.id}
-                  />
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-gray-500">
-                    No products found matching your filters
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={filteredProducts}
+        isLoading={productsQuery.isLoading}
+        error={productsQuery.error}
+        onRetry={() => productsQuery.refetch()}
+        emptyMessage="No products found matching your filters"
+        keyExtractor={(product) => product.id}
+      />
 
       {filteredProducts.length > 20 && (
         <div className="mt-6 flex justify-center">
@@ -379,6 +348,13 @@ export default function AdminProductsPage() {
           </button>
         </div>
       )}
+
+      <ProductFormSheet
+        productId={editingProductId}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onSuccess={handleFormSuccess}
+      />
     </div>
   );
 }

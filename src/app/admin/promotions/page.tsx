@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SearchIcon, FilterIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, CopyIcon } from '../../components/ui/icons';
+import { SearchIcon, FilterIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, CopyIcon } from '@/components/ui/icons';
 
 // Temporary interfaces for migration
 interface AdminPromotion {

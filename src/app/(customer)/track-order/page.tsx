@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { DocumentTextIcon, CheckCircleIcon, TruckIcon, HomeIcon } from '../../components/ui/icons';
+import { DocumentTextIcon, CheckCircleIcon, TruckIcon, HomeIcon } from '@/components/ui/icons';
 
 type OrderStatus = 'Order placed' | 'Order accepted' | 'On the way' | 'Delivered';
 

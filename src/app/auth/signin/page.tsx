@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogoIcon, EyeIcon, GoogleIcon } from '../../components/ui/icons';
+import { LogoIcon, EyeIcon, GoogleIcon } from '@/components/ui/icons';
 import { useAuth } from '../../contexts/auth-context';
 import Image from 'next/image';
 
@@ -128,7 +128,7 @@ export default function SignInPage() {
                 value={form.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900"
                 placeholder="Enter your email"
               />
             </div>
@@ -145,7 +145,7 @@ export default function SignInPage() {
                   value={form.password}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900"
                   placeholder="Enter your password"
                 />
                 <button
