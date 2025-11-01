@@ -113,7 +113,7 @@ export const getProductBySlug = publicProcedure
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Product not found' })
     }
 
-    // Increment view count
+
     await ctx.prisma.product.update({
       where: { id: product.id },
       data: { view_count: { increment: 1 } },

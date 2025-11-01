@@ -2,23 +2,25 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { ArrowUpIcon, ViewAllArrowIcon, SearchIcon, FilterIcon, ExportIcon, DocumentTextIcon, OrdersIcon, CustomersIcon, ProductsIcon } from '@/components/ui/icons';
+import { ArrowUpIcon, ArrowDownIcon, ViewAllArrowIcon, SearchIcon, FilterIcon, ExportIcon, DocumentTextIcon, OrdersIcon, CustomersIcon, ProductsIcon } from '@/components/ui/icons';
+import { trpc } from '@/utils/trpc';
 
 interface AdminProduct {
-  id: number;
+  id: string;
   imageUrl: string;
   name: string;
   category: string;
   price: number;
   stock: number;
   status: 'In stock' | 'Out of stock';
-  dateAdded: string;
+  totalSold: number;
 }
 
 interface StatCardProps {
   title: string;
   value: string;
   trend: string;
+  trendPositive?: boolean;
   icon: React.ReactNode;
 }
 
@@ -32,24 +34,29 @@ interface ProductRowProps {
   product: AdminProduct;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-200">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-3xl font-bold mt-2">{value}</p>
+const StatCard: React.FC<StatCardProps> = ({ title, value, trend, trendPositive = true, icon }) => {
+  const trendValue = Number.parseFloat(trend);
+  const isPositive = trendValue >= 0;
+
+  return (
+    <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm text-gray-500">{title}</p>
+          <p className="text-3xl font-bold mt-2">{value}</p>
+        </div>
+        <div className="text-gray-400">{icon}</div>
       </div>
-      <div className="text-gray-400">{icon}</div>
+      <div className="flex items-center text-sm mt-4">
+        <span className={`flex items-center mr-2 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+          {isPositive ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}
+          {Math.abs(trendValue)}%
+        </span>
+        <span className="text-gray-500">Since last month</span>
+      </div>
     </div>
-    <div className="flex items-center text-sm mt-4">
-      <span className="flex items-center text-green-600 mr-2">
-        <ArrowUpIcon className="w-4 h-4" />
-        {trend}
-      </span>
-      <span className="text-gray-500">Since last month</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon }) => (
   <div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -95,22 +102,21 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock data - will be replaced with tRPC calls
-  const mockTopProducts: AdminProduct[] = Array.from({ length: 10 }, (_, i) => {
-    const stock = Math.random() > 0.3 ? Math.floor(Math.random() * 200) + 1 : 0;
-    return {
-      id: i + 1,
-      imageUrl: `https://picsum.photos/seed/${i + 20}/50/50`,
-      name: 'La Roche-Posay Effaclar Purifying Foaming Gel',
-      category: 'Cleansers',
-      price: 15800.00,
-      stock: stock,
-      status: stock > 0 ? 'In stock' : 'Out of stock',
-      dateAdded: `2023-10-${28-i}`
-    };
+  // Fetch dashboard stats
+  const dashboardStatsQuery = trpc.getDashboardStats.useQuery(undefined, {
+    refetchOnWindowFocus: false,
   });
 
-  const filteredProducts = mockTopProducts.filter(product =>
+  // Fetch top products
+  const topProductsQuery = trpc.getTopProducts.useQuery(
+    { limit: 10 },
+    { refetchOnWindowFocus: false }
+  );
+
+  const stats = dashboardStatsQuery.data;
+  const topProducts = topProductsQuery.data || [];
+
+  const filteredProducts = topProducts.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -129,10 +135,46 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Products sold" value="465" trend="8.2%" icon={<ProductsIcon />} />
-        <StatCard title="Completed orders" value="465" trend="8.2%" icon={<OrdersIcon />} />
-        <ViewAllCard title="Pending orders" value="12" icon={<DocumentTextIcon />} />
-        <ViewAllCard title="Out of stock items" value="20" icon={<CustomersIcon />} />
+        {dashboardStatsQuery.isLoading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
+                <div className="h-8 bg-gray-200 rounded w-16 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              </div>
+            ))}
+          </>
+        ) : stats ? (
+          <>
+            <StatCard
+              title="Products sold"
+              value={stats.productsSold.value.toString()}
+              trend={stats.productsSold.trend}
+              icon={<ProductsIcon />}
+            />
+            <StatCard
+              title="Completed orders"
+              value={stats.completedOrders.value.toString()}
+              trend={stats.completedOrders.trend}
+              icon={<OrdersIcon />}
+            />
+            <ViewAllCard
+              title="Pending orders"
+              value={stats.pendingOrders.toString()}
+              icon={<DocumentTextIcon />}
+            />
+            <ViewAllCard
+              title="Out of stock items"
+              value={stats.outOfStockItems.toString()}
+              icon={<CustomersIcon />}
+            />
+          </>
+        ) : (
+          <div className="col-span-4 text-center py-8 text-gray-500">
+            Failed to load dashboard statistics
+          </div>
+        )}
       </div>
 
       {/* Top Products Section */}
@@ -177,10 +219,25 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.length > 0 ? (
+              {topProductsQuery.isLoading ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-600">Loading products...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredProducts.length > 0 ? (
                 filteredProducts.map(product => (
                   <ProductRow key={product.id} product={product} />
                 ))
+              ) : topProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                    No products available yet. Start by adding some products!
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">

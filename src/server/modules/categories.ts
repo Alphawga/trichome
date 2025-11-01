@@ -32,6 +32,31 @@ export const getCategories = publicProcedure
     return categories
   })
 
+// Get category by ID
+export const getCategoryById = publicProcedure
+  .input(z.object({ id: z.string() }))
+  .query(async ({ input, ctx }) => {
+    const category = await ctx.prisma.category.findUnique({
+      where: { id: input.id },
+      include: {
+        parent: true,
+        children: {
+          where: { status: 'ACTIVE' },
+          orderBy: { sort_order: 'asc' },
+        },
+        _count: {
+          select: { products: true },
+        },
+      },
+    })
+
+    if (!category) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Category not found' })
+    }
+
+    return category
+  })
+
 // Get category by slug
 export const getCategoryBySlug = publicProcedure
   .input(z.object({ slug: z.string() }))

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { trpc } from '@/utils/trpc';
@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { ImageUploader } from '@/components/ui/image-uploader';
 import { toast } from 'sonner';
 
 interface ProductFormSheetProps {
@@ -23,6 +24,8 @@ interface ProductFormSheetProps {
 }
 
 export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: ProductFormSheetProps) {
+  const [productImages, setProductImages] = useState<Array<{ url: string; alt_text?: string; is_primary?: boolean }>>([]);
+
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<CreateProductInput>({
     resolver: zodResolver(createProductSchema),
     defaultValues: {
@@ -111,7 +114,16 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
         seo_description: product.seo_description || '',
         category_id: product.category_id,
       });
+      // Load product images
+      if (product.images && product.images.length > 0) {
+        setProductImages(product.images.map(img => ({
+          url: img.url,
+          alt_text: img.alt_text || '',
+          is_primary: img.is_primary || false,
+        })));
+      }
     } else if (open && !productId) {
+      setProductImages([]);
       // Reset to default values when creating new product
       reset({
         name: '',
@@ -141,10 +153,21 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
 
   const onSubmit = async (data: CreateProductInput) => {
     try {
+      // Add images to the data
+      const productData = {
+        ...data,
+        images: productImages.map((img, index) => ({
+          url: img.url,
+          alt_text: img.alt_text || data.name,
+          is_primary: index === 0, // First image is primary
+          sort_order: index,
+        })),
+      };
+
       if (productId) {
-        await updateMutation.mutateAsync({ ...data, id: productId });
+        await updateMutation.mutateAsync({ ...productData, id: productId });
       } else {
-        await createMutation.mutateAsync(data);
+        await createMutation.mutateAsync(productData);
       }
     } catch (error) {
       console.error('Submission error:', error);
@@ -220,6 +243,27 @@ export function ProductFormSheet({ productId, open, onOpenChange, onSuccess }: P
                 placeholder="product-slug"
               />
               {errors.slug && <p className="mt-1 text-sm text-red-600">{errors.slug.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Image
+              </label>
+              <ImageUploader
+                value={productImages[0]?.url}
+                onChange={(url) => {
+                  if (productImages.length === 0) {
+                    setProductImages([{ url, is_primary: true }]);
+                  } else {
+                    setProductImages([{ ...productImages[0], url }, ...productImages.slice(1)]);
+                  }
+                }}
+                onRemove={() => {
+                  setProductImages(productImages.slice(1));
+                }}
+                disabled={isLoading || isSubmitting}
+                folder="products"
+              />
             </div>
 
             <div>

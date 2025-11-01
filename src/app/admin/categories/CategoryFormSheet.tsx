@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { ImageUploader } from '@/components/ui/image-uploader';
 import { toast } from 'sonner';
 
 const categorySchema = z.object({
@@ -223,15 +224,15 @@ export function CategoryFormSheet({ categoryId, open, onOpenChange, onSuccess }:
           </div>
 
           <div>
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-2">
-              Image URL
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category Image
             </label>
-            <input
-              type="text"
-              id="image"
-              {...register('image')}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900"
-              placeholder="https://example.com/image.jpg"
+            <ImageUploader
+              value={watch('image')}
+              onChange={(url) => setValue('image', url)}
+              onRemove={() => setValue('image', '')}
+              disabled={isLoading || isSubmitting}
+              folder="categories"
             />
           </div>
 
