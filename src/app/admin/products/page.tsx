@@ -41,18 +41,9 @@ export default function AdminProductsPage() {
     refetchOnWindowFocus: false
   });
 
-  const statsQuery = trpc.getProducts.useQuery({
-    page: 1,
-    limit: 1000,
-  }, {
+  const statsQuery = trpc.getProductStats.useQuery(undefined, {
     staleTime: 60000,
-    refetchOnWindowFocus: false,
-    select: (data) => ({
-      total: data.pagination.total,
-      active: data.products.filter(p => p.status === 'ACTIVE').length,
-      outOfStock: data.products.filter(p => p.quantity === 0).length,
-      featured: data.products.filter(p => p.is_featured).length,
-    })
+    refetchOnWindowFocus: false
   });
 
   const deleteProductMutation = trpc.deleteProduct.useMutation({
@@ -119,6 +110,8 @@ export default function AdminProductsPage() {
     productsQuery.refetch();
     statsQuery.refetch();
   };
+
+  const stats = statsQuery.data;
 
   const categories = ['All', ...Array.from(new Set(adminProducts.map(p => p.category.name)))];
   const statuses = ['All', 'ACTIVE', 'DRAFT', 'INACTIVE', 'ARCHIVED'] as const;
@@ -277,7 +270,7 @@ export default function AdminProductsPage() {
             <div className="ml-4">
               <p className="text-sm text-gray-500">Total Products</p>
               <p className="text-2xl font-bold text-gray-900">
-                {statsQuery.isLoading ? '...' : statsQuery.data?.total || 0}
+                {statsQuery.isLoading ? '...' : stats?.totalProducts || 0}
               </p>
             </div>
           </div>
@@ -291,7 +284,7 @@ export default function AdminProductsPage() {
             <div className="ml-4">
               <p className="text-sm text-gray-500">Active Products</p>
               <p className="text-2xl font-bold text-gray-900">
-                {statsQuery.isLoading ? '...' : statsQuery.data?.active || 0}
+                {statsQuery.isLoading ? '...' : stats?.activeProducts || 0}
               </p>
             </div>
           </div>
@@ -305,7 +298,7 @@ export default function AdminProductsPage() {
             <div className="ml-4">
               <p className="text-sm text-gray-500">Out of Stock</p>
               <p className="text-2xl font-bold text-gray-900">
-                {statsQuery.isLoading ? '...' : statsQuery.data?.outOfStock || 0}
+                {statsQuery.isLoading ? '...' : stats?.outOfStockProducts || 0}
               </p>
             </div>
           </div>
@@ -319,7 +312,7 @@ export default function AdminProductsPage() {
             <div className="ml-4">
               <p className="text-sm text-gray-500">Featured Products</p>
               <p className="text-2xl font-bold text-gray-900">
-                {statsQuery.isLoading ? '...' : statsQuery.data?.featured || 0}
+                {statsQuery.isLoading ? '...' : stats?.featuredProducts || 0}
               </p>
             </div>
           </div>

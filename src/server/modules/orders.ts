@@ -96,7 +96,21 @@ export const getOrders = staffProcedure
               last_name: true,
             },
           },
-          items: true,
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: {
+                    where: { is_primary: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
           shipping_address: true,
         },
         orderBy: { created_at: 'desc' },

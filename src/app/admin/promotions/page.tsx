@@ -1,311 +1,370 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SearchIcon, FilterIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, CopyIcon } from '@/components/ui/icons';
+import { SearchIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, CopyIcon } from '@/components/ui/icons';
+import { trpc } from '@/utils/trpc';
+import { PromotionType, PromotionStatus, PromotionTarget } from '@prisma/client';
+import type { Promotion } from '@prisma/client';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { toast } from 'sonner';
+import { PromotionViewSheet } from './PromotionViewSheet';
+import { PromotionFormSheet } from './PromotionFormSheet';
 
-// Temporary interfaces for migration
-interface AdminPromotion {
-  id: number;
-  name: string;
-  code: string;
-  type: 'Percentage' | 'Fixed Amount' | 'Free Shipping';
-  value: number;
-  minOrderValue: number;
-  maxDiscount?: number;
-  status: 'Active' | 'Inactive' | 'Expired' | 'Scheduled';
-  startDate: string;
-  endDate: string;
-  usageLimit: number;
-  usedCount: number;
-  description: string;
-  targetCustomers: 'All' | 'New Customers' | 'VIP' | 'Specific Group';
-  createdDate: string;
-}
+// Type for promotion from backend
+type PromotionWithDetails = Promotion & {
+  _count: {
+    usages: number;
+  };
+};
 
-interface PromotionRowProps {
-  promotion: AdminPromotion;
-  onView: (id: number) => void;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
+// Actions dropdown component
+interface ActionsDropdownProps {
+  promotion: PromotionWithDetails;
+  onView: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
   onCopy: (code: string) => void;
-  onToggleStatus: (id: number) => void;
+  onToggleStatus: (id: string) => void;
+  openDropdownId: string | null;
+  setOpenDropdownId: (id: string | null) => void;
 }
 
-const PromotionRow: React.FC<PromotionRowProps> = ({
+const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   promotion,
   onView,
   onEdit,
   onDelete,
   onCopy,
-  onToggleStatus
-}) => {
-  const getStatusColor = (status: AdminPromotion['status']) => {
-    switch (status) {
-      case 'Active': return 'bg-green-100 text-green-800';
-      case 'Inactive': return 'bg-gray-100 text-gray-800';
-      case 'Expired': return 'bg-red-100 text-red-800';
-      case 'Scheduled': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  onToggleStatus,
+  openDropdownId,
+  setOpenDropdownId
+}) => (
+  <div className="relative">
+    <button
+      onClick={() => setOpenDropdownId(openDropdownId === promotion.id ? null : promotion.id)}
+      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+      title="Actions"
+    >
+      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+      </svg>
+    </button>
 
-  const getDiscountText = () => {
-    switch (promotion.type) {
-      case 'Percentage':
-        return `${promotion.value}% OFF`;
-      case 'Fixed Amount':
-        return `₦${promotion.value.toLocaleString()} OFF`;
-      case 'Free Shipping':
-        return 'FREE SHIPPING';
-      default:
-        return '';
-    }
-  };
-
-  return (
-    <tr className="border-b last:border-0 hover:bg-gray-50">
-      <td className="p-4">
-        <div>
-          <span className="font-medium text-gray-900">{promotion.name}</span>
-          <p className="text-sm text-gray-500">Created {promotion.createdDate}</p>
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center space-x-2">
-          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-            {promotion.code}
-          </code>
+    {openDropdownId === promotion.id && (
+      <>
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setOpenDropdownId(null)}
+        />
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
           <button
-            onClick={() => onCopy(promotion.code)}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-            title="Copy code"
-          >
-            <CopyIcon className="w-3 h-3" />
-          </button>
-        </div>
-      </td>
-      <td className="p-4">
-        <span className="font-medium text-green-600">{getDiscountText()}</span>
-        <p className="text-sm text-gray-500">Min: ₦{promotion.minOrderValue.toLocaleString()}</p>
-      </td>
-      <td className="p-4">
-        <div>
-          <span className="text-gray-900">{promotion.usedCount} / {promotion.usageLimit}</span>
-          <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-            <div
-              className="bg-blue-600 h-1 rounded-full"
-              style={{ width: `${Math.min((promotion.usedCount / promotion.usageLimit) * 100, 100)}%` }}
-            ></div>
-          </div>
-        </div>
-      </td>
-      <td className="p-4">
-        <div>
-          <span className="text-sm text-gray-600">{promotion.startDate}</span>
-          <br />
-          <span className="text-sm text-gray-600">{promotion.endDate}</span>
-        </div>
-      </td>
-      <td className="p-4">
-        <button
-          onClick={() => onToggleStatus(promotion.id)}
-          className={`px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${getStatusColor(promotion.status)}`}
-        >
-          {promotion.status}
-        </button>
-      </td>
-      <td className="p-4 text-gray-600">{promotion.targetCustomers}</td>
-      <td className="p-4">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onView(promotion.id)}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-            title="View promotion details"
+            onClick={() => {
+              onView(promotion.id);
+              setOpenDropdownId(null);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           >
             <EyeIcon className="w-4 h-4" />
+            View Details
           </button>
           <button
-            onClick={() => onEdit(promotion.id)}
-            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-            title="Edit promotion"
+            onClick={() => {
+              onEdit(promotion.id);
+              setOpenDropdownId(null);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           >
             <EditIcon className="w-4 h-4" />
+            Edit Promotion
           </button>
           <button
-            onClick={() => onDelete(promotion.id)}
-            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-            title="Delete promotion"
+            onClick={() => {
+              onCopy(promotion.code);
+              setOpenDropdownId(null);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <CopyIcon className="w-4 h-4" />
+            Copy Code
+          </button>
+          <div className="border-t border-gray-100 my-1" />
+          <button
+            onClick={() => {
+              onToggleStatus(promotion.id);
+              setOpenDropdownId(null);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            {promotion.status === 'ACTIVE' ? '⏸️' : '▶️'}
+            {promotion.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+          </button>
+          <button
+            onClick={() => {
+              onDelete(promotion.id);
+              setOpenDropdownId(null);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
           >
             <TrashIcon className="w-4 h-4" />
+            Delete
           </button>
         </div>
-      </td>
-    </tr>
-  );
-};
+      </>
+    )}
+  </div>
+);
 
 export default function AdminPromotionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState<PromotionStatus | 'All'>('All');
+  const [typeFilter, setTypeFilter] = useState<PromotionType | 'All'>('All');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [viewPromotionId, setViewPromotionId] = useState<string | null>(null);
+  const [editPromotionId, setEditPromotionId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  // Mock data - will be replaced with tRPC calls
-  const mockPromotions: AdminPromotion[] = [
+  // Define table columns
+  const columns: Column<PromotionWithDetails>[] = [
     {
-      id: 1,
-      name: 'New Customer Welcome',
-      code: 'WELCOME20',
-      type: 'Percentage',
-      value: 20,
-      minOrderValue: 10000,
-      maxDiscount: 5000,
-      status: 'Active',
-      startDate: '2023-10-01',
-      endDate: '2023-12-31',
-      usageLimit: 500,
-      usedCount: 243,
-      description: 'Welcome discount for new customers',
-      targetCustomers: 'New Customers',
-      createdDate: '2023-09-15'
+      header: 'Promotion Name',
+      cell: (promotion) => (
+        <div>
+          <span className="font-medium text-gray-900">{promotion.name}</span>
+          <p className="text-sm text-gray-500">
+            Created {new Date(promotion.created_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </p>
+        </div>
+      ),
     },
     {
-      id: 2,
-      name: 'Free Shipping Promo',
-      code: 'FREESHIP',
-      type: 'Free Shipping',
-      value: 0,
-      minOrderValue: 25000,
-      status: 'Active',
-      startDate: '2023-09-01',
-      endDate: '2023-11-30',
-      usageLimit: 1000,
-      usedCount: 456,
-      description: 'Free shipping on orders above ₦25,000',
-      targetCustomers: 'All',
-      createdDate: '2023-08-20'
+      header: 'Code',
+      cell: (promotion) => (
+        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+          {promotion.code}
+        </code>
+      ),
     },
     {
-      id: 3,
-      name: 'VIP Customer Special',
-      code: 'VIP15',
-      type: 'Percentage',
-      value: 15,
-      minOrderValue: 5000,
-      maxDiscount: 10000,
-      status: 'Active',
-      startDate: '2023-08-01',
-      endDate: '2024-01-31',
-      usageLimit: 200,
-      usedCount: 87,
-      description: 'Exclusive discount for VIP customers',
-      targetCustomers: 'VIP',
-      createdDate: '2023-07-25'
+      header: 'Discount',
+      cell: (promotion) => {
+        let discountText = '';
+        switch (promotion.type) {
+          case 'PERCENTAGE':
+            discountText = `${promotion.value}% OFF`;
+            break;
+          case 'FIXED_AMOUNT':
+            discountText = `₦${Number(promotion.value).toLocaleString()} OFF`;
+            break;
+          case 'FREE_SHIPPING':
+            discountText = 'FREE SHIPPING';
+            break;
+          case 'BUY_X_GET_Y':
+            discountText = 'BUY X GET Y';
+            break;
+        }
+        return (
+          <div>
+            <span className="font-medium text-green-600">{discountText}</span>
+            <p className="text-sm text-gray-500">
+              Min: ₦{Number(promotion.min_order_value).toLocaleString()}
+            </p>
+          </div>
+        );
+      },
     },
     {
-      id: 4,
-      name: 'Black Friday Mega Sale',
-      code: 'BLACKFRIDAY50',
-      type: 'Percentage',
-      value: 50,
-      minOrderValue: 15000,
-      maxDiscount: 20000,
-      status: 'Scheduled',
-      startDate: '2023-11-24',
-      endDate: '2023-11-27',
-      usageLimit: 2000,
-      usedCount: 0,
-      description: 'Biggest sale of the year',
-      targetCustomers: 'All',
-      createdDate: '2023-10-15'
+      header: 'Usage',
+      cell: (promotion) => {
+        const usageCount = promotion._count.usages;
+        const usageLimit = promotion.usage_limit;
+        const percentage = usageLimit > 0 ? Math.min((usageCount / usageLimit) * 100, 100) : 0;
+
+        return (
+          <div>
+            <span className="text-gray-900">
+              {usageCount} / {usageLimit || '∞'}
+            </span>
+            {usageLimit > 0 && (
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                <div
+                  className="bg-blue-600 h-1 rounded-full"
+                  style={{ width: `${percentage}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
-      id: 5,
-      name: 'Summer Clearance',
-      code: 'SUMMER30',
-      type: 'Fixed Amount',
-      value: 7500,
-      minOrderValue: 20000,
-      status: 'Expired',
-      startDate: '2023-06-01',
-      endDate: '2023-08-31',
-      usageLimit: 300,
-      usedCount: 298,
-      description: 'Summer season clearance sale',
-      targetCustomers: 'All',
-      createdDate: '2023-05-20'
+      header: 'Duration',
+      cell: (promotion) => (
+        <div>
+          <span className="text-sm text-gray-600">
+            {new Date(promotion.start_date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </span>
+          <br />
+          <span className="text-sm text-gray-600">
+            {new Date(promotion.end_date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </span>
+        </div>
+      ),
     },
     {
-      id: 6,
-      name: 'Student Discount',
-      code: 'STUDENT10',
-      type: 'Percentage',
-      value: 10,
-      minOrderValue: 5000,
-      maxDiscount: 3000,
-      status: 'Inactive',
-      startDate: '2023-09-01',
-      endDate: '2024-05-31',
-      usageLimit: 1000,
-      usedCount: 156,
-      description: 'Special discount for students',
-      targetCustomers: 'Specific Group',
-      createdDate: '2023-08-25'
-    }
+      header: 'Status',
+      cell: (promotion) => {
+        const statusColors = {
+          ACTIVE: 'bg-green-100 text-green-800',
+          INACTIVE: 'bg-gray-100 text-gray-800',
+          EXPIRED: 'bg-red-100 text-red-800',
+          SCHEDULED: 'bg-blue-100 text-blue-800',
+        };
+        return (
+          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}>
+            {promotion.status}
+          </span>
+        );
+      },
+    },
+    {
+      header: 'Target',
+      cell: (promotion) => (
+        <span className="text-gray-600">
+          {promotion.target_customers.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      header: 'Actions',
+      cell: (promotion) => (
+        <ActionsDropdown
+          promotion={promotion}
+          onView={handleViewPromotion}
+          onEdit={handleEditPromotion}
+          onDelete={handleDeletePromotion}
+          onCopy={handleCopyCode}
+          onToggleStatus={handleToggleStatus}
+          openDropdownId={openDropdownId}
+          setOpenDropdownId={setOpenDropdownId}
+        />
+      ),
+      className: 'w-20',
+    },
   ];
 
-  const filteredPromotions = mockPromotions.filter(promotion => {
-    const matchesSearch =
-      promotion.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promotion.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || promotion.status === statusFilter;
-    const matchesType = typeFilter === 'All' || promotion.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+  // Fetch promotions from database
+  const promotionsQuery = trpc.getPromotions.useQuery(
+    {
+      page: 1,
+      limit: 100,
+      status: statusFilter !== 'All' ? statusFilter : undefined,
+      type: typeFilter !== 'All' ? typeFilter : undefined,
+      search: searchTerm || undefined,
+    },
+    {
+      refetchOnWindowFocus: false,
+    }
+  );
+
+  // Fetch promotion statistics
+  const statsQuery = trpc.getPromotionStats.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+
+  const promotions = promotionsQuery.data?.promotions || [];
+  const stats = statsQuery.data;
+
+  const utils = trpc.useUtils();
+
+  // Delete mutation
+  const deletePromotionMutation = trpc.deletePromotion.useMutation({
+    onSuccess: () => {
+      toast.success('Promotion deleted successfully');
+      utils.getPromotions.invalidate();
+      utils.getPromotionStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete promotion: ${error.message}`);
+    },
+  });
+
+  // Toggle status mutation
+  const toggleStatusMutation = trpc.togglePromotionStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      utils.getPromotions.invalidate();
+      utils.getPromotionStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update status: ${error.message}`);
+    },
   });
 
   const handleAddPromotion = () => {
-    console.log('Add new promotion');
-    // TODO: Navigate to promotion creation form
+    setIsCreating(true);
   };
 
-  const handleViewPromotion = (id: number) => {
-    console.log('View promotion:', id);
-    // TODO: Navigate to promotion detail view
+  const handleViewPromotion = (id: string) => {
+    setViewPromotionId(id);
   };
 
-  const handleEditPromotion = (id: number) => {
-    console.log('Edit promotion:', id);
-    // TODO: Navigate to promotion edit form
+  const handleEditPromotion = (id: string) => {
+    setEditPromotionId(id);
   };
 
-  const handleDeletePromotion = (id: number) => {
-    console.log('Delete promotion:', id);
-    // TODO: Implement delete confirmation and action
+  // Get selected promotions for sheets
+  const selectedViewPromotion = promotions.find(p => p.id === viewPromotionId) || null;
+  const selectedEditPromotion = promotions.find(p => p.id === editPromotionId) || null;
+
+  const handleDeletePromotion = (id: string) => {
+    if (confirm('Are you sure you want to delete this promotion? This action cannot be undone.')) {
+      deletePromotionMutation.mutate({ id });
+    }
   };
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
-    console.log('Copied code:', code);
-    // TODO: Show success toast
+    toast.success(`Code "${code}" copied to clipboard`);
   };
 
-  const handleToggleStatus = (id: number) => {
-    console.log('Toggle status for promotion:', id);
-    // TODO: Implement status toggle
+  const handleToggleStatus = (id: string) => {
+    toggleStatusMutation.mutate({ id });
   };
 
   const handleExportCSV = () => {
-    console.log('Export promotions CSV');
-    // TODO: Implement CSV export
+    toast.info('CSV export coming soon');
   };
 
-  const statuses = ['All', 'Active', 'Inactive', 'Expired', 'Scheduled'];
-  const types = ['All', 'Percentage', 'Fixed Amount', 'Free Shipping'];
+  const statuses: Array<PromotionStatus | 'All'> = ['All', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'SCHEDULED'];
+  const types: Array<PromotionType | 'All'> = ['All', 'PERCENTAGE', 'FIXED_AMOUNT', 'FREE_SHIPPING', 'BUY_X_GET_Y'];
 
-  // Calculate stats
-  const activePromotions = mockPromotions.filter(p => p.status === 'Active').length;
-  const totalUsage = mockPromotions.reduce((sum, p) => sum + p.usedCount, 0);
-  const scheduledPromotions = mockPromotions.filter(p => p.status === 'Scheduled').length;
-  const expiredPromotions = mockPromotions.filter(p => p.status === 'Expired').length;
+  const statusLabels: Record<PromotionStatus | 'All', string> = {
+    All: 'All Status',
+    ACTIVE: 'Active',
+    INACTIVE: 'Inactive',
+    EXPIRED: 'Expired',
+    SCHEDULED: 'Scheduled',
+  };
+
+  const typeLabels: Record<PromotionType | 'All', string> = {
+    All: 'All Types',
+    PERCENTAGE: 'Percentage',
+    FIXED_AMOUNT: 'Fixed Amount',
+    FREE_SHIPPING: 'Free Shipping',
+    BUY_X_GET_Y: 'Buy X Get Y',
+  };
 
   return (
     <div>
@@ -326,53 +385,75 @@ export default function AdminPromotionsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <div className="w-6 h-6 text-green-600">✅</div>
+        {statsQuery.isLoading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="ml-4 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : stats ? (
+          <>
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <div className="w-6 h-6 text-green-600">✅</div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Active Promotions</p>
+                  <p className="text-2xl font-bold">{stats.active}</p>
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-500">Active Promotions</p>
-              <p className="text-2xl font-bold">{activePromotions}</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <div className="w-6 h-6 text-blue-600">📈</div>
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <div className="w-6 h-6 text-blue-600">📈</div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Total Usage</p>
+                  <p className="text-2xl font-bold">{stats.totalUsage.toLocaleString()}</p>
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-500">Total Usage</p>
-              <p className="text-2xl font-bold">{totalUsage.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <div className="w-6 h-6 text-purple-600">⏰</div>
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <div className="w-6 h-6 text-purple-600">⏰</div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Scheduled</p>
+                  <p className="text-2xl font-bold">{stats.scheduled}</p>
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-500">Scheduled</p>
-              <p className="text-2xl font-bold">{scheduledPromotions}</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <div className="w-6 h-6 text-red-600">⏳</div>
+            <div className="bg-white p-6 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <div className="w-6 h-6 text-red-600">⏳</div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Expired</p>
+                  <p className="text-2xl font-bold">{stats.expired}</p>
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-500">Expired</p>
-              <p className="text-2xl font-bold">{expiredPromotions}</p>
-            </div>
+          </>
+        ) : (
+          <div className="col-span-4 text-center py-8 text-gray-500">
+            Failed to load promotion statistics
           </div>
-        </div>
+        )}
       </div>
 
       {/* Filters and Search */}
@@ -393,21 +474,21 @@ export default function AdminPromotionsPage() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as PromotionStatus | 'All')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
           >
             {statuses.map(status => (
-              <option key={status} value={status}>{status} Status</option>
+              <option key={status} value={status}>{statusLabels[status]}</option>
             ))}
           </select>
 
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e) => setTypeFilter(e.target.value as PromotionType | 'All')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
           >
             {types.map(type => (
-              <option key={type} value={type}>{type} Type</option>
+              <option key={type} value={type}>{typeLabels[type]}</option>
             ))}
           </select>
 
@@ -421,85 +502,81 @@ export default function AdminPromotionsPage() {
       </div>
 
       {/* Promotions Table */}
-      <div className="bg-white rounded-lg border overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="p-4 font-semibold text-sm text-gray-700">Promotion Name</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Code</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Discount</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Usage</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Duration</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Status</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Target</th>
-              <th className="p-4 font-semibold text-sm text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPromotions.length > 0 ? (
-              filteredPromotions.map(promotion => (
-                <PromotionRow
-                  key={promotion.id}
-                  promotion={promotion}
-                  onView={handleViewPromotion}
-                  onEdit={handleEditPromotion}
-                  onDelete={handleDeletePromotion}
-                  onCopy={handleCopyCode}
-                  onToggleStatus={handleToggleStatus}
-                />
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-500">
-                  No promotions found matching your filters
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={promotions}
+        isLoading={promotionsQuery.isLoading}
+        error={promotionsQuery.error}
+        onRetry={() => promotionsQuery.refetch()}
+        emptyMessage="No promotions found matching your filters"
+        keyExtractor={(promotion) => promotion.id}
+      />
 
       {/* Quick Campaign Templates */}
       <div className="mt-8 bg-white p-6 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Quick Campaign Templates</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-green-600 mb-2">🎯</div>
             <p className="font-medium">New Customer Welcome</p>
             <p className="text-sm text-gray-500">20% off first order</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-blue-600 mb-2">🚚</div>
             <p className="font-medium">Free Shipping</p>
             <p className="text-sm text-gray-500">Free delivery above minimum order</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-purple-600 mb-2">⭐</div>
             <p className="font-medium">VIP Exclusive</p>
             <p className="text-sm text-gray-500">Special discount for loyal customers</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-red-600 mb-2">🔥</div>
             <p className="font-medium">Flash Sale</p>
             <p className="text-sm text-gray-500">Limited time mega discount</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-orange-600 mb-2">🎓</div>
             <p className="font-medium">Student Discount</p>
             <p className="text-sm text-gray-500">Educational institution discount</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="text-yellow-600 mb-2">🎂</div>
             <p className="font-medium">Birthday Special</p>
             <p className="text-sm text-gray-500">Birthday month celebration</p>
           </button>
         </div>
       </div>
+
+      {/* Promotion View Sheet */}
+      <PromotionViewSheet
+        promotion={selectedViewPromotion}
+        open={!!viewPromotionId}
+        onOpenChange={(open) => !open && setViewPromotionId(null)}
+      />
+
+      {/* Promotion Form Sheet (Create/Edit) */}
+      <PromotionFormSheet
+        promotion={selectedEditPromotion}
+        open={isCreating || !!editPromotionId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreating(false);
+            setEditPromotionId(null);
+          }
+        }}
+        onSuccess={() => {
+          promotionsQuery.refetch();
+          setIsCreating(false);
+          setEditPromotionId(null);
+        }}
+      />
     </div>
   );
 }

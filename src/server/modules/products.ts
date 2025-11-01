@@ -326,3 +326,55 @@ export const getRelatedProducts = publicProcedure
 
     return products
   })
+
+// Get product statistics (staff)
+export const getProductStats = staffProcedure.query(async ({ ctx }) => {
+  // Total products
+  const totalProducts = await ctx.prisma.product.count()
+
+  // Active products
+  const activeProducts = await ctx.prisma.product.count({
+    where: { status: 'ACTIVE' },
+  })
+
+  // Out of stock products
+  const outOfStockProducts = await ctx.prisma.product.count({
+    where: {
+      status: 'ACTIVE',
+      quantity: { lte: 0 },
+    },
+  })
+
+  // Featured products
+  const featuredProducts = await ctx.prisma.product.count({
+    where: {
+      status: 'ACTIVE',
+      is_featured: true,
+    },
+  })
+
+  // Low stock products (quantity > 0 and quantity <= low_stock_threshold)
+  // Note: Prisma doesn't support comparing fields directly, so we fetch and filter
+  const allActiveProducts = await ctx.prisma.product.findMany({
+    where: {
+      status: 'ACTIVE',
+      quantity: { gt: 0 },
+    },
+    select: {
+      quantity: true,
+      low_stock_threshold: true,
+    },
+  })
+
+  const lowStockProducts = allActiveProducts.filter(
+    p => p.quantity <= p.low_stock_threshold
+  ).length
+
+  return {
+    totalProducts,
+    activeProducts,
+    outOfStockProducts,
+    featuredProducts,
+    lowStockProducts,
+  }
+})

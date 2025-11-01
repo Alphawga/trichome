@@ -184,16 +184,138 @@ export const revokePermission = adminProcedure
 // Get user statistics (admin/staff only)
 export const getUserStats = staffProcedure.query(async ({ ctx }) => {
   const [total, active, pending, suspended] = await Promise.all([
-    ctx.prisma.user.count(),
-    ctx.prisma.user.count({ where: { status: 'ACTIVE' } }),
-    ctx.prisma.user.count({ where: { status: 'PENDING_VERIFICATION' } }),
-    ctx.prisma.user.count({ where: { status: 'SUSPENDED' } }),
+    ctx.prisma.user.count({ where: { role: 'CUSTOMER' } }),
+    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
+    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'PENDING_VERIFICATION' } }),
+    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'SUSPENDED' } }),
   ])
+
+  // Calculate total revenue from completed orders
+  const revenue = await ctx.prisma.order.aggregate({
+    where: {
+      payment_status: 'COMPLETED',
+    },
+    _sum: {
+      total: true,
+    },
+  })
+
+  // Get total orders count
+  const totalOrders = await ctx.prisma.order.count()
 
   return {
     total,
     active,
     pending,
     suspended,
+    revenue: revenue._sum.total || 0,
+    totalOrders,
+    avgOrderValue: totalOrders > 0 ? Number(revenue._sum.total || 0) / totalOrders : 0,
   }
 })
+
+// Get customers with order statistics (admin/staff only)
+export const getCustomers = staffProcedure
+  .input(
+    z.object({
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(100).default(50),
+      status: z.nativeEnum(UserStatus).optional(),
+      search: z.string().optional(),
+    })
+  )
+  .query(async ({ input, ctx }) => {
+    const { page, limit, status, search } = input
+    const skip = (page - 1) * limit
+
+    const where = {
+      role: 'CUSTOMER' as UserRole,
+      ...(status && { status }),
+      ...(search && {
+        OR: [
+          { email: { contains: search, mode: 'insensitive' as const } },
+          { first_name: { contains: search, mode: 'insensitive' as const } },
+          { last_name: { contains: search, mode: 'insensitive' as const } },
+          { phone: { contains: search } },
+        ],
+      }),
+    }
+
+    const [customers, total] = await Promise.all([
+      ctx.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          first_name: true,
+          last_name: true,
+          phone: true,
+          role: true,
+          status: true,
+          image: true,
+          created_at: true,
+          last_login_at: true,
+          _count: {
+            select: {
+              orders: true,
+            },
+          },
+          orders: {
+            where: {
+              payment_status: 'COMPLETED',
+            },
+            select: {
+              total: true,
+              created_at: true,
+            },
+          },
+          addresses: {
+            where: {
+              is_default: true,
+            },
+            take: 1,
+            select: {
+              city: true,
+              state: true,
+              country: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      ctx.prisma.user.count({ where }),
+    ])
+
+    // Calculate totals for each customer
+    const customersWithStats = customers.map((customer) => {
+      const totalSpent = customer.orders.reduce(
+        (sum, order) => sum + Number(order.total),
+        0
+      )
+      const lastOrder = customer.orders.length > 0
+        ? customer.orders.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0]
+        : null
+
+      return {
+        ...customer,
+        totalOrders: customer._count.orders,
+        totalSpent,
+        lastOrderDate: lastOrder?.created_at,
+        loyaltyPoints: Math.floor(totalSpent / 1000), // 1 point per 1000 spent
+      }
+    })
+
+    return {
+      customers: customersWithStats,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    }
+  })

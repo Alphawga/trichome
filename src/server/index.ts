@@ -13,6 +13,7 @@ import * as newsletterModule from './modules/newsletter'
 import * as contentModule from './modules/content'
 import * as analyticsModule from './modules/analytics'
 import * as dashboardModule from './modules/dashboard'
+import * as promotionsModule from './modules/promotions'
 
 // Compose into single router using spread operator
 export const appRouter = router({
@@ -29,6 +30,7 @@ export const appRouter = router({
   ...contentModule,
   ...analyticsModule,
   ...dashboardModule,
+  ...promotionsModule,
 
   // Health check
   healthCheck: publicProcedure.query(() => {
