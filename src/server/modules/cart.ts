@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { protectedProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
 
-// Get user's cart
+
 export const getCart = protectedProcedure.query(async ({ ctx }) => {
   const cartItems = await ctx.prisma.cartItem.findMany({
     where: { user_id: ctx.user.id },

@@ -2,10 +2,20 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { SearchIcon, FilterIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, UserIcon, ShieldIcon } from '@/components/ui/icons';
+import { SearchIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, UserIcon, ShieldIcon } from '@/components/ui/icons';
+import { trpc } from '@/utils/trpc';
+import { UserRole, UserStatus } from '@prisma/client';
+import type { User } from '@prisma/client';
+import { toast } from 'sonner';
 
-// Temporary interfaces for migration
-interface Permission {
+// Type for user with permissions from backend
+type AdminUser = Pick<
+  User,
+  'id' | 'email' | 'first_name' | 'last_name' | 'phone' | 'role' | 'status' | 'image' | 'last_login_at' | 'created_at'
+>;
+
+// Permission definitions (can be moved to a config file)
+interface PermissionDefinition {
   id: string;
   name: string;
   description: string;
@@ -13,321 +23,333 @@ interface Permission {
   actions: string[];
 }
 
-interface Role {
-  id: number;
+// Role configurations
+interface RoleConfig {
+  id: UserRole;
   name: string;
   description: string;
-  permissions: Permission[];
-  userCount: number;
-  status: 'Active' | 'Inactive';
-  createdDate: string;
   color: string;
-}
-
-interface AdminUser {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string;
-  role: string;
-  status: 'Active' | 'Inactive' | 'Pending';
-  lastLogin: string;
-  joinDate: string;
   permissions: string[];
 }
 
+const ROLE_CONFIGS: RoleConfig[] = [
+  {
+    id: 'ADMIN',
+    name: 'Administrator',
+    description: 'Full system access and control',
+    color: '#ef4444',
+    permissions: [
+      'users.create', 'users.read', 'users.update', 'users.delete',
+      'products.create', 'products.read', 'products.update', 'products.delete',
+      'orders.create', 'orders.read', 'orders.update', 'orders.delete',
+      'promotions.create', 'promotions.read', 'promotions.update', 'promotions.delete',
+      'system.admin'
+    ]
+  },
+  {
+    id: 'STAFF',
+    name: 'Staff',
+    description: 'Manage products, orders, and customers',
+    color: '#3b82f6',
+    permissions: [
+      'products.read', 'products.update',
+      'orders.read', 'orders.update',
+      'customers.read', 'customers.update',
+      'promotions.read'
+    ]
+  },
+  {
+    id: 'CUSTOMER',
+    name: 'Customer',
+    description: 'Standard customer access',
+    color: '#10b981',
+    permissions: [
+      'orders.read',
+      'profile.update',
+      'wishlist.manage',
+      'cart.manage'
+    ]
+  }
+];
+
+const PERMISSIONS: PermissionDefinition[] = [
+  // User permissions
+  { id: 'users.create', name: 'Create Users', description: 'Can create new users', module: 'Users', actions: ['create'] },
+  { id: 'users.read', name: 'View Users', description: 'Can view user data', module: 'Users', actions: ['read'] },
+  { id: 'users.update', name: 'Update Users', description: 'Can modify users', module: 'Users', actions: ['update'] },
+  { id: 'users.delete', name: 'Delete Users', description: 'Can remove users', module: 'Users', actions: ['delete'] },
+
+  // Product permissions
+  { id: 'products.create', name: 'Create Products', description: 'Can create products', module: 'Products', actions: ['create'] },
+  { id: 'products.read', name: 'View Products', description: 'Can view products', module: 'Products', actions: ['read'] },
+  { id: 'products.update', name: 'Update Products', description: 'Can modify products', module: 'Products', actions: ['update'] },
+  { id: 'products.delete', name: 'Delete Products', description: 'Can delete products', module: 'Products', actions: ['delete'] },
+
+  // Order permissions
+  { id: 'orders.create', name: 'Create Orders', description: 'Can create orders', module: 'Orders', actions: ['create'] },
+  { id: 'orders.read', name: 'View Orders', description: 'Can view orders', module: 'Orders', actions: ['read'] },
+  { id: 'orders.update', name: 'Update Orders', description: 'Can modify orders', module: 'Orders', actions: ['update'] },
+  { id: 'orders.delete', name: 'Delete Orders', description: 'Can delete orders', module: 'Orders', actions: ['delete'] },
+
+  // Customer permissions
+  { id: 'customers.read', name: 'View Customers', description: 'Can view customer data', module: 'Customers', actions: ['read'] },
+  { id: 'customers.update', name: 'Update Customers', description: 'Can modify customers', module: 'Customers', actions: ['update'] },
+
+  // Promotion permissions
+  { id: 'promotions.create', name: 'Create Promotions', description: 'Can create promotions', module: 'Promotions', actions: ['create'] },
+  { id: 'promotions.read', name: 'View Promotions', description: 'Can view promotions', module: 'Promotions', actions: ['read'] },
+  { id: 'promotions.update', name: 'Update Promotions', description: 'Can modify promotions', module: 'Promotions', actions: ['update'] },
+  { id: 'promotions.delete', name: 'Delete Promotions', description: 'Can delete promotions', module: 'Promotions', actions: ['delete'] },
+
+  // System permissions
+  { id: 'system.admin', name: 'System Administration', description: 'System settings access', module: 'System', actions: ['admin'] },
+  { id: 'profile.update', name: 'Update Profile', description: 'Can update own profile', module: 'Profile', actions: ['update'] },
+  { id: 'wishlist.manage', name: 'Manage Wishlist', description: 'Can manage wishlist', module: 'Wishlist', actions: ['create', 'read', 'delete'] },
+  { id: 'cart.manage', name: 'Manage Cart', description: 'Can manage shopping cart', module: 'Cart', actions: ['create', 'read', 'update', 'delete'] },
+];
+
 interface UserRowProps {
   user: AdminUser;
-  onView: (id: number) => void;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
+  onView: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 interface RoleCardProps {
-  role: Role;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
-  onViewUsers: (roleId: number) => void;
+  role: RoleConfig;
+  userCount: number;
+  onEdit: (roleId: UserRole) => void;
+  onViewUsers: (roleId: UserRole) => void;
 }
 
-const UserRow: React.FC<UserRowProps> = ({ user, onView, onEdit, onDelete }) => (
-  <tr className="border-b last:border-0 hover:bg-gray-50">
-    <td className="p-4 flex items-center">
-      <div className="relative w-10 h-10 mr-4 flex-shrink-0">
-        <Image
-          src={user.avatar}
-          alt={user.name}
-          fill
-          className="rounded-full object-cover"
-        />
-      </div>
-      <div>
-        <span className="font-medium text-gray-900">{user.name}</span>
-        <p className="text-sm text-gray-500">{user.email}</p>
-      </div>
-    </td>
-    <td className="p-4">
-      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-        {user.role}
-      </span>
-    </td>
-    <td className="p-4">
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-        user.status === 'Active' ? 'bg-green-100 text-green-800' :
-        user.status === 'Inactive' ? 'bg-gray-100 text-gray-800' :
-        'bg-yellow-100 text-yellow-800'
-      }`}>
-        {user.status}
-      </span>
-    </td>
-    <td className="p-4 text-gray-600">{user.lastLogin}</td>
-    <td className="p-4 text-gray-600">{user.joinDate}</td>
-    <td className="p-4">
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => onView(user.id)}
-          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-          title="View user details"
-        >
-          <EyeIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onEdit(user.id)}
-          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-          title="Edit user"
-        >
-          <EditIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(user.id)}
-          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-          title="Delete user"
-        >
-          <TrashIcon className="w-4 h-4" />
-        </button>
-      </div>
-    </td>
-  </tr>
-);
+const UserRow: React.FC<UserRowProps> = ({ user, onView, onEdit, onDelete }) => {
+  const roleConfig = ROLE_CONFIGS.find(r => r.id === user.role);
+  const statusColors = {
+    ACTIVE: 'bg-green-100 text-green-800',
+    INACTIVE: 'bg-gray-100 text-gray-800',
+    SUSPENDED: 'bg-red-100 text-red-800',
+    PENDING_VERIFICATION: 'bg-yellow-100 text-yellow-800',
+  };
 
-const RoleCard: React.FC<RoleCardProps> = ({ role, onEdit, onDelete, onViewUsers }) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-    <div className="flex items-start justify-between mb-4">
-      <div className="flex items-center">
-        <div className={`w-3 h-3 rounded-full mr-3`} style={{ backgroundColor: role.color }}></div>
+  return (
+    <tr className="border-b last:border-0 hover:bg-gray-50">
+      <td className="p-4 flex items-center">
+        <div className="relative w-10 h-10 mr-4 flex-shrink-0">
+          {user.image ? (
+            <Image
+              src={user.image}
+              alt={`${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email}
+              fill
+              className="rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+              <UserIcon className="w-5 h-5 text-gray-500" />
+            </div>
+          )}
+        </div>
         <div>
-          <h3 className="font-semibold text-gray-900">{role.name}</h3>
-          <p className="text-sm text-gray-500">{role.description}</p>
+          <span className="font-medium text-gray-900">
+            {user.first_name || user.last_name
+              ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+              : 'No Name'}
+          </span>
+          <p className="text-sm text-gray-500">{user.email}</p>
+        </div>
+      </td>
+      <td className="p-4">
+        <span
+          className="px-2 py-1 text-xs font-semibold rounded-full"
+          style={{
+            backgroundColor: roleConfig ? `${roleConfig.color}20` : '#e5e7eb',
+            color: roleConfig?.color || '#6b7280'
+          }}
+        >
+          {roleConfig?.name || user.role}
+        </span>
+      </td>
+      <td className="p-4">
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[user.status]}`}>
+          {user.status.replace('_', ' ')}
+        </span>
+      </td>
+      <td className="p-4 text-gray-600">
+        {user.last_login_at
+          ? new Date(user.last_login_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })
+          : 'Never'}
+      </td>
+      <td className="p-4 text-gray-600">
+        {new Date(user.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })}
+      </td>
+      <td className="p-4">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onView(user.id)}
+            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+            title="View user details"
+          >
+            <EyeIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onEdit(user.id)}
+            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+            title="Edit user"
+          >
+            <EditIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDelete(user.id)}
+            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+            title="Delete user"
+          >
+            <TrashIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const RoleCard: React.FC<RoleCardProps> = ({ role, userCount, onEdit, onViewUsers }) => {
+  const rolePermissions = PERMISSIONS.filter(p => role.permissions.includes(p.id));
+
+  return (
+    <div className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: role.color }}></div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{role.name}</h3>
+            <p className="text-sm text-gray-500">{role.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => onEdit(role.id)}
+            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+            title="Edit role"
+          >
+            <EditIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
-      <div className="flex items-center space-x-1">
-        <button
-          onClick={() => onEdit(role.id)}
-          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-          title="Edit role"
-        >
-          <EditIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(role.id)}
-          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-          title="Delete role"
-        >
-          <TrashIcon className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
 
-    <div className="mb-4">
-      <p className="text-sm font-medium text-gray-700 mb-2">Permissions ({role.permissions.length})</p>
-      <div className="space-y-1 max-h-32 overflow-y-auto">
-        {role.permissions.slice(0, 5).map((permission, index) => (
-          <div key={index} className="flex items-center text-xs">
-            <ShieldIcon className="w-3 h-3 text-gray-400 mr-2" />
-            <span className="text-gray-600">{permission.name}</span>
-          </div>
-        ))}
-        {role.permissions.length > 5 && (
-          <p className="text-xs text-gray-500">+{role.permissions.length - 5} more permissions</p>
-        )}
+      <div className="mb-4">
+        <p className="text-sm font-medium text-gray-700 mb-2">Permissions ({rolePermissions.length})</p>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {rolePermissions.slice(0, 5).map((permission) => (
+            <div key={permission.id} className="flex items-center text-xs">
+              <ShieldIcon className="w-3 h-3 text-gray-400 mr-2" />
+              <span className="text-gray-600">{permission.name}</span>
+            </div>
+          ))}
+          {rolePermissions.length > 5 && (
+            <p className="text-xs text-gray-500">+{rolePermissions.length - 5} more permissions</p>
+          )}
+        </div>
       </div>
-    </div>
 
-    <div className="flex items-center justify-between">
-      <div className="flex items-center text-sm text-gray-600">
-        <UserIcon className="w-4 h-4 mr-1" />
-        <span>{role.userCount} users</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center text-sm text-gray-600">
+          <UserIcon className="w-4 h-4 mr-1" />
+          <span>{userCount} users</span>
+        </div>
+        <button
+          onClick={() => onViewUsers(role.id)}
+          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        >
+          View Users
+        </button>
       </div>
-      <button
-        onClick={() => onViewUsers(role.id)}
-        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-      >
-        View Users
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 export default function AdminPermissionsPage() {
   const [activeTab, setActiveTab] = useState<'roles' | 'users' | 'permissions'>('roles');
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'All'>('All');
+  const [statusFilter, setStatusFilter] = useState<UserStatus | 'All'>('All');
 
-  // Mock data - will be replaced with tRPC calls
-  const mockRoles: Role[] = [
+  // Fetch users from database
+  const usersQuery = trpc.getUsers.useQuery(
     {
-      id: 1,
-      name: 'Super Admin',
-      description: 'Full system access and control',
-      userCount: 2,
-      status: 'Active',
-      createdDate: '2023-01-01',
-      color: '#ef4444',
-      permissions: [
-        { id: 'users.create', name: 'Create Users', description: 'Can create new users', module: 'Users', actions: ['create'] },
-        { id: 'users.read', name: 'View Users', description: 'Can view user data', module: 'Users', actions: ['read'] },
-        { id: 'users.update', name: 'Update Users', description: 'Can modify users', module: 'Users', actions: ['update'] },
-        { id: 'users.delete', name: 'Delete Users', description: 'Can remove users', module: 'Users', actions: ['delete'] },
-        { id: 'products.manage', name: 'Manage Products', description: 'Full product management', module: 'Products', actions: ['create', 'read', 'update', 'delete'] },
-        { id: 'orders.manage', name: 'Manage Orders', description: 'Full order management', module: 'Orders', actions: ['create', 'read', 'update', 'delete'] },
-        { id: 'system.admin', name: 'System Administration', description: 'System settings access', module: 'System', actions: ['admin'] },
-      ]
+      page: 1,
+      limit: 100,
+      role: roleFilter !== 'All' ? roleFilter : undefined,
+      status: statusFilter !== 'All' ? statusFilter : undefined,
+      search: searchTerm || undefined,
     },
     {
-      id: 2,
-      name: 'Store Manager',
-      description: 'Manage products, orders, and customers',
-      userCount: 5,
-      status: 'Active',
-      createdDate: '2023-02-15',
-      color: '#3b82f6',
-      permissions: [
-        { id: 'products.manage', name: 'Manage Products', description: 'Full product management', module: 'Products', actions: ['create', 'read', 'update', 'delete'] },
-        { id: 'orders.manage', name: 'Manage Orders', description: 'Full order management', module: 'Orders', actions: ['create', 'read', 'update', 'delete'] },
-        { id: 'customers.read', name: 'View Customers', description: 'Can view customer data', module: 'Customers', actions: ['read'] },
-        { id: 'customers.update', name: 'Update Customers', description: 'Can modify customer info', module: 'Customers', actions: ['update'] },
-      ]
-    },
-    {
-      id: 3,
-      name: 'Customer Service',
-      description: 'Handle customer inquiries and orders',
-      userCount: 8,
-      status: 'Active',
-      createdDate: '2023-03-01',
-      color: '#10b981',
-      permissions: [
-        { id: 'orders.read', name: 'View Orders', description: 'Can view order details', module: 'Orders', actions: ['read'] },
-        { id: 'orders.update', name: 'Update Orders', description: 'Can modify order status', module: 'Orders', actions: ['update'] },
-        { id: 'customers.read', name: 'View Customers', description: 'Can view customer data', module: 'Customers', actions: ['read'] },
-        { id: 'customers.update', name: 'Update Customers', description: 'Can modify customer info', module: 'Customers', actions: ['update'] },
-      ]
-    },
-    {
-      id: 4,
-      name: 'Content Manager',
-      description: 'Manage website content and promotions',
-      userCount: 3,
-      status: 'Active',
-      createdDate: '2023-04-10',
-      color: '#f59e0b',
-      permissions: [
-        { id: 'products.read', name: 'View Products', description: 'Can view product data', module: 'Products', actions: ['read'] },
-        { id: 'products.update', name: 'Update Products', description: 'Can modify product info', module: 'Products', actions: ['update'] },
-        { id: 'promotions.manage', name: 'Manage Promotions', description: 'Full promotion management', module: 'Promotions', actions: ['create', 'read', 'update', 'delete'] },
-      ]
-    },
-    {
-      id: 5,
-      name: 'Viewer',
-      description: 'Read-only access to data',
-      userCount: 12,
-      status: 'Active',
-      createdDate: '2023-05-20',
-      color: '#6b7280',
-      permissions: [
-        { id: 'products.read', name: 'View Products', description: 'Can view product data', module: 'Products', actions: ['read'] },
-        { id: 'orders.read', name: 'View Orders', description: 'Can view order details', module: 'Orders', actions: ['read'] },
-        { id: 'customers.read', name: 'View Customers', description: 'Can view customer data', module: 'Customers', actions: ['read'] },
-      ]
+      refetchOnWindowFocus: false,
     }
-  ];
-
-  const mockUsers: AdminUser[] = Array.from({ length: 30 }, (_, i) => {
-    const roles = ['Super Admin', 'Store Manager', 'Customer Service', 'Content Manager', 'Viewer'];
-    const statuses: AdminUser['status'][] = ['Active', 'Inactive', 'Pending'];
-
-    return {
-      id: i + 1,
-      name: `Admin User ${i + 1}`,
-      email: `admin${i + 1}@trichomes.com`,
-      avatar: `https://picsum.photos/seed/${i + 200}/80/80`,
-      role: roles[Math.floor(Math.random() * roles.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      lastLogin: `2023-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-      joinDate: `2023-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-      permissions: ['read', 'write', 'delete']
-    };
-  });
-
-  const allPermissions = mockRoles.flatMap(role => role.permissions);
-  const uniquePermissions = allPermissions.filter((permission, index, self) =>
-    index === self.findIndex(p => p.id === permission.id)
   );
 
-  const filteredUsers = mockUsers.filter(user => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'All' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'All' || user.status === statusFilter;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const users = usersQuery.data?.users || [];
+
+  // Count users by role
+  const userCountByRole = {
+    ADMIN: users.filter(u => u.role === 'ADMIN').length,
+    STAFF: users.filter(u => u.role === 'STAFF').length,
+    CUSTOMER: users.filter(u => u.role === 'CUSTOMER').length,
+  };
 
   const handleAddRole = () => {
-    console.log('Add new role');
-    // TODO: Navigate to role creation form
+    toast.info('Role creation feature coming soon');
   };
 
   const handleAddUser = () => {
-    console.log('Add new user');
-    // TODO: Navigate to user creation form
+    toast.info('User creation feature coming soon');
   };
 
-  const handleEditRole = (id: number) => {
-    console.log('Edit role:', id);
-    // TODO: Navigate to role edit form
+  const handleEditRole = (roleId: UserRole) => {
+    toast.info(`Edit role: ${roleId} - Feature coming soon`);
   };
 
-  const handleDeleteRole = (id: number) => {
-    console.log('Delete role:', id);
-    // TODO: Implement delete confirmation and action
-  };
-
-  const handleViewRoleUsers = (roleId: number) => {
-    console.log('View users for role:', roleId);
+  const handleViewRoleUsers = (roleId: UserRole) => {
     setActiveTab('users');
-    // TODO: Filter users by role
+    setRoleFilter(roleId);
   };
 
-  const handleViewUser = (id: number) => {
-    console.log('View user:', id);
-    // TODO: Navigate to user detail view
+  const handleViewUser = (id: string) => {
+    toast.info('User details view coming soon');
   };
 
-  const handleEditUser = (id: number) => {
-    console.log('Edit user:', id);
-    // TODO: Navigate to user edit form
+  const handleEditUser = (id: string) => {
+    toast.info('User editing feature coming soon');
   };
 
-  const handleDeleteUser = (id: number) => {
-    console.log('Delete user:', id);
-    // TODO: Implement delete confirmation and action
+  const handleDeleteUser = (id: string) => {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      toast.info('User deletion feature coming soon');
+    }
   };
 
-  const roles = ['All', ...Array.from(new Set(mockUsers.map(u => u.role)))];
-  const statuses = ['All', 'Active', 'Inactive', 'Pending'];
+  const roles: Array<UserRole | 'All'> = ['All', 'ADMIN', 'STAFF', 'CUSTOMER'];
+  const statuses: Array<UserStatus | 'All'> = ['All', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'];
+
+  const roleLabels: Record<UserRole | 'All', string> = {
+    All: 'All Roles',
+    ADMIN: 'Administrator',
+    STAFF: 'Staff',
+    CUSTOMER: 'Customer',
+  };
+
+  const statusLabels: Record<UserStatus | 'All', string> = {
+    All: 'All Status',
+    ACTIVE: 'Active',
+    INACTIVE: 'Inactive',
+    SUSPENDED: 'Suspended',
+    PENDING_VERIFICATION: 'Pending Verification',
+  };
 
   return (
     <div>
@@ -359,9 +381,9 @@ export default function AdminPermissionsPage() {
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {[
-            { key: 'roles', label: 'Roles & Permissions', count: mockRoles.length },
-            { key: 'users', label: 'Users', count: mockUsers.length },
-            { key: 'permissions', label: 'All Permissions', count: uniquePermissions.length }
+            { key: 'roles', label: 'Roles & Permissions', count: ROLE_CONFIGS.length },
+            { key: 'users', label: 'Users', count: users.length },
+            { key: 'permissions', label: 'All Permissions', count: PERMISSIONS.length }
           ].map(tab => (
             <button
               key={tab.key}
@@ -382,12 +404,12 @@ export default function AdminPermissionsPage() {
       {activeTab === 'roles' && (
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockRoles.map(role => (
+            {ROLE_CONFIGS.map(role => (
               <RoleCard
                 key={role.id}
                 role={role}
+                userCount={userCountByRole[role.id]}
                 onEdit={handleEditRole}
-                onDelete={handleDeleteRole}
                 onViewUsers={handleViewRoleUsers}
               />
             ))}
@@ -415,21 +437,21 @@ export default function AdminPermissionsPage() {
 
               <select
                 value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                onChange={(e) => setRoleFilter(e.target.value as UserRole | 'All')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
               >
                 {roles.map(role => (
-                  <option key={role} value={role}>{role} Role</option>
+                  <option key={role} value={role}>{roleLabels[role]}</option>
                 ))}
               </select>
 
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatusFilter(e.target.value as UserStatus | 'All')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
               >
                 {statuses.map(status => (
-                  <option key={status} value={status}>{status} Status</option>
+                  <option key={status} value={status}>{statusLabels[status]}</option>
                 ))}
               </select>
             </div>
@@ -449,8 +471,14 @@ export default function AdminPermissionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map(user => (
+                {usersQuery.isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      Loading users...
+                    </td>
+                  </tr>
+                ) : users.length > 0 ? (
+                  users.map(user => (
                     <UserRow
                       key={user.id}
                       user={user}
@@ -478,8 +506,10 @@ export default function AdminPermissionsPage() {
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">System Permissions</h3>
               <div className="space-y-6">
-                {['Users', 'Products', 'Orders', 'Customers', 'Promotions', 'System'].map(module => {
-                  const modulePermissions = uniquePermissions.filter(p => p.module === module);
+                {['Users', 'Products', 'Orders', 'Customers', 'Promotions', 'System', 'Profile', 'Wishlist', 'Cart'].map(module => {
+                  const modulePermissions = PERMISSIONS.filter(p => p.module === module);
+                  if (modulePermissions.length === 0) return null;
+
                   return (
                     <div key={module} className="border-l-4 border-blue-500 pl-4">
                       <h4 className="font-medium text-gray-900 mb-3">{module} Module</h4>

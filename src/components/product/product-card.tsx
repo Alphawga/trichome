@@ -89,7 +89,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <PlusIcon />
           </button>
         </div>
-        <button onClick={handleAddToBag} className="flex-grow bg-[#343A40] text-white py-2 px-4 rounded-md hover:bg-black transition-colors font-medium">
+        <button onClick={handleAddToBag} className="flex-grow bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors font-medium">
           Add to bag
         </button>
       </div>

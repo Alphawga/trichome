@@ -44,6 +44,7 @@ export const getUsers = staffProcedure
           phone: true,
           role: true,
           status: true,
+          image: true,
           email_verified_at: true,
           last_login_at: true,
           created_at: true,

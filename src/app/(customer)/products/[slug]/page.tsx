@@ -125,7 +125,7 @@ export default function ProductDetailPage() {
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
             <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
-            <Link href="/" className="bg-[#343A40] text-white py-2 px-6 rounded-md hover:bg-black font-medium">
+            <Link href="/" className="bg-green-600 text-white py-2 px-6 rounded-md hover:bg-green-700 font-medium">
               Return to Shop
             </Link>
           </div>
@@ -243,7 +243,7 @@ export default function ProductDetailPage() {
               {/* Add to Cart Button */}
               <button
                 onClick={() => handleAddToCart(product, quantity)}
-                className="flex-grow bg-[#343A40] text-white py-3 px-6 rounded-md hover:bg-black font-semibold"
+                className="flex-grow bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
                 disabled={!product.inStock}
               >
                 {product.inStock ? 'Add to bag' : 'Out of Stock'}

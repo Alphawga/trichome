@@ -172,7 +172,7 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
                            {filterOptions.ingredients.map(i => <FilterPill key={i} label={i} isSelected={selectedIngredients.includes(i)} onClick={() => onToggleFilter('ingredients', i)} />)}
                         </div>
                     </div>
-                    <button onClick={onApplyFilters} className="w-full bg-[#343A40] text-white py-2 rounded-md hover:bg-black font-semibold">Apply filter</button>
+                    <button onClick={onApplyFilters} className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 font-semibold">Apply filter</button>
                 </div>
             ) : (
                  <div className="space-y-2">

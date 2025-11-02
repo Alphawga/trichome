@@ -104,7 +104,7 @@ export default function CheckoutPage() {
           <div className="text-center py-20">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
             <p className="text-gray-600 mb-6">Add some products before checking out.</p>
-            <Link href="/" className="bg-[#343A40] text-white py-2 px-6 rounded-md hover:bg-black font-medium">
+            <Link href="/" className="bg-green-600 text-white py-2 px-6 rounded-md hover:bg-green-700 font-medium">
               Continue shopping
             </Link>
           </div>

@@ -68,7 +68,7 @@ export const Hero: React.FC = () => {
   }, [currentSlide]);
 
   return (
-    <section className="relative text-white overflow-hidden" style={{ height: '600px' }}>
+    <section className="relative text-white overflow-hidden min-h-[700px] h-[800px] lg:h-[900px]">
       <div className="w-full h-full flex transition-transform duration-700 ease-in-out">
         {slides.map((slide, index) => (
           <div
@@ -84,7 +84,7 @@ export const Hero: React.FC = () => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center items-start relative z-20">
               <h1 className="text-3xl lg:text-4xl font-bold max-w-lg leading-tight">{slide.title}</h1>
               <p className="mt-4 max-w-md text-base">{slide.description}</p>
-              <button onClick={() => onNavigate('shop')} className="mt-8 bg-[#D4C394] text-black font-semibold py-3 px-8 rounded-full text-lg hover:bg-opacity-90 transition-transform hover:scale-105">
+              <button onClick={() => onNavigate('shop')} className="mt-8 bg-green-600 text-white font-semibold py-3 px-8 rounded-full text-lg hover:bg-green-700 transition-transform hover:scale-105">
                 {slide.buttonText}
               </button>
             </div>
