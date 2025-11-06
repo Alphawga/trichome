@@ -49,6 +49,7 @@ export const authOptions: NextAuthOptions = {
             last_name: nameParts.slice(1).join(' ') || null,
           }
         })
+        console.log("🆕 createUser triggered:", user)
       } catch (error) {
         console.error('Error updating new user role/status:', error)
       }
@@ -88,8 +89,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // Allow linking OAuth accounts to existing users with the same email
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -143,6 +143,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log("SIGN IN STARTED", { user, account, profile });
       if (account?.provider === 'google') {
         try {
           // Following CODING_RULES.md - proper error handling and type safety
@@ -150,10 +151,6 @@ export const authOptions: NextAuthOptions = {
             console.error('Google sign in failed: No email provided')
             return false
           }
-
-          // The PrismaAdapter will handle account linking automatically
-          // with allowDangerousEmailAccountLinking enabled
-          // Profile updates will be handled in the linkAccount/createUser events
           return true
         } catch (error) {
           // Following CODING_RULES.md - proper error handling
@@ -164,8 +161,6 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async session({ session, token }) {
-      // Following CODING_RULES.md - use Prisma-generated types
-      // With JWT strategy, we get user data from the token
       if (token && session.user) {
         session.user.id = token.sub!
         session.user.role = token.role
@@ -174,29 +169,57 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+    // async jwt({ token, user }) {
+    //   if (user) {
+    //     // Fetch user data from database
+    //     const dbUser = await prisma.user.findUnique({
+    //       where: { email: user.email! },
+    //       select: {
+    //         id: true,
+    //         role: true,
+    //         first_name: true,
+    //         last_name: true,
+    //       }
+    //     })
+
+    //     if (dbUser) {
+    //       token.role = dbUser.role
+    //       token.first_name = dbUser.first_name
+    //       token.last_name = dbUser.last_name
+    //       token.sub = dbUser.id
+    //     }
+    //   }
+    //   return token
+    // },
     async jwt({ token, user }) {
-      // Following CODING_RULES.md - proper type safety
       if (user) {
-        // Fetch user data from database
+        token.id = user.id;
+      }
+    
+      // Prefer ID lookup (more reliable)
+      if (token.sub) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { id: token.sub },
           select: {
             id: true,
+            email: true,
             role: true,
             first_name: true,
             last_name: true,
-          }
-        })
-
+          },
+        });
+    
         if (dbUser) {
-          token.role = dbUser.role
-          token.first_name = dbUser.first_name
-          token.last_name = dbUser.last_name
-          token.sub = dbUser.id
+          token.email = dbUser.email;
+          token.role = dbUser.role;
+          token.first_name = dbUser.first_name;
+          token.last_name = dbUser.last_name;
         }
       }
-      return token
-    },
+    
+      return token;
+    }
+       
   },
   pages: {
     signIn: '/auth/signin',

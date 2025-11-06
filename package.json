@@ -41,6 +41,7 @@
     "date-fns": "^4.1.0",
     "heroicons": "^2.2.0",
     "lucide-react": "^0.548.0",
+    "monnify-js": "^1.0.2",
     "next": "15.5.2",
     "next-auth": "^4.24.11",
     "next-cloudinary": "^6.17.0",
