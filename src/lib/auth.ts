@@ -1,7 +1,8 @@
 import { type NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@auth/prisma-adapter'
+// import { PrismaAdapter } from '@auth/prisma-adapter'
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from '@/lib/prisma'
 import { UserRole, UserStatus } from '@prisma/client'
 import type { DefaultSession } from 'next-auth'
@@ -33,10 +34,62 @@ declare module 'next-auth/jwt' {
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  // Allow account linking when a user with the same email exists
+  events: {
+    async createUser({ user }) {
+      // Set default role, status, and extract name for new users created via OAuth
+      try {
+        const nameParts = user.name?.split(' ') || []
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            role: UserRole.CUSTOMER,
+            status: UserStatus.ACTIVE,
+            first_name: nameParts[0] || null,
+            last_name: nameParts.slice(1).join(' ') || null,
+          }
+        })
+        console.log("🆕 createUser triggered:", user)
+      } catch (error) {
+        console.error('Error updating new user role/status:', error)
+      }
+    },
+    async linkAccount({ user, account, profile }) {
+      // Update user profile when OAuth account is linked
+      if (account.provider === 'google') {
+        const googleProfile = profile as { given_name?: string; family_name?: string } | undefined
+        
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { id: user.id },
+          })
+          
+          if (existingUser) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                name: user.name || existingUser.name,
+                image: user.image || existingUser.image,
+                emailVerified: new Date(),
+                status: UserStatus.ACTIVE,
+                last_login_at: new Date(),
+                // Only update first_name/last_name if they're not already set
+                first_name: existingUser.first_name || googleProfile?.given_name || user.name?.split(' ')[0] || null,
+                last_name: existingUser.last_name || googleProfile?.family_name || user.name?.split(' ').slice(1).join(' ') || null,
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Error updating user profile after account linking:', error)
+        }
+      }
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: false,
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -90,46 +143,13 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log("SIGN IN STARTED", { user, account, profile });
       if (account?.provider === 'google') {
         try {
           // Following CODING_RULES.md - proper error handling and type safety
           if (!user.email) {
             console.error('Google sign in failed: No email provided')
             return false
-          }
-
-          // Check if user already exists using Prisma-generated types
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email }
-          })
-
-          if (!existingUser) {
-            // Create new user with Google data using Prisma-generated types
-            const googleProfile = profile as { given_name?: string; family_name?: string }
-            await prisma.user.create({
-              data: {
-                email: user.email,
-                name: user.name,
-                image: user.image,
-                emailVerified: new Date(),
-                first_name: googleProfile?.given_name || user.name?.split(' ')[0] || '',
-                last_name: googleProfile?.family_name || user.name?.split(' ').slice(1).join(' ') || '',
-                role: UserRole.CUSTOMER,
-                status: UserStatus.ACTIVE,
-                last_login_at: new Date(),
-              }
-            })
-          } else {
-            // Update last login and email verification
-            await prisma.user.update({
-              where: { email: user.email },
-              data: {
-                last_login_at: new Date(),
-                emailVerified: new Date(),
-                name: user.name,
-                image: user.image,
-              }
-            })
           }
           return true
         } catch (error) {
@@ -141,8 +161,6 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async session({ session, token }) {
-      // Following CODING_RULES.md - use Prisma-generated types
-      // With JWT strategy, we get user data from the token
       if (token && session.user) {
         session.user.id = token.sub!
         session.user.role = token.role
@@ -151,28 +169,57 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+    // async jwt({ token, user }) {
+    //   if (user) {
+    //     // Fetch user data from database
+    //     const dbUser = await prisma.user.findUnique({
+    //       where: { email: user.email! },
+    //       select: {
+    //         id: true,
+    //         role: true,
+    //         first_name: true,
+    //         last_name: true,
+    //       }
+    //     })
+
+    //     if (dbUser) {
+    //       token.role = dbUser.role
+    //       token.first_name = dbUser.first_name
+    //       token.last_name = dbUser.last_name
+    //       token.sub = dbUser.id
+    //     }
+    //   }
+    //   return token
+    // },
     async jwt({ token, user }) {
-      // Following CODING_RULES.md - proper type safety
       if (user) {
+        token.id = user.id;
+      }
+    
+      // Prefer ID lookup (more reliable)
+      if (token.sub) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { id: token.sub },
           select: {
             id: true,
+            email: true,
             role: true,
             first_name: true,
             last_name: true,
-          }
-        })
-
+          },
+        });
+    
         if (dbUser) {
-          token.role = dbUser.role
-          token.first_name = dbUser.first_name
-          token.last_name = dbUser.last_name
-          token.sub = dbUser.id
+          token.email = dbUser.email;
+          token.role = dbUser.role;
+          token.first_name = dbUser.first_name;
+          token.last_name = dbUser.last_name;
         }
       }
-      return token
-    },
+    
+      return token;
+    }
+       
   },
   pages: {
     signIn: '/auth/signin',

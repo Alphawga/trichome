@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/auth-context';
+import { Header } from '@/components/layout/header';
+import { useSession } from "next-auth/react";
+import  Monnify  from  'monnify-js';
 
 // Temporary interface for migration
 interface CartItem {
@@ -28,6 +31,9 @@ interface CheckoutForm {
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { data: session } = useSession();
+
+  const  monnify = new  Monnify(process.env.NEXT_PUBLIC_MONNIFY_API_KEY, process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE);
 
   useEffect(() => {
     // Redirect to account page if not authenticated
@@ -56,9 +62,9 @@ export default function CheckoutPage() {
   ]);
 
   const [form, setForm] = useState<CheckoutForm>({
-    firstName: '',
-    lastName: '',
-    email: '',
+    firstName: session?.user.first_name || '',
+    lastName: session?.user.last_name || '',
+    email: session?.user.email || '',
     phone: '',
     address: '',
     city: '',
@@ -86,12 +92,49 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+    const paymentData = {
+      amount: 5000, // in Naira
+      currency: "NGN",
+      customerName: `${form.firstName} ${form.lastName}`	,
+      customerEmail: `${form.email}`,
+      paymentReference: "REF" + Date.now(),
+      apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY,
+      contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE,
+    };
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsProcessing(false);
-      router.push('/order-confirmation');
-    }, 2000);
+   
+    monnify.initializePayment({
+      amount: paymentData.amount,
+      currency: paymentData.currency,
+      reference: paymentData.paymentReference,
+      customerFullName: paymentData.customerName,
+      customerEmail: paymentData.customerEmail,
+      apiKey: paymentData.apiKey,
+      contractCode: paymentData.contractCode,
+      paymentDescription: "Trichome Product Payment",
+      isTestMode: true,
+      metadata: {
+				'customData':  "Trichome Product Payment",
+			},
+      onLoadStart: () => console.log("Loading Monnify..."),
+      onLoadComplete: () => console.log("Monnify loaded"),
+
+      onComplete: (response: any) => {
+        console.log("Payment response: ", response);
+        setIsProcessing(false);
+
+        if (response.paymentStatus === "PAID") {
+          router.push("/order-confirmation");
+        } else {
+          alert("Payment not successful. Please try again.");
+        }
+      },
+
+      onClose: () => {
+        console.log("Monnify modal closed");
+        setIsProcessing(false);
+      },
+    });
   };
 
   const isFormValid = form.firstName && form.lastName && form.email && form.address && form.city;
@@ -114,8 +157,9 @@ export default function CheckoutPage() {
   }
 
   return (
+ 
     <div className="min-h-screen bg-[#F8F9FA] text-[#343A40]">
-      <Header cartCount={cartCount} wishlistCount={0} />
+      {/* <Header cartCount={cartCount} wishlistCount={0} /> */}
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}

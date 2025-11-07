@@ -8,6 +8,8 @@ import { FilterSidebar } from '@/components/filters/filter-sidebar';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
 import { ProductStatus, type Product, type Category, type ProductImage } from '@prisma/client';
+import { useAuth } from '@/app/contexts/auth-context';
+import { toast } from 'sonner';
 
 type ProductWithRelations = Product & {
   category: Pick<Category, 'id' | 'name' | 'slug'>;
@@ -43,8 +45,9 @@ export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
 
-  const [cart, setCart] = useState<ProductForDisplay[]>([]);
   const [wishlist, setWishlist] = useState<ProductForDisplay[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [price, setPrice] = useState(50000);
@@ -103,6 +106,22 @@ export default function ProductsPage() {
       inStock: product.quantity > 0
     }));
   }, [productsQuery.data]);
+
+  // Server-side add to cart mutation
+  const addToCartMutation = trpc.addToCart.useMutation({
+    onSuccess: () => {
+      utils.getCart.invalidate();
+      toast.success('Added to cart');
+    },
+    onError: (error) => {
+      if (!isAuthenticated) {
+        toast.error('Please sign in to add items to cart');
+        router.push('/auth/signin');
+      } else {
+        toast.error(error.message || 'Failed to add to cart');
+      }
+    },
+  });
 
   
   const filteredAndSortedProducts = useMemo(() => {
@@ -164,15 +183,7 @@ export default function ProductsPage() {
   };
 
   const handleAddToCart = (product: ProductForDisplay, quantity: number) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.id === product.id ? { ...item, quantity: (item.quantity || 0) + quantity } : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity }]);
-    }
-    console.log(`Added ${quantity} ${product.name} to cart`);
+    addToCartMutation.mutate({ product_id: product.id, quantity });
   };
 
   const handleToggleWishlist = (product: ProductForDisplay) => {
