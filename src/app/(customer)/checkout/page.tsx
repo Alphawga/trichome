@@ -7,6 +7,8 @@ import { useAuth } from '../../contexts/auth-context';
 import { Header } from '@/components/layout/header';
 import { useSession } from "next-auth/react";
 import  Monnify  from  'monnify-js';
+import { trpc } from '@/utils/trpc';
+
 
 // Temporary interface for migration
 interface CartItem {
@@ -43,23 +45,37 @@ export default function CheckoutPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Mock cart data - will be replaced with global state/context
-  const [cartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: 'La Roche-Posay Effaclar Purifying Foaming Gel Refill 400ml',
-      price: 15800.00,
-      currency: '₦',
-      quantity: 2
-    },
-    {
-      id: 3,
-      name: 'CeraVe Foaming Cleanser 236ml',
-      price: 12500.00,
-      currency: '₦',
-      quantity: 1
-    }
-  ]);
+  // // Mock cart data - will be replaced with global state/context
+  // const [cartItems] = useState<CartItem[]>([
+  //   {
+  //     id: 1,
+  //     name: 'La Roche-Posay Effaclar Purifying Foaming Gel Refill 400ml',
+  //     price: 15800.00,
+  //     currency: '₦',
+  //     quantity: 2
+  //   },
+  //   {
+  //     id: 3,
+  //     name: 'CeraVe Foaming Cleanser 236ml',
+  //     price: 12500.00,
+  //     currency: '₦',
+  //     quantity: 1
+  //   }
+  // ]);
+
+  const cartQuery = trpc.getCart.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+  });
+  
+  const cartItems = cartQuery.data?.items || [];
+  const subtotal = cartQuery.data?.total || 0;
+  const shipping = subtotal > 0 ? 4500.00 : 0;
+  const tax = subtotal * 0.075;
+  const total = subtotal + shipping + tax;
+  
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  
 
   const [form, setForm] = useState<CheckoutForm>({
     firstName: session?.user.first_name || '',
@@ -74,12 +90,6 @@ export default function CheckoutPage() {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal > 0 ? 4500.00 : 0;
-  const tax = subtotal * 0.075; // 7.5% tax
-  const total = subtotal + shipping + tax;
-
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -93,7 +103,7 @@ export default function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
     const paymentData = {
-      amount: 5000, // in Naira
+      amount: `${total}`, // in Naira
       currency: "NGN",
       customerName: `${form.firstName} ${form.lastName}`	,
       customerEmail: `${form.email}`,
@@ -314,11 +324,11 @@ export default function CheckoutPage() {
                   {cartItems.map(item => (
                     <div key={item.id} className="flex justify-between items-start text-sm">
                       <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">{item.product.name}</p>
                         <p className="text-gray-500">Qty: {item.quantity}</p>
                       </div>
                       <p className="font-medium ml-4">
-                        {item.currency}{(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(Number(item.product.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   ))}
@@ -329,22 +339,22 @@ export default function CheckoutPage() {
               <div className="space-y-3 text-gray-700 border-t pt-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>{cartItems[0]?.currency}{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>₦{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>{cartItems[0]?.currency}{shipping.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>₦{shipping.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (7.5%)</span>
-                  <span>{cartItems[0]?.currency}{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>₦{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
 
                 <hr className="my-3"/>
 
                 <div className="flex justify-between text-lg font-bold text-black">
                   <span>Total</span>
-                  <span>{cartItems[0]?.currency}{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>₦{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
