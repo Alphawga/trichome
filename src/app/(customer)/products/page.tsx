@@ -179,7 +179,7 @@ export default function ProductsPage() {
     currentPage < productsQuery.data.pagination.pages : false;
 
   const handleProductClick = (product: ProductForDisplay) => {
-    router.push(`/products/${product.slug}`);
+    router.push(`/products/${product.id as string}`);
   };
 
   const handleAddToCart = (product: ProductForDisplay, quantity: number) => {

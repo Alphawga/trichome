@@ -23,7 +23,7 @@ export const getProducts = publicProcedure
     const skip = (page - 1) * limit
 
     const where = {
-      status: status || 'ACTIVE',
+      ...(status && { status }),
       ...(category_id && { category_id }),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
@@ -156,7 +156,7 @@ export const createProduct = staffProcedure
       barcode: z.string().optional(),
       price: z.number().positive(),
       compare_price: z.number().positive().optional(),
-      cost_price: z.number().positive().optional(),
+      // cost_price: z.number().positive().optional(),
       track_quantity: z.boolean().default(true),
       quantity: z.number().int().min(0).default(0),
       low_stock_threshold: z.number().int().min(0).default(10),
