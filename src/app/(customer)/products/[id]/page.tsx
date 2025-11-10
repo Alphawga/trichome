@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { trpc } from "@/utils/trpc";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
@@ -76,49 +77,79 @@ export default function ProductDetailsPage() {
     addToCartMutation.mutate({ product_id: product.id, quantity });
   };
 
-  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
-  if (error) return <div className="text-red-500 text-center p-10">{error.message}</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-trichomes-soft flex justify-center items-center p-10">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-trichomes-primary w-8 h-8 mx-auto mb-4" />
+          <p className="text-trichomes-forest/60 font-body">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen bg-trichomes-soft flex justify-center items-center p-10">
+        <div className="text-center">
+          <p className="text-red-600 font-body mb-4">{error.message}</p>
+          <Link href="/products" className="inline-block bg-trichomes-primary text-white py-3 px-6 rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body">
+            Back to Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="relative w-full aspect-square">
-          <Image
-            src={product?.images?.[0]?.url || "/placeholder.png"}
-            alt={product?.name!}
-            fill
-            className="rounded-2xl object-cover"
-          />
-        </div>
-        <div>
-          <h1 className="text-3xl font-semibold mb-4">{product?.name}</h1>
-          <p className="text-gray-500 mb-2">Category: {product?.category?.name || "Uncategorized"}</p>
-          <p className="text-gray-700 mb-6">{product?.description}</p>
-          <div className="flex gap-6 items-center">
-          <p className="text-2xl font-bold text-green-600">
-            ₦{product?.price?.toLocaleString()}
-          </p>
-          <p className="text-2xl font-bold text-green-600 line-through">
-            ₦{product?.compare_price?.toLocaleString()}
-          </p>
+    <div className="min-h-screen bg-trichomes-soft">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-7xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
+          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-trichomes-sage shadow-sm">
+            <Image
+              src={product?.images?.[0]?.url || "/placeholder.png"}
+              alt={product?.name!}
+              fill
+              className="object-cover"
+            />
           </div>
-          <div className="flex items-center space-x-2 mt-4">
-        <button onClick={() => handleToggleWishlist(product as ProductForDisplay)} className="p-2 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-500 hover:text-red-500">
-          <HeartIcon filled={isInWishlist} className={isInWishlist ? 'text-red-500' : ''} />
-        </button>
-        <div className="flex items-center border border-gray-300 rounded-md">
-          <button onClick={handleDecrement} className="px-3 py-2 text-gray-500 hover:text-black">
-            <MinusIcon />
-          </button>
-          <span onClick={(e) => e.stopPropagation()} className="px-4 text-center w-12">{quantity}</span>
-          <button onClick={handleIncrement} className="px-3 py-2 text-gray-500 hover:text-black">
-            <PlusIcon />
-          </button>
-        </div>
-        <button onClick={() => handleAddToCart(product as ProductForDisplay, quantity)} className="flex-grow bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors font-medium">
-          Add to Cart
-        </button>
-      </div>
+          <div>
+            <h1 className="text-[24px] sm:text-[28px] lg:text-[32px] font-heading font-semibold mb-3 sm:mb-4 text-trichomes-forest">{product?.name}</h1>
+            <p className="text-trichomes-forest/60 font-body text-[14px] sm:text-[15px] mb-2">Category: {product?.category?.name || "Uncategorized"}</p>
+            <p className="text-trichomes-forest/70 font-body text-[15px] sm:text-[16px] mb-4 sm:mb-6 leading-relaxed">{product?.description}</p>
+            <div className="flex gap-4 sm:gap-6 items-center mb-4 sm:mb-6">
+              <p className="text-[24px] sm:text-[28px] font-heading font-semibold text-trichomes-primary">
+                ₦{product?.price?.toLocaleString()}
+              </p>
+              {product?.compare_price && (
+                <p className="text-[20px] sm:text-[24px] font-heading font-semibold text-trichomes-forest/40 line-through">
+                  ₦{product?.compare_price?.toLocaleString()}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <button 
+                onClick={() => handleToggleWishlist(product as ProductForDisplay)} 
+                className="p-3 border-2 border-trichomes-forest/20 rounded-lg hover:bg-trichomes-sage transition-all duration-150 ease-out text-trichomes-forest/60 hover:text-trichomes-primary"
+              >
+                <HeartIcon filled={isInWishlist} className={isInWishlist ? 'text-trichomes-primary' : ''} />
+              </button>
+              <div className="flex items-center border-2 border-trichomes-forest/20 rounded-lg">
+                <button onClick={handleDecrement} className="px-3 sm:px-4 py-2 sm:py-3 text-trichomes-forest/60 hover:text-trichomes-forest transition-colors duration-150">
+                  <MinusIcon />
+                </button>
+                <span onClick={(e) => e.stopPropagation()} className="px-4 text-center w-12 font-body text-trichomes-forest font-semibold">{quantity}</span>
+                <button onClick={handleIncrement} className="px-3 sm:px-4 py-2 sm:py-3 text-trichomes-forest/60 hover:text-trichomes-forest transition-colors duration-150">
+                  <PlusIcon />
+                </button>
+              </div>
+              <button 
+                onClick={() => handleAddToCart(product as ProductForDisplay, quantity)} 
+                className="flex-grow bg-trichomes-primary text-white py-3 sm:py-4 px-6 sm:px-8 rounded-full hover:bg-trichomes-primary/90 transition-all duration-150 ease-out hover:shadow-lg font-semibold text-[14px] sm:text-[15px] font-body"
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

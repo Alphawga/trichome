@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { UserRole, UserStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { signUpSchema } from '@/lib/validations/user'
+import { signUpApiSchema } from '@/lib/validations/user'
 import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
@@ -10,8 +10,16 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
 
+    // Convert camelCase to snake_case for validation schema
+    const bodyForValidation = {
+      first_name: body.firstName || body.first_name,
+      last_name: body.lastName || body.last_name,
+      email: body.email,
+      phone: body.phone || '',
+      password: body.password,
+    }
     
-    const validatedData = signUpSchema.parse(body)
+    const validatedData = signUpApiSchema.parse(bodyForValidation)
 
     
     const existingUser = await prisma.user.findUnique({

@@ -79,7 +79,7 @@ export default function FilterSidebar({ categories, filters, onFiltersChange }: 
                     className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                   />
                   <span className="ml-3 text-sm text-gray-600">
-                    {category.name} ({category.count})
+                    {category.name} ({category.productCount})
                   </span>
                 </label>
               ))}

@@ -11,42 +11,56 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 bg-gradient-to-br from-green-50 to-blue-50">
-        <div className="text-center w-full max-w-sm">
-          <div className="mb-16">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">New here?</h2>
-            <div className="space-y-4">
-              <Link
-                href="/auth/signup"
-                className="w-full bg-[#38761d] text-white py-3 px-6 rounded-full text-lg font-semibold hover:bg-opacity-90 transition-colors shadow-sm block text-center"
-              >
-                Create account
-              </Link>
-              <button
-                onClick={handleGoogleSignUp}
-                className="w-full bg-white border border-gray-300 text-gray-700 py-3 px-6 rounded-full text-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center shadow-sm"
-              >
-                <GoogleIcon />
-                Sign up with Google
-              </button>
-              <Link
-                href="/checkout"
-                className="w-full bg-white text-[#38761d] border border-[#38761d] py-3 px-6 rounded-full text-lg font-semibold hover:bg-green-50/50 transition-colors block text-center"
-              >
-                Continue as guest
-              </Link>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Returning customer?</h2>
+    <div className="min-h-screen bg-trichomes-soft flex flex-col items-center justify-center px-4 py-12 sm:py-16">
+      <div className="w-full max-w-md">
+        {/* New Customer Section */}
+        <div className="mb-12 sm:mb-16">
+          <h2 className="text-[24px] sm:text-[28px] font-heading font-semibold text-trichomes-forest mb-6 text-center">
+            New here?
+          </h2>
+          <div className="space-y-4">
             <Link
-              href="/auth/signin"
-              className="w-full bg-[#38761d] text-white py-3 px-6 rounded-full text-lg font-semibold hover:bg-opacity-90 transition-colors shadow-sm block text-center"
+              href="/auth/signup"
+              className="w-full bg-trichomes-gold text-trichomes-forest py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-gold-hover transition-all duration-150 ease-out hover:shadow-lg shadow-sm block text-center font-body"
             >
-              Sign in
+              Create account
+            </Link>
+            <button
+              onClick={handleGoogleSignUp}
+              className="w-full bg-white border-2 border-trichomes-forest/20 text-trichomes-forest py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-soft transition-all duration-150 ease-out shadow-sm flex items-center justify-center font-body"
+            >
+              <GoogleIcon className="mr-2" />
+              Sign up with Google
+            </button>
+            <Link
+              href="/checkout"
+              className="w-full bg-white text-trichomes-primary border-2 border-trichomes-primary py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out block text-center font-body"
+            >
+              Continue as guest
             </Link>
           </div>
         </div>
+
+        {/* Divider */}
+        <div className="flex items-center mb-12 sm:mb-16">
+          <div className="flex-1 border-t border-trichomes-forest/20"></div>
+          <span className="px-4 text-trichomes-forest/60 text-sm font-body">or</span>
+          <div className="flex-1 border-t border-trichomes-forest/20"></div>
+        </div>
+
+        {/* Returning Customer Section */}
+        <div>
+          <h2 className="text-[24px] sm:text-[28px] font-heading font-semibold text-trichomes-forest mb-6 text-center">
+            Returning customer?
+          </h2>
+          <Link
+            href="/auth/signin"
+            className="w-full bg-trichomes-primary text-white py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-primary/90 transition-all duration-150 ease-out hover:shadow-lg shadow-sm block text-center font-body"
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

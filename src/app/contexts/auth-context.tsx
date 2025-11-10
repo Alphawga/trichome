@@ -25,6 +25,7 @@ interface AuthContextType {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
     password: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
     password: string;
   }): Promise<void> => {
     try {

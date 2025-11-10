@@ -120,21 +120,32 @@ Consultation*.\
 
 **Cards & Collections:**\
 - Product cards use **ample whitespace** and **shadow lift** on hover.\
-- Rounded corners: `12px`\
+- **No rounded corners** --- sharp, clean edges for a modern, premium feel.\
 - Product details always visible; "Add to Bag" appears on hover for
 minimal distraction.
 
 **Hero Section:**\
 - Bold headline, 2-line max.\
 - Subheading in muted gray-green tone.\
-- Button uses `#E0B44C` (Gold Accent) with rounded full pill shape.\
+- Button uses `#E0B44C` (Gold Accent) with sharp edges (no rounded corners).\
 - Background image slightly desaturated for better text contrast.
 
 **Call to Action (CTA):**\
 - Primary: "Book Consultation", "Shop Now"\
 - Secondary: "View Collection", "Learn More"\
 - CTAs must always use **consistent color hierarchy**: gold (primary),
-green (secondary).
+green (secondary).\
+- **No rounded corners** --- sharp edges maintain premium aesthetic.
+
+**Form Elements & Inputs:**\
+- **Background**: Soft White (`#FAFAF7`) for all input fields, selects, and search bars.\
+- **Borders**: Deep Forest at 15% opacity (`border-[#1E3024]/15`) for subtle definition.\
+- **Focus States**: Primary Green border (`#3A643B`) with subtle ring (`ring-1 ring-[#3A643B]/20`).\
+- **No rounded corners** --- all inputs, selects, and buttons use sharp edges.\
+- **Custom Select Styling**: Custom dropdown arrow using SVG, styled to match theme.\
+- **Placeholder Text**: Deep Forest at 40% opacity for subtle, readable placeholders.\
+- **Search Inputs**: Soft White background with themed border and focus states.\
+- **Select Dropdowns**: Custom-styled with themed background and custom arrow icon.
 
 **Footer:**\
 - Deep forest background with light text.\
@@ -195,6 +206,7 @@ reinforce calm sophistication.
     Accent 10%).\
 -   Use **consistent lighting** in imagery.\
 -   Avoid harsh contrasts --- rely on tone-on-tone layers.\
+-   **No rounded corners** --- all UI elements (buttons, inputs, cards, pills) use sharp edges for a modern, premium aesthetic.\
 -   When in doubt, **less is luxurious.**\
 -   Always test visual consistency with both **light and dark
     backgrounds** (product photography often varies).

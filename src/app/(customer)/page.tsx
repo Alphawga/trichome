@@ -1,20 +1,95 @@
 "use client"
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import ProductGrid from "@/components/product-grid";
+import Link from "next/link";
+import Image from "next/image";
+import { ProductGrid } from "@/components/product/product-grid";
+import type { ProductWithRelations } from "@/components/product/product-grid";
 import { Hero } from "@/components/sections/hero";
 import { ChevronRightIcon } from "@/components/ui/icons";
-import { mockProducts } from "@/utils/mock-data";
+import { trpc } from "@/utils/trpc";
+import { useAuth } from "@/app/contexts/auth-context";
+import { toast } from "sonner";
+import { ProductStatus } from "@prisma/client";
 
 export default function Page() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
 
-  const collections = [
-    { name: 'Hair', imageUrl: '/product-4.png' },
-    { name: 'Skin', imageUrl: '/product-2.png' },
-    { name: 'Perfumes', imageUrl: '/product-3.png' },
-    { name: 'Eyeliners', imageUrl: '/product-1.png' },
-];
+  // Fetch top-level categories from backend
+  const categoriesQuery = trpc.getCategoryTree.useQuery(undefined, {
+    staleTime: 60000, // Cache for 1 minute
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch featured products
+  const featuredProductsQuery = trpc.getProducts.useQuery({
+    page: 1,
+    limit: 4,
+    status: ProductStatus.ACTIVE,
+    is_featured: true,
+    sort_by: 'featured',
+  }, {
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch top sellers (popular products)
+  const topSellersQuery = trpc.getProducts.useQuery({
+    page: 1,
+    limit: 4,
+    status: ProductStatus.ACTIVE,
+    sort_by: 'popular',
+  }, {
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Wishlist state
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  // Cart mutation
+  const addToCartMutation = trpc.addToCart.useMutation({
+    onSuccess: () => {
+      utils.getCart.invalidate();
+      toast.success('Added to cart');
+    },
+    onError: (error) => {
+      if (!isAuthenticated) {
+        toast.error('Please sign in to add items to cart');
+        router.push('/auth/signin');
+      } else {
+        toast.error(error.message || 'Failed to add to cart');
+      }
+    },
+  });
+
+  // Handlers
+  const handleProductClick = (product: ProductWithRelations) => {
+    router.push(`/products/${product.id}`);
+  };
+
+  const handleAddToCart = (product: ProductWithRelations, quantity: number) => {
+    addToCartMutation.mutate({ product_id: product.id, quantity });
+  };
+
+  const handleToggleWishlist = (product: ProductWithRelations) => {
+    const isInWishlist = wishlist.includes(product.id);
+    if (isInWishlist) {
+      setWishlist(wishlist.filter(id => id !== product.id));
+    } else {
+      setWishlist([...wishlist, product.id]);
+    }
+  };
+
+  // Get first 4 top-level categories for the collection section
+  const collections = categoriesQuery.data?.slice(0, 4) || [];
+  
+  // Get products
+  const featuredProducts = featuredProductsQuery.data?.products || [];
+  const topSellers = topSellersQuery.data?.products || [];
 
 
   return (
@@ -28,22 +103,57 @@ export default function Page() {
             Our Collection
           </h2>
           <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {collections.map(col => (
-              <div key={col.name} className="text-center group">
-                <div className="overflow-hidden  mb-4 sm:mb-6 shadow-sm">
-                  <img
-                    src={col.imageUrl}
-                    alt={col.name}
-                    className="w-full h-80 sm:h-96 object-cover transition-transform duration-200 ease-in-out group-hover:scale-105"
-                  />
+          
+          {categoriesQuery.isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="text-center animate-pulse">
+                  <div className="w-full h-80 sm:h-96 bg-trichomes-sage rounded-lg mb-4 sm:mb-6"></div>
+                  <div className="h-12 bg-trichomes-sage rounded"></div>
                 </div>
-                <button className="w-full text-[15px] sm:text-[16px] font-semibold py-2.5 sm:py-3 px-5 sm:px-6 border-2 border-trichomes-primary text-trichomes-primary  hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out font-body">
-                  {col.name}
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : categoriesQuery.error ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">Unable to load collections. Please try again later.</p>
+            </div>
+          ) : collections.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">No collections available at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {collections.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/products?category=${category.slug}`}
+                  className="text-center group block"
+                >
+                  <div className="overflow-hidden mb-4 sm:mb-6 shadow-sm">
+                    {category.image ? (
+                      <div className="relative w-full h-80 sm:h-96">
+                        <Image
+                          src={category.image}
+                          alt={category.name}
+                          fill
+                          className="object-cover transition-transform duration-200 ease-in-out group-hover:scale-105"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-80 sm:h-96 bg-trichomes-sage flex items-center justify-center">
+                        <span className="text-6xl font-bold text-trichomes-forest/20">
+                          {category.name.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-full text-[15px] sm:text-[16px] font-semibold py-2.5 sm:py-3 px-5 sm:px-6 border-2 border-trichomes-primary text-trichomes-primary group-hover:bg-trichomes-primary group-hover:text-white transition-all duration-150 ease-out font-body">
+                    {category.name}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -54,15 +164,50 @@ export default function Page() {
             Featured Items
           </h2>
           <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          <ProductGrid products={mockProducts.slice(0,4)} />
-          <div className="text-center mt-8 sm:mt-12">
-            <button
-              onClick={() => router.push('/shop')}
-              className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
-            >
-              View All <ChevronRightIcon />
-            </button>
-          </div>
+          
+          {featuredProductsQuery.isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-white border border-[#1E3024]/10 flex flex-col h-full">
+                    <div className="aspect-square w-full bg-trichomes-sage"></div>
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 bg-trichomes-sage rounded w-3/4"></div>
+                      <div className="h-3 bg-trichomes-sage rounded w-1/2"></div>
+                      <div className="h-6 bg-trichomes-sage rounded w-1/3"></div>
+                      <div className="h-8 bg-trichomes-sage rounded mt-4"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredProductsQuery.error ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">Unable to load featured products. Please try again later.</p>
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">No featured products available at the moment.</p>
+            </div>
+          ) : (
+            <>
+              <ProductGrid
+                products={featuredProducts}
+                onProductClick={handleProductClick}
+                onAddToCart={handleAddToCart}
+                wishlist={wishlist}
+                onToggleWishlist={handleToggleWishlist}
+              />
+              <div className="text-center mt-8 sm:mt-12">
+                <button
+                  onClick={() => router.push('/products?sort=featured')}
+                  className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
+                >
+                  View All <ChevronRightIcon />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -73,15 +218,50 @@ export default function Page() {
             Top Sellers
           </h2>
           <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          <ProductGrid products={mockProducts.slice(0,4)}  />
-          <div className="text-center mt-8 sm:mt-12">
-            <button
-              onClick={() => router.push('/shop')}
-              className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
-            >
-              View All <ChevronRightIcon />
-            </button>
-          </div>
+          
+          {topSellersQuery.isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-white border border-[#1E3024]/10 flex flex-col h-full">
+                    <div className="aspect-square w-full bg-trichomes-soft"></div>
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 bg-trichomes-soft rounded w-3/4"></div>
+                      <div className="h-3 bg-trichomes-soft rounded w-1/2"></div>
+                      <div className="h-6 bg-trichomes-soft rounded w-1/3"></div>
+                      <div className="h-8 bg-trichomes-soft rounded mt-4"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : topSellersQuery.error ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">Unable to load top sellers. Please try again later.</p>
+            </div>
+          ) : topSellers.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">No top sellers available at the moment.</p>
+            </div>
+          ) : (
+            <>
+              <ProductGrid
+                products={topSellers}
+                onProductClick={handleProductClick}
+                onAddToCart={handleAddToCart}
+                wishlist={wishlist}
+                onToggleWishlist={handleToggleWishlist}
+              />
+              <div className="text-center mt-8 sm:mt-12">
+                <button
+                  onClick={() => router.push('/products?sort=popular')}
+                  className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
+                >
+                  View All <ChevronRightIcon />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

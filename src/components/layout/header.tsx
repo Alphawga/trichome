@@ -237,16 +237,15 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
     <header className="bg-[#FAFAF7] sticky top-0 z-50 shadow-sm">
       {/* Top Announcement Bar */}
       <div className="bg-[#E6E4C6] text-sm text-[#1E3024] font-medium hidden sm:block border-b border-[#E9DDAA]/30">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-          <p className="uppercase tracking-wide overflow-hidden whitespace-nowrap">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex justify-center items-center">
+          <p className="uppercase tracking-wide text-center overflow-hidden whitespace-nowrap">
             <span>NATURAL BEAUTY, NATURALLY YOURS - <Link href="/shop" className="underline hover:text-[#3A643B] transition-colors">SHOP NOW</Link></span>
             <span className="mx-2">•</span>
             <span>FREE SHIPPING OVER ₦20,000 - <Link href="/shop" className="underline hover:text-[#3A643B] transition-colors">LEARN MORE</Link></span>
             <span className="mx-2 hidden md:inline">•</span>
             <span className="hidden md:inline">BOOK YOUR FREE CONSULTATION - <Link href="/consultation" className="underline hover:text-[#3A643B] transition-colors">BOOK NOW</Link></span>
-          </p>
-          <p className="uppercase tracking-wide hidden lg:block whitespace-nowrap">
-            <span>WHERE SCIENCE MEETS NATURE - <Link href="/about" className="underline hover:text-[#3A643B] transition-colors">OUR STORY</Link></span>
+            <span className="mx-2 hidden lg:inline">•</span>
+            <span className="hidden lg:inline">WHERE SCIENCE MEETS NATURE - <Link href="/about" className="underline hover:text-[#3A643B] transition-colors">OUR STORY</Link></span>
           </p>
         </div>
       </div>

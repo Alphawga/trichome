@@ -23,53 +23,53 @@ const WishlistItem: React.FC<WishlistItemProps> = ({ item, onRemove, onAddToCart
   const isInStock = product.status === 'ACTIVE' && (!product.track_quantity || product.quantity > 0);
 
   return (
-    <div className="bg-white p-6 rounded-lg border flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div className="flex items-center gap-6 flex-grow w-full sm:w-auto">
+    <div className="bg-white p-4 sm:p-6 rounded-xl border border-trichomes-forest/10 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+      <div className="flex items-center gap-4 sm:gap-6 flex-grow w-full sm:w-auto">
         <div
-          className="relative w-24 h-24 flex-shrink-0 cursor-pointer"
+          className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden"
           onClick={() => onProductClick(product.slug)}
         >
           <Image
             src={primaryImage}
             alt={product.name}
             fill
-            className="object-cover rounded-md bg-gray-100"
+            className="object-cover bg-trichomes-sage"
           />
         </div>
         <div className="flex-grow">
           <button
             onClick={() => onProductClick(product.slug)}
-            className="font-semibold text-left hover:text-green-600 transition-colors"
+            className="font-heading font-semibold text-[15px] sm:text-[16px] text-left hover:text-trichomes-primary transition-colors duration-150 text-trichomes-forest"
           >
             {product.name}
           </button>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-[13px] sm:text-[14px] text-trichomes-forest/60 mt-1 font-body">
             {isInStock ? 'In stock' : 'Out of stock'}
           </p>
           {product.category && (
-            <p className="text-xs text-gray-500 mt-1">{product.category.name}</p>
+            <p className="text-[12px] text-trichomes-forest/50 mt-1 font-body">{product.category.name}</p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-6 w-full sm:w-auto">
-        <p className="text-lg font-bold w-32 text-left sm:text-center">
+      <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end">
+        <p className="text-[16px] sm:text-[18px] font-heading font-semibold text-trichomes-forest">
           ₦{price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </p>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {isInStock ? (
             <button
               onClick={() => onAddToCart(product.id, 1)}
-              className="bg-[#38761d] text-white py-2 px-6 rounded-lg hover:bg-opacity-90 transition-colors font-semibold whitespace-nowrap"
+              className="bg-trichomes-primary text-white py-2 px-4 sm:px-6 rounded-full hover:bg-trichomes-primary/90 transition-all duration-150 ease-out hover:shadow-lg font-semibold whitespace-nowrap text-[13px] sm:text-[14px] font-body"
             >
               Add to cart
             </button>
           ) : (
-            <p className="text-red-500 font-semibold text-center w-28">Out of stock</p>
+            <p className="text-red-500 font-semibold text-center w-28 text-[13px] sm:text-[14px] font-body">Out of stock</p>
           )}
           <button
             onClick={() => onRemove(item.id)}
-            className="text-gray-500 hover:text-red-600 p-1"
+            className="text-trichomes-forest/60 hover:text-red-600 p-1 transition-colors duration-150"
             title="Remove from wishlist"
           >
             <TrashIcon />
@@ -133,11 +133,13 @@ export default function WishlistPage() {
   // Show loading state
   if (isLoading || wishlistQuery.isLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading wishlist...</p>
+      <div className="min-h-screen bg-trichomes-soft">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-trichomes-primary mx-auto mb-4"></div>
+              <p className="text-trichomes-forest/60 font-body">Loading wishlist...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -147,17 +149,19 @@ export default function WishlistPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-20 bg-white rounded-lg border">
-          <div className="max-w-md mx-auto">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Sign in to view your wishlist</h2>
-            <p className="text-gray-600 mb-6">Please sign in to access your wishlist</p>
-            <Link
-              href="/auth/signin"
-              className="inline-block bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 font-medium"
-            >
-              Sign In
-            </Link>
+      <div className="min-h-screen bg-trichomes-soft">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl">
+          <div className="text-center py-12 sm:py-20 bg-white rounded-xl border border-trichomes-forest/10 shadow-sm">
+            <div className="max-w-md mx-auto">
+              <h2 className="text-[20px] sm:text-[24px] font-heading font-semibold text-trichomes-forest mb-2">Sign in to view your wishlist</h2>
+              <p className="text-trichomes-forest/60 font-body mb-6">Please sign in to access your wishlist</p>
+              <Link
+                href="/auth/signin"
+                className="inline-block bg-trichomes-primary text-white py-3 px-6 sm:px-8 rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -165,24 +169,24 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#343A40]">
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">My Wishlist</h1>
-          <Link href="/" className="text-green-600 hover:underline">
+    <div className="min-h-screen bg-trichomes-soft">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-7xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8">
+          <h1 className="text-[24px] sm:text-[32px] lg:text-[36px] font-heading font-semibold text-trichomes-forest">My Wishlist</h1>
+          <Link href="/" className="text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body text-[14px] sm:text-[15px] mt-2 sm:mt-0">
             Continue shopping
           </Link>
         </div>
 
         {wishlistItems.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-lg border">
+          <div className="text-center py-12 sm:py-20 bg-white rounded-xl border border-trichomes-forest/10 shadow-sm">
             <div className="max-w-md mx-auto">
-              <HeartIcon className="mx-auto w-16 h-16 text-gray-300 mb-6" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>
-              <p className="text-gray-600 mb-6">Save items you love for later. They'll appear here.</p>
+              <HeartIcon className="mx-auto w-16 h-16 text-trichomes-sage mb-6" />
+              <h2 className="text-[20px] sm:text-[24px] font-heading font-semibold text-trichomes-forest mb-2">Your wishlist is empty</h2>
+              <p className="text-trichomes-forest/60 font-body mb-6">Save items you love for later. They'll appear here.</p>
               <button
                 onClick={handleGoToShop}
-                className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 font-semibold transition-colors"
+                className="bg-trichomes-primary text-white py-3 px-6 sm:px-8 rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
               >
                 Start shopping
               </button>
@@ -190,8 +194,8 @@ export default function WishlistPage() {
           </div>
         ) : (
           <>
-            <div className="mb-6">
-              <p className="text-gray-600">
+            <div className="mb-4 sm:mb-6">
+              <p className="text-trichomes-forest/60 font-body text-[14px] sm:text-[15px]">
                 {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'} saved
               </p>
             </div>
@@ -209,8 +213,8 @@ export default function WishlistPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="mt-8 bg-white p-6 rounded-lg border">
-              <h3 className="font-semibold mb-4">Quick Actions</h3>
+            <div className="mt-6 sm:mt-8 bg-white p-4 sm:p-6 rounded-xl border border-trichomes-forest/10 shadow-sm">
+              <h3 className="font-heading font-semibold text-[16px] sm:text-[17px] mb-3 sm:mb-4 text-trichomes-forest">Quick Actions</h3>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => {
@@ -220,7 +224,7 @@ export default function WishlistPage() {
                     });
                     inStockItems.forEach(item => handleAddToCart(item.product.id, 1));
                   }}
-                  className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:opacity-50"
+                  className="bg-trichomes-primary text-white py-2 sm:py-3 px-6 sm:px-8 rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg disabled:opacity-50 text-[14px] sm:text-[15px] font-body"
                   disabled={
                     addToCartMutation.isPending ||
                     !wishlistItems.some(item => {

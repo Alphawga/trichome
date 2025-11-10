@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ProductGrid } from '@/components/product/product-grid';
+import type { ProductWithRelations } from '@/components/product/product-grid';
 import { ProductFilter, FilterOptions } from '@/components/product/product-filter';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { trpc } from '@/utils/trpc';
@@ -25,6 +26,14 @@ interface FilterState {
   concerns: string[];
   ingredients: string[];
 }
+
+// Extended product type with additional filter properties
+type ExtendedProduct = ProductWithRelations & {
+  brand: string;
+  concerns: string[];
+  ingredients: string[];
+  inStock: boolean;
+};
 
 export default function BrandsPage() {
   const router = useRouter();
@@ -97,21 +106,19 @@ export default function BrandsPage() {
     refetchOnWindowFocus: false,
   });
 
-  const transformedProducts = useMemo(() => {
+  const transformedProducts = useMemo((): ExtendedProduct[] => {
     if (!productsQuery.data?.products) return [];
 
     return productsQuery.data.products.map(product => ({
       ...product,
-      currency: '₦',
-      imageUrl: product.images?.[0]?.url || `/placeholder-product.png`,
-      brand: product.brand || 'Generic Brand',
+      brand: product.category?.name || 'Uncategorized',
       concerns: ['General Care'],
       ingredients: ['Natural Ingredients'],
       inStock: product.status === 'ACTIVE' && (!product.track_quantity || product.quantity > 0)
     }));
   }, [productsQuery.data]);
 
-  const filteredAndSortedProducts = useMemo(() => {
+  const filteredAndSortedProducts = useMemo((): ExtendedProduct[] => {
     let products = [...transformedProducts];
 
     if (activeFilters) {
@@ -152,19 +159,19 @@ export default function BrandsPage() {
   }, [searchTerm, activeFilters]);
 
   const wishlistProductIds = useMemo(() => {
-    if (!wishlistQuery.data?.items) return new Set<string>();
-    return new Set(wishlistQuery.data.items.map(item => item.product_id));
+    if (!wishlistQuery.data?.items) return [];
+    return wishlistQuery.data.items.map(item => item.product_id);
   }, [wishlistQuery.data]);
 
-  const handleProductClick = (product: any) => {
-    router.push(`/products/${product.slug}`);
+  const handleProductClick = (product: ProductWithRelations) => {
+    router.push(`/products/${product.id}`);
   };
 
-  const handleAddToCart = (product: any, quantity: number) => {
+  const handleAddToCart = (product: ProductWithRelations, quantity: number) => {
     addToCartMutation.mutate({ product_id: product.id, quantity });
   };
 
-  const handleToggleWishlist = (product: any) => {
+  const handleToggleWishlist = (product: ProductWithRelations) => {
     const wishlistItem = wishlistQuery.data?.items.find(item => item.product_id === product.id);
 
     if (wishlistItem) {
@@ -236,133 +243,135 @@ export default function BrandsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
-        <ChevronRightIcon className="w-4 h-4" />
-        <span className="text-gray-900 font-medium">Brands</span>
-      </nav>
+    <div className="min-h-screen bg-trichomes-soft">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-12 sm:pb-16 max-w-7xl">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center space-x-2 text-sm text-trichomes-forest/60 mb-6 sm:mb-8 font-body">
+          <Link href="/" className="hover:text-trichomes-forest transition-colors duration-150">Home</Link>
+          <ChevronRightIcon className="w-4 h-4" />
+          <span className="text-trichomes-forest font-medium">Brands</span>
+        </nav>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <ProductFilter
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          price={price}
-          onPriceChange={setPrice}
-          selectedBrands={selectedBrands}
-          selectedConcerns={selectedConcerns}
-          selectedIngredients={selectedIngredients}
-          onToggleFilter={handleToggleFilter}
-          onApplyFilters={handleApplyFilters}
-          onClearFilters={handleClearFilters}
-          filterOptions={filterOptions}
-        />
+        <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
+          <ProductFilter
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            price={price}
+            onPriceChange={setPrice}
+            selectedBrands={selectedBrands}
+            selectedConcerns={selectedConcerns}
+            selectedIngredients={selectedIngredients}
+            onToggleFilter={handleToggleFilter}
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+            filterOptions={filterOptions}
+          />
 
-        <div className="w-full">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Shop by Brand</h1>
-              {productsQuery.isLoading ? (
-                <p className="text-gray-600">Loading products...</p>
-              ) : productsQuery.error ? (
-                <p className="text-red-600">Error loading products</p>
-              ) : (
-                <p className="text-gray-600">
-                  Showing {filteredAndSortedProducts.length} of {productsQuery.data?.pagination.total || 0} products
-                </p>
-              )}
-            </div>
+          <div className="w-full">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8">
+              <div>
+                <h1 className="text-[24px] sm:text-[32px] lg:text-[36px] font-heading font-semibold text-trichomes-forest mb-2">Shop by Brand</h1>
+                {productsQuery.isLoading ? (
+                  <p className="text-trichomes-forest/60 font-body">Loading products...</p>
+                ) : productsQuery.error ? (
+                  <p className="text-red-600 font-body">Error loading products</p>
+                ) : (
+                  <p className="text-trichomes-forest/60 font-body text-[14px] sm:text-[15px]">
+                    Showing {filteredAndSortedProducts.length} of {productsQuery.data?.pagination.total || 0} products
+                  </p>
+                )}
+              </div>
 
-            <div className="flex items-center gap-4 mt-4 sm:mt-0">
-              {activeFilters && (
-                <button
-                  onClick={handleClearFilters}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
-                >
-                  Clear all filters
-                </button>
-              )}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-4 sm:mt-0">
+                {activeFilters && (
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-[14px] sm:text-[15px] text-trichomes-primary hover:text-trichomes-forest underline font-body transition-colors duration-150"
+                  >
+                    Clear all filters
+                  </button>
+                )}
 
-              <div className="flex items-center gap-2">
-                <label htmlFor="sort" className="text-sm text-gray-700 whitespace-nowrap">
-                  Sort by:
-                </label>
-                <select
-                  id="sort"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                >
-                  {sortOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="sort" className="text-[14px] sm:text-[15px] text-trichomes-forest whitespace-nowrap font-body">
+                    Sort by:
+                  </label>
+                  <select
+                    id="sort"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-3 py-2 border border-trichomes-forest/20 rounded-lg text-[14px] sm:text-[15px] focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
+                  >
+                    {sortOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Products */}
-          {productsQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-lg border p-4 animate-pulse">
-                  <div className="w-full h-48 bg-gray-200 rounded-md mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          ) : productsQuery.error ? (
-            <div className="text-center py-20 bg-white rounded-lg border">
-              <p className="text-xl text-red-600">Error loading products</p>
-              <button
-                onClick={() => productsQuery.refetch()}
-                className="mt-4 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              <ProductGrid
-                products={filteredAndSortedProducts}
-                onProductClick={handleProductClick}
-                onAddToCart={handleAddToCart}
-                wishlist={filteredAndSortedProducts.filter(p => wishlistProductIds.has(p.id))}
-                onToggleWishlist={handleToggleWishlist}
-              />
+            {/* Products */}
+            {productsQuery.isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-trichomes-forest/10 p-4 animate-pulse shadow-sm">
+                    <div className="w-full h-48 bg-trichomes-sage rounded-lg mb-4"></div>
+                    <div className="h-4 bg-trichomes-sage rounded mb-2"></div>
+                    <div className="h-4 bg-trichomes-sage rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : productsQuery.error ? (
+              <div className="text-center py-12 sm:py-20 bg-white rounded-xl border border-trichomes-forest/10 shadow-sm">
+                <p className="text-[18px] sm:text-[20px] text-red-600 font-body mb-4">Error loading products</p>
+                <button
+                  onClick={() => productsQuery.refetch()}
+                  className="px-6 py-3 bg-trichomes-primary text-white rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <>
+                <ProductGrid
+                  products={filteredAndSortedProducts as ProductWithRelations[]}
+                  onProductClick={handleProductClick}
+                  onAddToCart={handleAddToCart}
+                  wishlist={wishlistProductIds}
+                  onToggleWishlist={handleToggleWishlist}
+                />
 
-              {filteredAndSortedProducts.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-lg border">
-                  <p className="text-xl text-gray-600">No products found.</p>
-                  {activeFilters && (
+                {filteredAndSortedProducts.length === 0 && (
+                  <div className="text-center py-12 sm:py-20 bg-white rounded-xl border border-trichomes-forest/10 shadow-sm">
+                    <p className="text-[18px] sm:text-[20px] text-trichomes-forest/70 font-body mb-4">No products found.</p>
+                    {activeFilters && (
+                      <button
+                        onClick={handleClearFilters}
+                        className="px-6 py-3 bg-trichomes-primary text-white rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
+                      >
+                        Clear all filters
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {canLoadMore && (
+                  <div className="text-center mt-8 sm:mt-12">
                     <button
-                      onClick={handleClearFilters}
-                      className="mt-4 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                      onClick={loadMoreProducts}
+                      disabled={productsQuery.isFetching}
+                      className="px-6 sm:px-8 py-3 border-2 border-trichomes-primary text-trichomes-primary rounded-full hover:bg-trichomes-primary hover:text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 ease-out text-[14px] sm:text-[15px] font-body"
                     >
-                      Clear all filters
+                      {productsQuery.isFetching ? 'Loading...' : 'Load more products'}
                     </button>
-                  )}
-                </div>
-              )}
-
-              {canLoadMore && (
-                <div className="text-center mt-12">
-                  <button
-                    onClick={loadMoreProducts}
-                    disabled={productsQuery.isFetching}
-                    className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50"
-                  >
-                    {productsQuery.isFetching ? 'Loading...' : 'Load more products'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

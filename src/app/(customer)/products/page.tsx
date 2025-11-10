@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ProductGrid } from '@/components/product/product-grid';
-import { FilterSidebar } from '@/components/filters/filter-sidebar';
+import { ProductFilterGrid } from '@/components/product/product-filter-grid';
 import { ChevronRightIcon } from '@/components/ui/icons';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { trpc } from '@/utils/trpc';
 import { ProductStatus, type Product, type Category, type ProductImage } from '@prisma/client';
 import { useAuth } from '@/app/contexts/auth-context';
@@ -18,53 +18,36 @@ type ProductWithRelations = Product & {
 
 const sortOptions = [
   { label: 'Featured', value: 'featured' },
-  { label: 'Price: Low to High', value: 'price-asc' },
-  { label: 'Price: High to Low', value: 'price-desc' },
-  { label: 'Name: A to Z', value: 'name-asc' },
-  { label: 'Name: Z to A', value: 'name-desc' },
-];
+  { label: 'Newest', value: 'newest' },
+  { label: 'Price: Low to High', value: 'price_asc' },
+  { label: 'Price: High to Low', value: 'price_desc' },
+  { label: 'Popular', value: 'popular' },
+] as const;
 
 interface FilterState {
-  price: number;
-  brands: string[];
-  concerns: string[];
-  ingredients: string[];
-  category?: string;
+  min_price?: number;
+  max_price?: number;
+  category_slug?: string;
 }
 
-interface ProductForDisplay extends ProductWithRelations {
-  currency: string;
-  imageUrl: string;
-  brand?: string;
-  concerns?: string[];
-  ingredients?: string[];
-  inStock: boolean;
-}
-
-export default function ProductsPage() {
+function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
 
-  const [wishlist, setWishlist] = useState<ProductForDisplay[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]); // Store product IDs only
   const [searchTerm, setSearchTerm] = useState('');
-  const [price, setPrice] = useState(50000);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
-  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(100000);
   const [sortBy, setSortBy] = useState('featured');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Active filters stores the state of filters when 'Apply' is clicked
   const [activeFilters, setActiveFilters] = useState<FilterState | null>(
     categoryParam ? {
-      price: 50000,
-      brands: [],
-      concerns: [],
-      ingredients: [],
-      category: categoryParam
+      category_slug: categoryParam
     } : null
   );
 
@@ -72,8 +55,11 @@ export default function ProductsPage() {
     page: currentPage,
     limit: 12,
     search: searchTerm.trim() || undefined,
-    max_price: activeFilters?.price || undefined,
+    min_price: activeFilters?.min_price,
+    max_price: activeFilters?.max_price,
+    category_slug: activeFilters?.category_slug || categoryParam || undefined,
     status: ProductStatus.ACTIVE,
+    sort_by: sortBy as 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'popular' | 'featured',
   }, {
     staleTime: 30000,
     refetchOnWindowFocus: false
@@ -84,6 +70,46 @@ export default function ProductsPage() {
     refetchOnWindowFocus: false
   });
 
+  // Format slug to readable title (fallback)
+  const formatCategorySlug = (slug: string): string => {
+    if (!slug) return '';
+    return slug
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Helper function to find category name from category tree by slug
+  const getCategoryNameFromTree = useMemo(() => {
+    if (!categoriesQuery.data) return () => null;
+    
+    return (slug: string): string | null => {
+      if (!slug) return null;
+      
+      // Flatten all categories (parents, children, grandchildren)
+      const allCategories = categoriesQuery.data.flatMap(cat => [
+        cat,
+        ...(cat.children || []),
+        ...(cat.children?.flatMap(child => child.children || []) || [])
+      ]);
+      
+      const found = allCategories.find(c => c.slug === slug);
+      return found?.name || null;
+    };
+  }, [categoriesQuery.data]);
+
+  // Get display name for category
+  const categoryDisplayName = useMemo(() => {
+    if (!categoryParam) return 'Products';
+    
+    // First try to find in category tree
+    const treeName = getCategoryNameFromTree(categoryParam);
+    if (treeName) return treeName;
+    
+    // Fallback to formatted slug (e.g., "face-care" -> "Face Care")
+    return formatCategorySlug(categoryParam);
+  }, [categoryParam, getCategoryNameFromTree]);
+
   const transformedCategories = useMemo(() => {
     if (!categoriesQuery.data) return [];
 
@@ -93,21 +119,7 @@ export default function ProductsPage() {
     }));
   }, [categoriesQuery.data]);
 
-  const transformedProducts = useMemo((): ProductForDisplay[] => {
-    if (!productsQuery.data?.products) return [];
 
-    return productsQuery.data.products.map(product => ({
-      ...product,
-      currency: '₦',
-      imageUrl: product.images?.[0]?.url || `https://placehold.co/400x400/38761d/white?text=${product.name.charAt(0)}`,
-      brand: 'Generic Brand',
-      concerns: ['General Care'],
-      ingredients: ['Natural Ingredients'],
-      inStock: product.quantity > 0
-    }));
-  }, [productsQuery.data]);
-
-  // Server-side add to cart mutation
   const addToCartMutation = trpc.addToCart.useMutation({
     onSuccess: () => {
       utils.getCart.invalidate();
@@ -124,52 +136,12 @@ export default function ProductsPage() {
   });
 
   
-  const filteredAndSortedProducts = useMemo(() => {
-    let products = [...transformedProducts];
+  const products = productsQuery.data?.products || [];
 
-    
-    if (activeFilters) {
-      if (activeFilters.brands.length > 0) {
-        products = products.filter(p => p.brand && activeFilters.brands.includes(p.brand));
-      }
-      if (activeFilters.concerns.length > 0) {
-        products = products.filter(p => p.concerns && p.concerns.some(c => activeFilters.concerns.includes(c)));
-      }
-      if (activeFilters.ingredients.length > 0) {
-        products = products.filter(p => p.ingredients && p.ingredients.some(i => activeFilters.ingredients.includes(i)));
-      }
-      if (activeFilters.category) {
-        products = products.filter(p => p.category.name === activeFilters.category);
-      }
-    }
-
-    // Sort products
-    switch (sortBy) {
-      case 'price-asc':
-        products.sort((a, b) => Number(a.price) - Number(b.price));
-        break;
-      case 'price-desc':
-        products.sort((a, b) => Number(b.price) - Number(a.price));
-        break;
-      case 'name-asc':
-        products.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'name-desc':
-        products.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      default:
-        // Featured - use backend order or sort by is_featured
-        products.sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0));
-        break;
-    }
-
-    return products;
-  }, [transformedProducts, activeFilters, sortBy]);
-
-  // Reset page when filters change
+  
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeFilters]);
+  }, [searchTerm, activeFilters, sortBy]);
 
   const loadMoreProducts = () => {
     setCurrentPage(prev => prev + 1);
@@ -178,86 +150,218 @@ export default function ProductsPage() {
   const canLoadMore = productsQuery.data ?
     currentPage < productsQuery.data.pagination.pages : false;
 
-  const handleProductClick = (product: ProductForDisplay) => {
-    router.push(`/products/${product.id as string}`);
+  const handleProductClick = (product: ProductWithRelations) => {
+    router.push(`/products/${product.id}`);
   };
 
-  const handleAddToCart = (product: ProductForDisplay, quantity: number) => {
+  const handleAddToCart = (product: ProductWithRelations, quantity: number) => {
     addToCartMutation.mutate({ product_id: product.id, quantity });
   };
 
-  const handleToggleWishlist = (product: ProductForDisplay) => {
-    const isInWishlist = wishlist.find(item => item.id === product.id);
+  const handleToggleWishlist = (product: ProductWithRelations) => {
+    const isInWishlist = wishlist.includes(product.id);
     if (isInWishlist) {
-      setWishlist(wishlist.filter(item => item.id !== product.id));
+      setWishlist(wishlist.filter(id => id !== product.id));
     } else {
-      setWishlist([...wishlist, product]);
+      setWishlist([...wishlist, product.id]);
     }
   };
 
   const handleApplyFilters = () => {
-    setActiveFilters({
-      price,
-      brands: selectedBrands,
-      concerns: selectedConcerns,
-      ingredients: selectedIngredients,
-      category: categoryParam || undefined
-    });
+    const filters: FilterState = {};
+    
+    // Add category filter if exists
+    if (categoryParam) {
+      filters.category_slug = categoryParam;
+    }
+    
+    // Only add price filters if they're set to non-default values
+    if (minPrice && minPrice > 0) {
+      filters.min_price = minPrice;
+    }
+    if (maxPrice && maxPrice < 100000) {
+      filters.max_price = maxPrice;
+    }
+    
+    // Only set filters if there's something to filter
+    if (filters.min_price !== undefined || filters.max_price !== undefined || filters.category_slug) {
+      setActiveFilters(filters);
+    } else {
+      setActiveFilters(null);
+    }
     setCurrentPage(1); // Reset to first page when applying filters
   };
 
-  const handleToggleFilter = (category: 'brands' | 'concerns' | 'ingredients', value: string) => {
-    switch (category) {
-      case 'brands':
-        setSelectedBrands(prev =>
-          prev.includes(value) ? prev.filter(b => b !== value) : [...prev, value]
-        );
-        break;
-      case 'concerns':
-        setSelectedConcerns(prev =>
-          prev.includes(value) ? prev.filter(c => c !== value) : [...prev, value]
-        );
-        break;
-      case 'ingredients':
-        setSelectedIngredients(prev =>
-          prev.includes(value) ? prev.filter(i => i !== value) : [...prev, value]
-        );
-        break;
-    }
-  };
 
   const handleClearFilters = () => {
     setActiveFilters(null);
-    setSelectedBrands([]);
-    setSelectedConcerns([]);
-    setSelectedIngredients([]);
-    setPrice(50000);
-    router.push('/products');
+    setMinPrice(0);
+    setMaxPrice(100000);
+    if (categoryParam) {
+      router.push('/products');
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-gray-700">
-          Home
-        </Link>
-        <ChevronRightIcon className="w-4 h-4" />
-        <span className="text-gray-900 font-medium">
-          {categoryParam ? `${categoryParam} Products` : 'All Products'}
-        </span>
-      </nav>
+    <div className="min-h-screen bg-[#FAFAF7]">
+      {/* Hero Header Section */}
+      <div className="bg-[#E9DDAA] w-full">
+        <div className="container mx-4 px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20 pb-12 sm:pb-16 lg:pb-20 ">
+          <div className="flex flex-col items-start">
+            {/* Main Title */}
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-[#1E3024] leading-tight mb-4">
+              {categoryDisplayName}
+            </h1>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <FilterSidebar
+            {/* Breadcrumbs */}
+            <nav className="flex items-center space-x-2">
+              <Link 
+                href="/" 
+                className="text-[14px] text-[#1E3024]/70 hover:text-[#1E3024] transition-colors duration-150 ease-out font-body"
+              >
+                Home
+              </Link>
+              <ChevronRightIcon className="w-4 h-4 text-[#1E3024]/50" />
+              <Link 
+                href="/shop" 
+                className="text-[14px] text-[#1E3024]/70 hover:text-[#1E3024] transition-colors duration-150 ease-out font-body"
+              >
+                Shop
+              </Link>
+              {categoryParam && (
+                <>
+                  <ChevronRightIcon className="w-4 h-4 text-[#1E3024]/50" />
+                  <span className="text-[14px] text-[#1E3024] font-body">
+                    {categoryDisplayName}
+                  </span>
+                </>
+              )}
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 max-w-[1500px]">
+        {/* Controls Bar - Sort and Clear Filters */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            {/* Results count */}
+            {!productsQuery.isLoading && !productsQuery.error && (
+              <p className="text-[13px] text-[#1E3024]/60 font-body">
+                {productsQuery.data?.pagination.total || 0} products
+              </p>
+            )}
+
+            {/* Clear filters */}
+            {activeFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="text-[13px] text-[#3A643B] hover:text-[#1E3024] underline font-body transition-colors duration-150 ease-out"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+
+          {/* Sort dropdown */}
+          <div className="flex items-center gap-2.5">
+            <label htmlFor="sort" className="text-[13px] text-[#1E3024] whitespace-nowrap font-body">
+              Sort by:
+            </label>
+            <CustomSelect
+              id="sort"
+              options={sortOptions}
+              value={sortBy}
+              onChange={(value) => setSortBy(value)}
+              className="min-w-[180px]"
+            />
+          </div>
+        </div>
+
+        {/* Active filters display */}
+        {activeFilters && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {activeFilters.category_slug && (
+              <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+                Category: {getCategoryNameFromTree(activeFilters.category_slug) || formatCategorySlug(activeFilters.category_slug)}
+                <button
+                  onClick={() => {
+                    const newFilters = { ...activeFilters };
+                    delete newFilters.category_slug;
+                    setActiveFilters(Object.keys(newFilters).length > 0 && (newFilters.min_price !== undefined || newFilters.max_price !== undefined) ? newFilters : null);
+                    router.push('/products');
+                  }}
+                  className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                  aria-label="Remove category filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {activeFilters.min_price !== undefined && activeFilters.min_price > 0 && (
+              <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+                Min: ₦{activeFilters.min_price.toLocaleString()}
+                <button
+                  onClick={() => {
+                    const newFilters = { ...activeFilters };
+                    delete newFilters.min_price;
+                    const hasOtherFilters = newFilters.max_price !== undefined || newFilters.category_slug !== undefined;
+                    setActiveFilters(hasOtherFilters ? newFilters : null);
+                    setMinPrice(0);
+                    // Re-apply filters to update the query
+                    if (hasOtherFilters) {
+                      handleApplyFilters();
+                    }
+                  }}
+                  className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                  aria-label="Remove min price filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {activeFilters.max_price !== undefined && activeFilters.max_price < 100000 && (
+              <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+                Max: ₦{activeFilters.max_price.toLocaleString()}
+                <button
+                  onClick={() => {
+                    const newFilters = { ...activeFilters };
+                    delete newFilters.max_price;
+                    const hasOtherFilters = newFilters.min_price !== undefined || newFilters.category_slug !== undefined;
+                    setActiveFilters(hasOtherFilters ? newFilters : null);
+                    setMaxPrice(100000);
+                    // Re-apply filters to update the query
+                    if (hasOtherFilters) {
+                      handleApplyFilters();
+                    }
+                  }}
+                  className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                  aria-label="Remove max price filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Product Filter Grid Component */}
+        <ProductFilterGrid
+          products={products}
+          pagination={productsQuery.data?.pagination}
+          isLoading={productsQuery.isLoading}
+          error={productsQuery.error as unknown}
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
-          price={price}
-          onPriceChange={setPrice}
-          selectedBrands={selectedBrands}
-          selectedConcerns={selectedConcerns}
-          selectedIngredients={selectedIngredients}
-          onToggleFilter={handleToggleFilter}
+          price={maxPrice}
+          onPriceChange={setMaxPrice}
+          minPrice={minPrice}
+          onMinPriceChange={setMinPrice}
+          selectedBrands={[]}
+          selectedConcerns={[]}
+          selectedIngredients={[]}
+          onToggleFilter={() => {}}
           onApplyFilters={handleApplyFilters}
           categories={transformedCategories}
           filterOptions={{
@@ -265,153 +369,32 @@ export default function ProductsPage() {
             concerns: [],
             ingredients: []
           }}
+          onProductClick={handleProductClick}
+          onAddToCart={handleAddToCart}
+          wishlist={wishlist}
+          onToggleWishlist={handleToggleWishlist}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onRetry={() => productsQuery.refetch()}
         />
-
-        <div className="w-full">
-          {/* Header with results count and sorting */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {categoryParam ? `${categoryParam} Products` : 'All Products'}
-              </h1>
-              {productsQuery.isLoading ? (
-                <p className="text-gray-600">Loading products...</p>
-              ) : productsQuery.error ? (
-                <p className="text-red-600">Error loading products</p>
-              ) : (
-                <p className="text-gray-600">
-                  Showing {filteredAndSortedProducts.length} of {productsQuery.data?.pagination.total || 0} products
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-4 mt-4 sm:mt-0">
-              {/* Clear filters */}
-              {activeFilters && (
-                <button
-                  onClick={handleClearFilters}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
-                >
-                  Clear all filters
-                </button>
-              )}
-
-              {/* Sort dropdown */}
-              <div className="flex items-center gap-2">
-                <label htmlFor="sort" className="text-sm text-gray-700 whitespace-nowrap">
-                  Sort by:
-                </label>
-                <select
-                  id="sort"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                >
-                  {sortOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Active filters display */}
-          {activeFilters && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {activeFilters.category && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Category: {activeFilters.category}
-                  <button
-                    onClick={() => {
-                      setActiveFilters(prev => prev ? { ...prev, category: undefined } : null);
-                      router.push('/products');
-                    }}
-                    className="ml-2 text-green-600 hover:text-green-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {activeFilters.brands.map(brand => (
-                <span key={brand} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {brand}
-                  <button
-                    onClick={() => {
-                      setSelectedBrands(prev => prev.filter(b => b !== brand));
-                      setActiveFilters(prev => prev ? { ...prev, brands: prev.brands.filter(b => b !== brand) } : null);
-                    }}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {productsQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-lg border p-4 animate-pulse">
-                  <div className="w-full h-48 bg-gray-200 rounded-md mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          ) : productsQuery.error ? (
-            <div className="text-center py-20 bg-white rounded-lg border">
-              <p className="text-xl text-red-600">Error loading products</p>
-              <p className="text-gray-500 mt-2">Please try again later.</p>
-              <button
-                onClick={() => productsQuery.refetch()}
-                className="mt-4 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              <ProductGrid
-                products={filteredAndSortedProducts}
-                onProductClick={handleProductClick}
-                onAddToCart={handleAddToCart}
-                wishlist={wishlist}
-                onToggleWishlist={handleToggleWishlist}
-              />
-
-              {filteredAndSortedProducts.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-lg border">
-                  <p className="text-xl text-gray-600">No products match your criteria.</p>
-                  <p className="text-gray-500 mt-2">Try adjusting your filters or search terms.</p>
-                  {activeFilters && (
-                    <button
-                      onClick={handleClearFilters}
-                      className="mt-4 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                    >
-                      Clear all filters
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {canLoadMore && (
-                <div className="text-center mt-12">
-                  <button
-                    onClick={loadMoreProducts}
-                    disabled={productsQuery.isFetching}
-                    className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
-                  >
-                    {productsQuery.isFetching ? 'Loading...' : 'Load more products'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAFAF7] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3A643B] mx-auto mb-4"></div>
+            <p className="text-[#1E3024]">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProductsPageContent />
+    </Suspense>
   );
 }

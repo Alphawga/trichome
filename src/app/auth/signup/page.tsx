@@ -126,9 +126,10 @@ export default function SignUpPage() {
     try {
       // Following CODING_RULES.md - data aligned with Prisma model
       await signUpWithCredentials({
-        first_name: form.first_name,
-        last_name: form.last_name,
+        firstName: form.first_name,
+        lastName: form.last_name,
         email: form.email,
+        phone: form.phone,
         password: form.password,
       });
 

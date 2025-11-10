@@ -97,7 +97,7 @@ export function PromotionViewSheet({ promotion, open, onOpenChange }: PromotionV
                 <p className="text-sm text-gray-600">Discount</p>
                 <p className="text-2xl font-bold text-green-600">{getDiscountText()}</p>
               </div>
-              {promotion.min_order_value > 0 && (
+              {Number(promotion.min_order_value) > 0 && (
                 <div className="text-center border-l pl-6">
                   <p className="text-sm text-gray-600">Min. Order</p>
                   <p className="text-xl font-semibold">₦{Number(promotion.min_order_value).toLocaleString()}</p>

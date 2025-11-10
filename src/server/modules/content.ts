@@ -13,13 +13,19 @@ export const getContentByType = publicProcedure
       where: {
         type: input.type,
         status: 'PUBLISHED',
-        OR: [
-          { published_at: { lte: now } },
-          { published_at: null },
-        ],
-        OR: [
-          { expires_at: { gte: now } },
-          { expires_at: null },
+        AND: [
+          {
+            OR: [
+              { published_at: { lte: now } },
+              { published_at: null },
+            ],
+          },
+          {
+            OR: [
+              { expires_at: { gte: now } },
+              { expires_at: null },
+            ],
+          },
         ],
       },
       orderBy: { sort_order: 'asc' },

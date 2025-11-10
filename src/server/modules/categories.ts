@@ -18,6 +18,7 @@ export const getCategories = publicProcedure
         ...(input.parent_id !== undefined && { parent_id: input.parent_id }),
       },
       include: {
+        parent: true,
         children: {
           where: { status: 'ACTIVE' },
           orderBy: { sort_order: 'asc' },

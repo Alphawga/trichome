@@ -10,21 +10,34 @@ export const getProducts = publicProcedure
       page: z.number().min(1).default(1),
       limit: z.number().min(1).max(100).default(12),
       category_id: z.string().optional(),
+      category_slug: z.string().optional(),
       status: z.nativeEnum(ProductStatus).optional(),
       search: z.string().optional(),
       min_price: z.number().optional(),
       max_price: z.number().optional(),
       is_featured: z.boolean().optional(),
-      sort_by: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'popular']).default('newest'),
+      sort_by: z.enum(['newest', 'oldest', 'price_asc', 'price_desc', 'popular', 'featured']).default('newest'),
     })
   )
   .query(async ({ input, ctx }) => {
-    const { page, limit, category_id, status, search, min_price, max_price, is_featured, sort_by } = input
+    const { page, limit, category_id, category_slug, status, search, min_price, max_price, is_featured, sort_by } = input
     const skip = (page - 1) * limit
+
+    // Resolve category_id from slug if provided
+    let resolvedCategoryId = category_id
+    if (category_slug && !category_id) {
+      const category = await ctx.prisma.category.findUnique({
+        where: { slug: category_slug },
+        select: { id: true },
+      })
+      if (category) {
+        resolvedCategoryId = category.id
+      }
+    }
 
     const where = {
       ...(status && { status }),
-      ...(category_id && { category_id }),
+      ...(resolvedCategoryId && { category_id: resolvedCategoryId }),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
         OR: [
@@ -55,6 +68,8 @@ export const getProducts = publicProcedure
           return { price: 'desc' as const }
         case 'popular':
           return { sale_count: 'desc' as const }
+        case 'featured':
+          return [{ is_featured: 'desc' as const }, { created_at: 'desc' as const }]
         default:
           return { created_at: 'desc' as const }
       }
@@ -75,7 +90,7 @@ export const getProducts = publicProcedure
           },
           images: {
             orderBy: { sort_order: 'asc' },
-            take: 1,
+            // Primary images will be handled by filtering in the application
           },
         },
         orderBy,

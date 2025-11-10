@@ -96,74 +96,75 @@ export default function ConsultationPage() {
   const minDate = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
-        <ChevronRightIcon className="w-4 h-4" />
-        <span className="text-gray-900 font-medium">Book a Consultation</span>
-      </nav>
+    <div className="min-h-screen bg-trichomes-soft">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-12 sm:pb-16 max-w-7xl">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center space-x-2 text-sm text-trichomes-forest/60 mb-6 sm:mb-8 font-body">
+          <Link href="/" className="hover:text-trichomes-forest transition-colors duration-150">Home</Link>
+          <ChevronRightIcon className="w-4 h-4" />
+          <span className="text-trichomes-forest font-medium">Book a Consultation</span>
+        </nav>
 
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Book Your Free Consultation</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Get personalized skincare and beauty advice from our expert consultants.
-            We'll help you find the perfect products for your unique needs.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {/* Benefits */}
-          <div className="bg-white rounded-lg border p-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-lg mb-2">Expert Guidance</h3>
-            <p className="text-sm text-gray-600">
-              Our certified skincare consultants have years of experience helping clients achieve their beauty goals.
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-[28px] sm:text-[36px] lg:text-[40px] font-heading font-semibold mb-3 sm:mb-4 text-trichomes-forest">Book Your Free Consultation</h1>
+            <p className="text-[15px] sm:text-[16px] lg:text-[17px] text-trichomes-forest/70 max-w-2xl mx-auto leading-relaxed font-body font-normal px-4">
+              Get personalized skincare and beauty advice from our expert consultants.
+              We'll help you find the perfect products for your unique needs.
             </p>
           </div>
 
-          <div className="bg-white rounded-lg border p-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8 sm:mb-12">
+            {/* Benefits */}
+            <div className="bg-white rounded-xl border border-trichomes-forest/10 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="w-12 h-12 bg-trichomes-sage rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-heading font-semibold text-[16px] sm:text-[17px] mb-2 text-trichomes-forest">Expert Guidance</h3>
+              <p className="text-[14px] sm:text-[15px] text-trichomes-forest/70 leading-relaxed font-body font-normal">
+                Our certified skincare consultants have years of experience helping clients achieve their beauty goals.
+              </p>
             </div>
-            <h3 className="font-bold text-lg mb-2">Flexible Scheduling</h3>
-            <p className="text-sm text-gray-600">
-              Choose a time that works best for you. We offer both in-store and virtual consultations.
-            </p>
-          </div>
 
-          <div className="bg-white rounded-lg border p-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+            <div className="bg-white rounded-xl border border-trichomes-forest/10 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="w-12 h-12 bg-trichomes-sage rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-heading font-semibold text-[16px] sm:text-[17px] mb-2 text-trichomes-forest">Flexible Scheduling</h3>
+              <p className="text-[14px] sm:text-[15px] text-trichomes-forest/70 leading-relaxed font-body font-normal">
+                Choose a time that works best for you. We offer both in-store and virtual consultations.
+              </p>
             </div>
-            <h3 className="font-bold text-lg mb-2">Personalized Plan</h3>
-            <p className="text-sm text-gray-600">
-              Receive a customized skincare routine and product recommendations tailored to your skin type.
-            </p>
+
+            <div className="bg-white rounded-xl border border-trichomes-forest/10 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="w-12 h-12 bg-trichomes-sage rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="font-heading font-semibold text-[16px] sm:text-[17px] mb-2 text-trichomes-forest">Personalized Plan</h3>
+              <p className="text-[14px] sm:text-[15px] text-trichomes-forest/70 leading-relaxed font-body font-normal">
+                Receive a customized skincare routine and product recommendations tailored to your skin type.
+              </p>
+            </div>
           </div>
-        </div>
 
         {/* Booking Form */}
-        <div className="bg-white rounded-lg border p-8">
-          <h2 className="text-2xl font-bold mb-6">Fill in Your Details</h2>
+        <div className="bg-white rounded-xl border border-trichomes-forest/10 p-6 sm:p-8 shadow-sm">
+          <h2 className="text-[20px] sm:text-[24px] font-heading font-semibold mb-4 sm:mb-6 text-trichomes-forest">Fill in Your Details</h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Information */}
             <div>
-              <h3 className="font-semibold mb-4">Personal Information</h3>
+              <h3 className="font-heading font-semibold text-[15px] sm:text-[16px] mb-3 sm:mb-4 text-trichomes-forest">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium mb-2">
+                  <label htmlFor="firstName" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -172,13 +173,13 @@ export default function ConsultationPage() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium mb-2">
+                  <label htmlFor="lastName" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     Last Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -187,13 +188,13 @@ export default function ConsultationPage() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium mb-2">
+                  <label htmlFor="email" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -202,13 +203,13 @@ export default function ConsultationPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium mb-2">
+                  <label htmlFor="phone" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -217,7 +218,7 @@ export default function ConsultationPage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   />
                 </div>
@@ -226,15 +227,15 @@ export default function ConsultationPage() {
 
             {/* Consultation Type */}
             <div>
-              <h3 className="font-semibold mb-4">Consultation Type <span className="text-red-500">*</span></h3>
+              <h3 className="font-heading font-semibold text-[15px] sm:text-[16px] mb-3 sm:mb-4 text-trichomes-forest">Consultation Type <span className="text-red-500">*</span></h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {consultationTypes.map((type) => (
                   <label
                     key={type.value}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                    className={`border-2 rounded-xl p-4 cursor-pointer transition-all duration-150 ${
                       formData.consultationType === type.value
-                        ? 'border-green-600 bg-green-50'
-                        : 'border-gray-200 hover:border-green-300'
+                        ? 'border-trichomes-primary bg-trichomes-sage'
+                        : 'border-trichomes-forest/20 hover:border-trichomes-primary/50'
                     }`}
                   >
                     <input
@@ -245,8 +246,8 @@ export default function ConsultationPage() {
                       onChange={handleInputChange}
                       className="sr-only"
                     />
-                    <div className="font-semibold">{type.label}</div>
-                    <div className="text-sm text-gray-600 mt-1">{type.duration}</div>
+                    <div className="font-heading font-semibold text-[14px] sm:text-[15px] text-trichomes-forest">{type.label}</div>
+                    <div className="text-[13px] sm:text-[14px] text-trichomes-forest/60 mt-1 font-body font-normal">{type.duration}</div>
                   </label>
                 ))}
               </div>
@@ -254,10 +255,10 @@ export default function ConsultationPage() {
 
             {/* Scheduling */}
             <div>
-              <h3 className="font-semibold mb-4">Preferred Date & Time <span className="text-red-500">*</span></h3>
+              <h3 className="font-heading font-semibold text-[15px] sm:text-[16px] mb-3 sm:mb-4 text-trichomes-forest">Preferred Date & Time <span className="text-red-500">*</span></h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="preferredDate" className="block text-sm font-medium mb-2">
+                  <label htmlFor="preferredDate" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     Date
                   </label>
                   <input
@@ -267,13 +268,13 @@ export default function ConsultationPage() {
                     min={minDate}
                     value={formData.preferredDate}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="preferredTime" className="block text-sm font-medium mb-2">
+                  <label htmlFor="preferredTime" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                     Time
                   </label>
                   <select
@@ -281,7 +282,7 @@ export default function ConsultationPage() {
                     name="preferredTime"
                     value={formData.preferredTime}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none bg-white text-trichomes-forest font-body"
                     required
                   >
                     <option value="">Select a time</option>
@@ -297,7 +298,7 @@ export default function ConsultationPage() {
 
             {/* Skin Concerns */}
             <div>
-              <h3 className="font-semibold mb-4">Skin Concerns (Select all that apply)</h3>
+              <h3 className="font-heading font-semibold text-[15px] sm:text-[16px] mb-3 sm:mb-4 text-trichomes-forest">Skin Concerns (Select all that apply)</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {skinConcerns.map((concern) => (
                   <label
@@ -308,9 +309,9 @@ export default function ConsultationPage() {
                       type="checkbox"
                       checked={formData.skinConcerns.includes(concern)}
                       onChange={() => handleConcernToggle(concern)}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      className="rounded border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary"
                     />
-                    <span className="text-sm">{concern}</span>
+                    <span className="text-[13px] sm:text-[14px] text-trichomes-forest font-body font-normal">{concern}</span>
                   </label>
                 ))}
               </div>
@@ -318,7 +319,7 @@ export default function ConsultationPage() {
 
             {/* Additional Notes */}
             <div>
-              <label htmlFor="additionalNotes" className="block text-sm font-medium mb-2">
+              <label htmlFor="additionalNotes" className="block text-[14px] sm:text-[15px] font-medium mb-2 text-trichomes-forest font-body">
                 Additional Notes (Optional)
               </label>
               <textarea
@@ -328,19 +329,19 @@ export default function ConsultationPage() {
                 onChange={handleInputChange}
                 rows={4}
                 placeholder="Tell us more about your skincare goals, current routine, or any specific concerns..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
+                className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none resize-none bg-white text-trichomes-forest font-body"
               />
             </div>
 
             {/* Submit Button */}
-            <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-gray-600">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-4">
+              <p className="text-[13px] sm:text-[14px] text-trichomes-forest/60 font-body">
                 <span className="text-red-500">*</span> Required fields
               </p>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-trichomes-gold text-trichomes-forest px-6 sm:px-8 py-3 rounded-full hover:bg-trichomes-gold-hover font-semibold transition-all duration-150 ease-out hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-[14px] sm:text-[15px] font-body"
               >
                 {isSubmitting ? 'Booking...' : 'Book Consultation'}
               </button>
@@ -349,27 +350,29 @@ export default function ConsultationPage() {
         </div>
 
         {/* Contact Info */}
-        <div className="mt-8 bg-green-50 rounded-lg p-6 text-center">
-          <h3 className="font-bold text-lg mb-2">Need Help?</h3>
-          <p className="text-gray-700 mb-4">
+        <div className="mt-6 sm:mt-8 bg-trichomes-sage rounded-xl p-6 sm:p-8 text-center">
+          <h3 className="font-heading font-semibold text-[18px] sm:text-[20px] mb-2 text-trichomes-forest">Need Help?</h3>
+          <p className="text-[14px] sm:text-[15px] text-trichomes-forest/70 mb-4 font-body font-normal">
             Have questions about our consultation service? Our team is here to help!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="mailto:consultations@trichome.com"
-              className="text-green-600 hover:text-green-700 font-medium"
+              className="text-trichomes-primary hover:text-trichomes-forest font-medium text-[14px] sm:text-[15px] font-body transition-colors duration-150"
             >
               consultations@trichome.com
             </a>
             <a
               href="tel:+2341234567890"
-              className="text-green-600 hover:text-green-700 font-medium"
+              className="text-trichomes-primary hover:text-trichomes-forest font-medium text-[14px] sm:text-[15px] font-body transition-colors duration-150"
             >
               +234 123 456 7890
             </a>
           </div>
         </div>
+        </div>
       </div>
     </div>
   );
 }
+

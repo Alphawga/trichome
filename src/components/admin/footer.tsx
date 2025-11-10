@@ -18,31 +18,8 @@ export const Footer: React.FC = () => {
                         </p>
                     </div>
 
-             
-                    <div className="lg:col-span-4">
-                        <h3 className="text-[16px] sm:text-[18px] font-semibold mb-2 sm:mb-3 text-trichomes-forest text-center lg:text-left font-body">
-                            Stay In The Loop
-                        </h3>
-                        <p className="text-trichomes-forest/70 mb-4 sm:mb-6 text-[13px] sm:text-[14px] leading-relaxed text-center lg:text-left font-body font-normal">
-                            Get the latest product drops, exclusive offers, and beauty tips straight to your inbox.
-                        </p>
-                        <form className="flex flex-col sm:flex-row shadow-md gap-2 sm:gap-0">
-                            <input
-                                type="email"
-                                placeholder="Enter your email"
-                                className="flex-grow bg-trichomes-soft text-trichomes-forest placeholder-trichomes-forest/50 px-4 py-3 rounded-full sm:rounded-l-full sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-trichomes-primary border-none text-[13px] sm:text-[14px] font-body"
-                            />
-                            <button
-                                type="submit"
-                                className="bg-trichomes-gold text-trichomes-forest font-semibold px-6 sm:px-8 py-3 rounded-full sm:rounded-r-full sm:rounded-l-none hover:bg-trichomes-gold-hover transition-all duration-150 ease-out whitespace-nowrap text-[13px] sm:text-[14px] font-body"
-                            >
-                                Subscribe
-                            </button>
-                        </form>
-                    </div>
-
                     {/* Links Section - Design Guide: Minimal links, clean spacing */}
-                    <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mt-4 lg:mt-0">
+                    <div className="lg:col-span-9 grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mt-4 lg:mt-0">
                         <div>
                             <h4 className="font-semibold mb-3 sm:mb-4 text-[15px] sm:text-[16px] text-trichomes-forest font-body">
                                 Quick Links
