@@ -1,6 +1,6 @@
-import { z } from 'zod'
-import { protectedProcedure } from '../trpc'
-import { TRPCError } from '@trpc/server'
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { protectedProcedure } from "../trpc";
 
 // Get user's wishlist
 export const getWishlist = protectedProcedure.query(async ({ ctx }) => {
@@ -22,14 +22,14 @@ export const getWishlist = protectedProcedure.query(async ({ ctx }) => {
         },
       },
     },
-    orderBy: { created_at: 'desc' },
-  })
+    orderBy: { created_at: "desc" },
+  });
 
   return {
     items: wishlistItems,
     count: wishlistItems.length,
-  }
-})
+  };
+});
 
 // Add item to wishlist
 export const addToWishlist = protectedProcedure
@@ -38,10 +38,10 @@ export const addToWishlist = protectedProcedure
     // Check if product exists
     const product = await ctx.prisma.product.findUnique({
       where: { id: input.product_id },
-    })
+    });
 
     if (!product) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Product not found' })
+      throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
     }
 
     // Check if already in wishlist
@@ -52,10 +52,10 @@ export const addToWishlist = protectedProcedure
           product_id: input.product_id,
         },
       },
-    })
+    });
 
     if (existing) {
-      return { message: 'Item already in wishlist' }
+      return { message: "Item already in wishlist" };
     }
 
     const wishlistItem = await ctx.prisma.wishlistItem.create({
@@ -73,10 +73,10 @@ export const addToWishlist = protectedProcedure
           },
         },
       },
-    })
+    });
 
-    return { wishlistItem, message: 'Item added to wishlist' }
-  })
+    return { wishlistItem, message: "Item added to wishlist" };
+  });
 
 // Remove item from wishlist
 export const removeFromWishlist = protectedProcedure
@@ -84,18 +84,21 @@ export const removeFromWishlist = protectedProcedure
   .mutation(async ({ ctx, input }) => {
     const wishlistItem = await ctx.prisma.wishlistItem.findUnique({
       where: { id: input.id },
-    })
+    });
 
     if (!wishlistItem || wishlistItem.user_id !== ctx.user.id) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Wishlist item not found' })
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Wishlist item not found",
+      });
     }
 
     await ctx.prisma.wishlistItem.delete({
       where: { id: input.id },
-    })
+    });
 
-    return { message: 'Item removed from wishlist' }
-  })
+    return { message: "Item removed from wishlist" };
+  });
 
 // Check if product is in wishlist
 export const isInWishlist = protectedProcedure
@@ -108,7 +111,7 @@ export const isInWishlist = protectedProcedure
           product_id: input.product_id,
         },
       },
-    })
+    });
 
-    return { inWishlist: !!item }
-  })
+    return { inWishlist: !!item };
+  });

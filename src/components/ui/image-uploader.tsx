@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useRef } from 'react';
-import Image from 'next/image';
-import { toast } from 'sonner';
+import Image from "next/image";
+import type React from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface ImageUploaderProps {
   value?: string;
@@ -17,7 +18,7 @@ export function ImageUploader({
   onChange,
   onRemove,
   disabled,
-  folder = 'trichome',
+  folder = "trichome",
 }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,15 +28,21 @@ export function ImageUploader({
     if (!file) return;
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/jpg",
+    ];
     if (!validTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (JPG, PNG, GIF, or WEBP)');
+      toast.error("Please upload a valid image file (JPG, PNG, GIF, or WEBP)");
       return;
     }
 
     // Validate file size (5MB)
     if (file.size > 5000000) {
-      toast.error('Image size must be less than 5MB');
+      toast.error("Image size must be less than 5MB");
       return;
     }
 
@@ -43,28 +50,28 @@ export function ImageUploader({
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', folder);
+      formData.append("file", file);
+      formData.append("folder", folder);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch("/api/upload", {
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error("Upload failed");
       }
 
       const result = await response.json();
       onChange(result.secure_url);
-      toast.success('Image uploaded successfully');
+      toast.success("Image uploaded successfully");
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -73,7 +80,7 @@ export function ImageUploader({
     if (onRemove) {
       onRemove();
     } else {
-      onChange('');
+      onChange("");
     }
   };
 
@@ -102,7 +109,7 @@ export function ImageUploader({
                 Uploading...
               </span>
             ) : (
-              'Upload Image'
+              "Upload Image"
             )}
           </button>
         </label>

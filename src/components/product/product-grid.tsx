@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { ProductCard } from './product-card';
-import type { Product, Category, ProductImage } from '@prisma/client';
+import type { Category, Product, ProductImage } from "@prisma/client";
+import type React from "react";
+import { ProductCard } from "./product-card";
 
 export type ProductWithRelations = Product & {
-  category: Pick<Category, 'id' | 'name' | 'slug'>;
+  category: Pick<Category, "id" | "name" | "slug">;
   images: ProductImage[];
 };
 
@@ -22,19 +22,25 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   onProductClick,
   onAddToCart,
   wishlist,
-  onToggleWishlist
+  onToggleWishlist,
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {products.map(product => (
-        <ProductCard
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      {products.map((product, index) => (
+        <div
           key={product.id}
-          product={product}
-          onProductClick={onProductClick}
-          onAddToCart={onAddToCart}
-          wishlist={wishlist}
-          onToggleWishlist={onToggleWishlist}
-        />
+          style={{
+            animation: `staggerFadeIn 500ms cubic-bezier(0.16, 1, 0.3, 1) ${index * 50}ms both`,
+          }}
+        >
+          <ProductCard
+            product={product}
+            onProductClick={onProductClick}
+            onAddToCart={onAddToCart}
+            wishlist={wishlist}
+            onToggleWishlist={onToggleWishlist}
+          />
+        </div>
       ))}
     </div>
   );

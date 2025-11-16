@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import type {
+  Promotion,
+  PromotionStatus,
+  PromotionTarget,
+  PromotionType,
+} from "@prisma/client";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { PromotionType, PromotionStatus, PromotionTarget } from '@prisma/client';
-import type { Promotion } from '@prisma/client';
-import { trpc } from '@/utils/trpc';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/utils/trpc";
 
 interface PromotionFormSheetProps {
   promotion: Promotion | null;
@@ -49,7 +53,12 @@ interface PromotionFormData {
   usage_limit_per_user?: number;
 }
 
-export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }: PromotionFormSheetProps) {
+export function PromotionFormSheet({
+  promotion,
+  open,
+  onOpenChange,
+  onSuccess,
+}: PromotionFormSheetProps) {
   const isEdit = !!promotion;
 
   const {
@@ -61,9 +70,9 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
     formState: { errors, isSubmitting },
   } = useForm<PromotionFormData>({
     defaultValues: {
-      type: 'PERCENTAGE',
-      status: 'INACTIVE',
-      target_customers: 'ALL',
+      type: "PERCENTAGE",
+      status: "INACTIVE",
+      target_customers: "ALL",
       value: 10,
       min_order_value: 0,
       usage_limit: 100,
@@ -74,7 +83,7 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
 
   const createMutation = trpc.createPromotion.useMutation({
     onSuccess: () => {
-      toast.success('Promotion created successfully');
+      toast.success("Promotion created successfully");
       utils.getPromotions.invalidate();
       utils.getPromotionStats.invalidate();
       onOpenChange(false);
@@ -88,7 +97,7 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
 
   const updateMutation = trpc.updatePromotion.useMutation({
     onSuccess: () => {
-      toast.success('Promotion updated successfully');
+      toast.success("Promotion updated successfully");
       utils.getPromotions.invalidate();
       utils.getPromotionStats.invalidate();
       onOpenChange(false);
@@ -104,23 +113,25 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
       reset({
         name: promotion.name,
         code: promotion.code,
-        description: promotion.description || '',
+        description: promotion.description || "",
         type: promotion.type,
         value: Number(promotion.value),
         min_order_value: Number(promotion.min_order_value),
-        max_discount: promotion.max_discount ? Number(promotion.max_discount) : undefined,
+        max_discount: promotion.max_discount
+          ? Number(promotion.max_discount)
+          : undefined,
         status: promotion.status,
         target_customers: promotion.target_customers,
-        start_date: new Date(promotion.start_date).toISOString().split('T')[0],
-        end_date: new Date(promotion.end_date).toISOString().split('T')[0],
+        start_date: new Date(promotion.start_date).toISOString().split("T")[0],
+        end_date: new Date(promotion.end_date).toISOString().split("T")[0],
         usage_limit: promotion.usage_limit,
         usage_limit_per_user: promotion.usage_limit_per_user || undefined,
       });
     } else {
       reset({
-        type: 'PERCENTAGE',
-        status: 'INACTIVE',
-        target_customers: 'ALL',
+        type: "PERCENTAGE",
+        status: "INACTIVE",
+        target_customers: "ALL",
         value: 10,
         min_order_value: 0,
         usage_limit: 100,
@@ -139,20 +150,24 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
     }
   };
 
-  const typeValue = watch('type');
-  const statusValue = watch('status');
-  const targetValue = watch('target_customers');
-  const valueSlider = watch('value') || 10;
-  const minOrderSlider = watch('min_order_value') || 0;
-  const usageLimitSlider = watch('usage_limit') || 100;
+  const typeValue = watch("type");
+  const statusValue = watch("status");
+  const targetValue = watch("target_customers");
+  const valueSlider = watch("value") || 10;
+  const minOrderSlider = watch("min_order_value") || 0;
+  const usageLimitSlider = watch("usage_limit") || 100;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl p-0 overflow-y-auto">
         <SheetHeader className="p-6 border-b">
-          <SheetTitle>{isEdit ? 'Edit Promotion' : 'Create New Promotion'}</SheetTitle>
+          <SheetTitle>
+            {isEdit ? "Edit Promotion" : "Create New Promotion"}
+          </SheetTitle>
           <SheetDescription>
-            {isEdit ? 'Update promotion details and settings' : 'Set up a new promotional campaign with discount codes'}
+            {isEdit
+              ? "Update promotion details and settings"
+              : "Set up a new promotional campaign with discount codes"}
           </SheetDescription>
         </SheetHeader>
 
@@ -168,12 +183,14 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Input
                 id="name"
-                {...register('name', { required: 'Name is required' })}
+                {...register("name", { required: "Name is required" })}
                 className="mt-1"
                 placeholder="e.g., Summer Sale 2024"
               />
               {errors.name && (
-                <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
@@ -184,19 +201,21 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Input
                 id="code"
-                {...register('code', {
-                  required: 'Code is required',
+                {...register("code", {
+                  required: "Code is required",
                   pattern: {
                     value: /^[A-Z0-9]+$/,
-                    message: 'Code must be uppercase letters and numbers only'
-                  }
+                    message: "Code must be uppercase letters and numbers only",
+                  },
                 })}
                 className="mt-1 uppercase"
                 placeholder="e.g., SUMMER20"
                 maxLength={20}
               />
               {errors.code && (
-                <p className="text-sm text-red-500 mt-1">{errors.code.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.code.message}
+                </p>
               )}
               <p className="text-xs text-gray-500 mt-1">
                 Uppercase letters and numbers only
@@ -210,7 +229,7 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Textarea
                 id="description"
-                {...register('description')}
+                {...register("description")}
                 className="mt-1"
                 placeholder="Describe this promotion..."
                 rows={3}
@@ -229,7 +248,9 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Select
                 value={typeValue}
-                onValueChange={(value: PromotionType) => setValue('type', value)}
+                onValueChange={(value: PromotionType) =>
+                  setValue("type", value)
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select discount type" />
@@ -244,7 +265,7 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
             </div>
 
             {/* Value with Slider */}
-            {typeValue !== 'FREE_SHIPPING' && (
+            {typeValue !== "FREE_SHIPPING" && (
               <div>
                 <Label htmlFor="value" className="text-gray-700">
                   Discount Value <span className="text-red-500">*</span>
@@ -253,31 +274,33 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                   <div className="flex items-center gap-4">
                     <Slider
                       value={[valueSlider]}
-                      onValueChange={(values) => setValue('value', values[0])}
-                      min={typeValue === 'PERCENTAGE' ? 1 : 100}
-                      max={typeValue === 'PERCENTAGE' ? 100 : 100000}
-                      step={typeValue === 'PERCENTAGE' ? 1 : 100}
+                      onValueChange={(values) => setValue("value", values[0])}
+                      min={typeValue === "PERCENTAGE" ? 1 : 100}
+                      max={typeValue === "PERCENTAGE" ? 100 : 100000}
+                      step={typeValue === "PERCENTAGE" ? 1 : 100}
                       className="flex-1"
                     />
                     <div className="w-32">
                       <Input
                         type="number"
-                        {...register('value', {
-                          required: 'Value is required',
-                          min: { value: 0, message: 'Value must be positive' }
+                        {...register("value", {
+                          required: "Value is required",
+                          min: { value: 0, message: "Value must be positive" },
                         })}
                         className="text-right"
                       />
                     </div>
                   </div>
                   <p className="text-sm text-gray-500">
-                    {typeValue === 'PERCENTAGE'
+                    {typeValue === "PERCENTAGE"
                       ? `${valueSlider}% discount`
                       : `₦${valueSlider.toLocaleString()} discount`}
                   </p>
                 </div>
                 {errors.value && (
-                  <p className="text-sm text-red-500 mt-1">{errors.value.message}</p>
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.value.message}
+                  </p>
                 )}
               </div>
             )}
@@ -291,7 +314,9 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[minOrderSlider]}
-                    onValueChange={(values) => setValue('min_order_value', values[0])}
+                    onValueChange={(values) =>
+                      setValue("min_order_value", values[0])
+                    }
                     min={0}
                     max={500000}
                     step={1000}
@@ -300,8 +325,8 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                   <div className="w-32">
                     <Input
                       type="number"
-                      {...register('min_order_value', {
-                        min: { value: 0, message: 'Must be 0 or greater' }
+                      {...register("min_order_value", {
+                        min: { value: 0, message: "Must be 0 or greater" },
                       })}
                       className="text-right"
                     />
@@ -314,7 +339,7 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
             </div>
 
             {/* Max Discount (for percentage) */}
-            {typeValue === 'PERCENTAGE' && (
+            {typeValue === "PERCENTAGE" && (
               <div>
                 <Label htmlFor="max_discount" className="text-gray-700">
                   Maximum Discount Amount (Optional)
@@ -322,14 +347,15 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 <Input
                   id="max_discount"
                   type="number"
-                  {...register('max_discount', {
-                    min: { value: 0, message: 'Must be positive' }
+                  {...register("max_discount", {
+                    min: { value: 0, message: "Must be positive" },
                   })}
                   className="mt-1"
                   placeholder="e.g., 50000"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Cap the maximum discount amount for percentage-based promotions
+                  Cap the maximum discount amount for percentage-based
+                  promotions
                 </p>
               </div>
             )}
@@ -348,7 +374,9 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[usageLimitSlider]}
-                    onValueChange={(values) => setValue('usage_limit', values[0])}
+                    onValueChange={(values) =>
+                      setValue("usage_limit", values[0])
+                    }
                     min={0}
                     max={10000}
                     step={10}
@@ -357,16 +385,18 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                   <div className="w-32">
                     <Input
                       type="number"
-                      {...register('usage_limit', {
-                        required: 'Usage limit is required',
-                        min: { value: 0, message: 'Must be 0 or greater' }
+                      {...register("usage_limit", {
+                        required: "Usage limit is required",
+                        min: { value: 0, message: "Must be 0 or greater" },
                       })}
                       className="text-right"
                     />
                   </div>
                 </div>
                 <p className="text-sm text-gray-500">
-                  {usageLimitSlider === 0 ? 'Unlimited uses' : `Limited to ${usageLimitSlider} total uses`}
+                  {usageLimitSlider === 0
+                    ? "Unlimited uses"
+                    : `Limited to ${usageLimitSlider} total uses`}
                 </p>
               </div>
             </div>
@@ -379,8 +409,8 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               <Input
                 id="usage_limit_per_user"
                 type="number"
-                {...register('usage_limit_per_user', {
-                  min: { value: 1, message: 'Must be at least 1' }
+                {...register("usage_limit_per_user", {
+                  min: { value: 1, message: "Must be at least 1" },
                 })}
                 className="mt-1"
                 placeholder="e.g., 1"
@@ -404,11 +434,15 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 <Input
                   id="start_date"
                   type="date"
-                  {...register('start_date', { required: 'Start date is required' })}
+                  {...register("start_date", {
+                    required: "Start date is required",
+                  })}
                   className="mt-1"
                 />
                 {errors.start_date && (
-                  <p className="text-sm text-red-500 mt-1">{errors.start_date.message}</p>
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.start_date.message}
+                  </p>
                 )}
               </div>
               <div>
@@ -418,11 +452,15 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 <Input
                   id="end_date"
                   type="date"
-                  {...register('end_date', { required: 'End date is required' })}
+                  {...register("end_date", {
+                    required: "End date is required",
+                  })}
                   className="mt-1"
                 />
                 {errors.end_date && (
-                  <p className="text-sm text-red-500 mt-1">{errors.end_date.message}</p>
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.end_date.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -434,14 +472,18 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Select
                 value={targetValue}
-                onValueChange={(value: PromotionTarget) => setValue('target_customers', value)}
+                onValueChange={(value: PromotionTarget) =>
+                  setValue("target_customers", value)
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select target audience" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Customers</SelectItem>
-                  <SelectItem value="NEW_CUSTOMERS">New Customers Only</SelectItem>
+                  <SelectItem value="NEW_CUSTOMERS">
+                    New Customers Only
+                  </SelectItem>
                   <SelectItem value="VIP">VIP Customers</SelectItem>
                   <SelectItem value="SPECIFIC_GROUP">Specific Group</SelectItem>
                 </SelectContent>
@@ -455,7 +497,9 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               </Label>
               <Select
                 value={statusValue}
-                onValueChange={(value: PromotionStatus) => setValue('status', value)}
+                onValueChange={(value: PromotionStatus) =>
+                  setValue("status", value)
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select status" />
@@ -467,9 +511,12 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 mt-1">
-                {statusValue === 'ACTIVE' && 'Promotion is currently active and can be used'}
-                {statusValue === 'INACTIVE' && 'Promotion is paused and cannot be used'}
-                {statusValue === 'SCHEDULED' && 'Promotion will activate automatically on start date'}
+                {statusValue === "ACTIVE" &&
+                  "Promotion is currently active and can be used"}
+                {statusValue === "INACTIVE" &&
+                  "Promotion is paused and cannot be used"}
+                {statusValue === "SCHEDULED" &&
+                  "Promotion will activate automatically on start date"}
               </p>
             </div>
           </div>
@@ -490,7 +537,11 @@ export function PromotionFormSheet({ promotion, open, onOpenChange, onSuccess }:
               disabled={isSubmitting}
               className="flex-1 bg-[#38761d] hover:bg-[#2d5a16] text-white"
             >
-              {isSubmitting ? 'Saving...' : isEdit ? 'Update Promotion' : 'Create Promotion'}
+              {isSubmitting
+                ? "Saving..."
+                : isEdit
+                  ? "Update Promotion"
+                  : "Create Promotion"}
             </Button>
           </div>
         </form>

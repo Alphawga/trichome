@@ -1,7 +1,7 @@
-import { z } from 'zod'
-import { adminProcedure, staffProcedure } from '../trpc'
-import { TRPCError } from '@trpc/server'
-import { UserRole, UserStatus } from '@prisma/client'
+import { UserRole, UserStatus } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { adminProcedure, staffProcedure } from "../trpc";
 
 // Get all users (admin/staff only)
 export const getUsers = staffProcedure
@@ -12,24 +12,24 @@ export const getUsers = staffProcedure
       role: z.nativeEnum(UserRole).optional(),
       status: z.nativeEnum(UserStatus).optional(),
       search: z.string().optional(),
-    })
+    }),
   )
   .query(async ({ input, ctx }) => {
-    const { page, limit, role, status, search } = input
-    const skip = (page - 1) * limit
+    const { page, limit, role, status, search } = input;
+    const skip = (page - 1) * limit;
 
     const where = {
       ...(role && { role }),
       ...(status && { status }),
       ...(search && {
         OR: [
-          { email: { contains: search, mode: 'insensitive' as const } },
-          { first_name: { contains: search, mode: 'insensitive' as const } },
-          { last_name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { first_name: { contains: search, mode: "insensitive" as const } },
+          { last_name: { contains: search, mode: "insensitive" as const } },
           { phone: { contains: search } },
         ],
       }),
-    }
+    };
 
     const [users, total] = await Promise.all([
       ctx.prisma.user.findMany({
@@ -49,10 +49,10 @@ export const getUsers = staffProcedure
           last_login_at: true,
           created_at: true,
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
       }),
       ctx.prisma.user.count({ where }),
-    ])
+    ]);
 
     return {
       users,
@@ -62,8 +62,8 @@ export const getUsers = staffProcedure
         total,
         pages: Math.ceil(total / limit),
       },
-    }
-  })
+    };
+  });
 
 // Get user by ID (admin/staff only)
 export const getUserById = staffProcedure
@@ -75,7 +75,7 @@ export const getUserById = staffProcedure
         addresses: true,
         orders: {
           take: 5,
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: "desc" },
         },
         permissions: true,
         _count: {
@@ -86,14 +86,14 @@ export const getUserById = staffProcedure
           },
         },
       },
-    })
+    });
 
     if (!user) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' })
+      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
-    return user
-  })
+    return user;
+  });
 
 // Update user (admin only)
 export const updateUser = adminProcedure
@@ -105,18 +105,18 @@ export const updateUser = adminProcedure
       phone: z.string().optional(),
       role: z.nativeEnum(UserRole).optional(),
       status: z.nativeEnum(UserStatus).optional(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
-    const { id, ...data } = input
+    const { id, ...data } = input;
 
     const user = await ctx.prisma.user.update({
       where: { id },
       data,
-    })
+    });
 
-    return { user, message: 'User updated successfully' }
-  })
+    return { user, message: "User updated successfully" };
+  });
 
 // Delete user (admin only)
 export const deleteUser = adminProcedure
@@ -124,10 +124,10 @@ export const deleteUser = adminProcedure
   .mutation(async ({ input, ctx }) => {
     await ctx.prisma.user.delete({
       where: { id: input.id },
-    })
+    });
 
-    return { message: 'User deleted successfully' }
-  })
+    return { message: "User deleted successfully" };
+  });
 
 // Get user permissions (admin/staff only)
 export const getUserPermissions = staffProcedure
@@ -135,11 +135,11 @@ export const getUserPermissions = staffProcedure
   .query(async ({ input, ctx }) => {
     const permissions = await ctx.prisma.userPermission.findMany({
       where: { user_id: input.userId },
-      orderBy: { granted_at: 'desc' },
-    })
+      orderBy: { granted_at: "desc" },
+    });
 
-    return permissions
-  })
+    return permissions;
+  });
 
 // Grant permission to user (admin only)
 export const grantPermission = adminProcedure
@@ -147,7 +147,7 @@ export const grantPermission = adminProcedure
     z.object({
       userId: z.string(),
       permission: z.string(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     const permission = await ctx.prisma.userPermission.create({
@@ -156,10 +156,10 @@ export const grantPermission = adminProcedure
         permission: input.permission,
         granted_by: ctx.user.id,
       },
-    })
+    });
 
-    return { permission, message: 'Permission granted successfully' }
-  })
+    return { permission, message: "Permission granted successfully" };
+  });
 
 // Revoke permission from user (admin only)
 export const revokePermission = adminProcedure
@@ -167,7 +167,7 @@ export const revokePermission = adminProcedure
     z.object({
       userId: z.string(),
       permission: z.string(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     await ctx.prisma.userPermission.delete({
@@ -177,32 +177,34 @@ export const revokePermission = adminProcedure
           permission: input.permission,
         },
       },
-    })
+    });
 
-    return { message: 'Permission revoked successfully' }
-  })
+    return { message: "Permission revoked successfully" };
+  });
 
 // Get user statistics (admin/staff only)
 export const getUserStats = staffProcedure.query(async ({ ctx }) => {
   const [total, active, pending, suspended] = await Promise.all([
-    ctx.prisma.user.count({ where: { role: 'CUSTOMER' } }),
-    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
-    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'PENDING_VERIFICATION' } }),
-    ctx.prisma.user.count({ where: { role: 'CUSTOMER', status: 'SUSPENDED' } }),
-  ])
+    ctx.prisma.user.count({ where: { role: "CUSTOMER" } }),
+    ctx.prisma.user.count({ where: { role: "CUSTOMER", status: "ACTIVE" } }),
+    ctx.prisma.user.count({
+      where: { role: "CUSTOMER", status: "PENDING_VERIFICATION" },
+    }),
+    ctx.prisma.user.count({ where: { role: "CUSTOMER", status: "SUSPENDED" } }),
+  ]);
 
   // Calculate total revenue from completed orders
   const revenue = await ctx.prisma.order.aggregate({
     where: {
-      payment_status: 'COMPLETED',
+      payment_status: "COMPLETED",
     },
     _sum: {
       total: true,
     },
-  })
+  });
 
   // Get total orders count
-  const totalOrders = await ctx.prisma.order.count()
+  const totalOrders = await ctx.prisma.order.count();
 
   return {
     total,
@@ -211,9 +213,10 @@ export const getUserStats = staffProcedure.query(async ({ ctx }) => {
     suspended,
     revenue: revenue._sum.total || 0,
     totalOrders,
-    avgOrderValue: totalOrders > 0 ? Number(revenue._sum.total || 0) / totalOrders : 0,
-  }
-})
+    avgOrderValue:
+      totalOrders > 0 ? Number(revenue._sum.total || 0) / totalOrders : 0,
+  };
+});
 
 // Get customers with order statistics (admin/staff only)
 export const getCustomers = staffProcedure
@@ -223,24 +226,24 @@ export const getCustomers = staffProcedure
       limit: z.number().min(1).max(100).default(50),
       status: z.nativeEnum(UserStatus).optional(),
       search: z.string().optional(),
-    })
+    }),
   )
   .query(async ({ input, ctx }) => {
-    const { page, limit, status, search } = input
-    const skip = (page - 1) * limit
+    const { page, limit, status, search } = input;
+    const skip = (page - 1) * limit;
 
     const where = {
-      role: 'CUSTOMER' as UserRole,
+      role: "CUSTOMER" as UserRole,
       ...(status && { status }),
       ...(search && {
         OR: [
-          { email: { contains: search, mode: 'insensitive' as const } },
-          { first_name: { contains: search, mode: 'insensitive' as const } },
-          { last_name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { first_name: { contains: search, mode: "insensitive" as const } },
+          { last_name: { contains: search, mode: "insensitive" as const } },
           { phone: { contains: search } },
         ],
       }),
-    }
+    };
 
     const [customers, total] = await Promise.all([
       ctx.prisma.user.findMany({
@@ -265,7 +268,7 @@ export const getCustomers = staffProcedure
           },
           orders: {
             where: {
-              payment_status: 'COMPLETED',
+              payment_status: "COMPLETED",
             },
             select: {
               total: true,
@@ -284,22 +287,25 @@ export const getCustomers = staffProcedure
             },
           },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
       }),
       ctx.prisma.user.count({ where }),
-    ])
+    ]);
 
     // Calculate totals for each customer
     const customersWithStats = customers.map((customer) => {
       const totalSpent = customer.orders.reduce(
         (sum, order) => sum + Number(order.total),
-        0
-      )
-      const lastOrder = customer.orders.length > 0
-        ? customer.orders.sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )[0]
-        : null
+        0,
+      );
+      const lastOrder =
+        customer.orders.length > 0
+          ? customer.orders.sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime(),
+            )[0]
+          : null;
 
       return {
         ...customer,
@@ -307,8 +313,8 @@ export const getCustomers = staffProcedure
         totalSpent,
         lastOrderDate: lastOrder?.created_at,
         loyaltyPoints: Math.floor(totalSpent / 1000), // 1 point per 1000 spent
-      }
-    })
+      };
+    });
 
     return {
       customers: customersWithStats,
@@ -318,5 +324,5 @@ export const getCustomers = staffProcedure
         total,
         pages: Math.ceil(total / limit),
       },
-    }
-  })
+    };
+  });

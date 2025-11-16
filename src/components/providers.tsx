@@ -1,27 +1,30 @@
-'use client'
+"use client";
 
-import { getBaseUrl } from '@/lib/helper-function'
-import { trpc } from '@/utils/trpc'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
-import { useState } from 'react'
-import superjson from 'superjson'
-import { SessionProvider } from 'next-auth/react'
-import { AuthProvider } from '@/app/contexts/auth-context'
-import { Toaster } from '@/components/ui/sonner'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { httpBatchLink } from "@trpc/client";
+import { SessionProvider } from "next-auth/react";
+import { useState } from "react";
+import superjson from "superjson";
+import { AuthProvider } from "@/app/contexts/auth-context";
+import { Toaster } from "@/components/ui/sonner";
+import { getBaseUrl } from "@/lib/helper-function";
+import { trpc } from "@/utils/trpc";
 
 interface ProvidersProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export default function Providers({ children }: ProvidersProps) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 5 * 60 * 1000,
-      },
-    }
-  }))
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000,
+          },
+        },
+      }),
+  );
 
   const [trpcClient] = useState(() =>
     trpc.createClient({
@@ -31,8 +34,8 @@ export default function Providers({ children }: ProvidersProps) {
           transformer: superjson,
         }),
       ],
-    })
-  )
+    }),
+  );
 
   return (
     <SessionProvider>
@@ -45,5 +48,5 @@ export default function Providers({ children }: ProvidersProps) {
         </QueryClientProvider>
       </trpc.Provider>
     </SessionProvider>
-  )
+  );
 }

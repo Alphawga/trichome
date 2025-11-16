@@ -1,43 +1,58 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
+import Image from "next/image";
+import Link from "next/link";
+import type React from "react";
 
 export const Hero: React.FC = () => {
   return (
-    <section className="relative text-trichomes-forest overflow-hidden h-[500px] sm:h-[600px] lg:h-[700px] bg-trichomes-soft">
-      {/* Background Image - Centered, responsive size */}
-      <div
-        className="absolute inset-0 bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url(/back-2.png)`,
-          backgroundSize: '95%',
-        }}
-      />
+    <section className="relative text-trichomes-forest overflow-hidden min-h-[60vh] ">
+      {/* Background image using Next/Image for optimization and control */}
+      <div className="absolute inset-0">
+        <Image
+          src="/hero/hero-image.jpg"
+          alt="Natural skincare products with coconut and botanical ingredients"
+          fill
+          className="object-cover object-center mt-15 md:mt-0"
+          priority
+          quality={100}
+          sizes="100vw"
+        />
+      </div>
 
-      {/* Overlay - stronger on mobile for better text readability */}
-      <div className="absolute inset-0 bg-gradient-to-r from-trichomes-soft/80 via-trichomes-soft/60 to-transparent sm:from-trichomes-soft/70 sm:via-trichomes-soft/50"></div>
+      {/* Mobile: gradient top bar to blend into the image */}
+      <div className="absolute top-0 inset-x-0 h-[235px] md:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
 
-      {/* Content - responsive padding and centering */}
-      <div className="w-full h-full flex flex-col justify-center items-start relative z-10 px-6 sm:px-12 lg:px-20 lg:mx-[10%] max-w-7xl">
+      <div className="hidden lg:block absolute inset-0 bg-[#1E3024]/10 pointer-events-none" />
 
-        <h1 className="text-[32px] sm:text-[48px] lg:text-[60px]  max-w-2xl leading-[1.1] text-trichomes-forest font-heading tracking-tight">
-          Natural Beauty,<br />Naturally Yours
-        </h1>
+      <div className="relative z-10 w-full h-full px-4  md:mx-auto  max-w-[1900px] lg:px-12 xl:px-20 py-8 sm:py-12 lg:py-20 flex flex-col justify-start lg:justify-center items-start">
+        {/* Text Container - Constrained width, left-aligned */}
+        <div className="w-full  max-w-md md:max-w-xl ml-5 md:ml-0">
+          {/* Headline - Classy Vogue font */}
+          <h1 className=" mx-auto items-center justify-center text-[48px] md:text-[64px] leading-[1.1] text-trichomes-forest tracking-tight mb-4 sm:mb-5 lg:mb-6 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-heading">
+            Natural Beauty,
+            <br />
+            Naturally Yours
+          </h1>
 
-        {/* Subheading - shorter on mobile per design guide */}
-        <p className="mt-4 sm:mt-6 max-w-xl text-[15px] sm:text-[17px] lg:text-[18px] text-trichomes-primary leading-relaxed font-body font-normal">
-          <span className="hidden sm:inline">Where science meets nature — luxury simplified. Discover our range of natural, effective skincare products crafted with care.</span>
-          <span className="sm:hidden">Where science meets nature — luxury simplified.</span>
-        </p>
+          {/* Body Text - Inter font - Full text on mobile */}
+          <p
+            className="mb-6 sm:mb-8 lg:mb-10 text-[14px] sm:text-[15px] lg:text-[17px] text-trichomes-forest/70 leading-relaxed font-normal animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
+            style={{ animationDelay: "150ms", animationFillMode: "both" }}
+          >
+            Where science meets nature — luxury simplified. Discover our range
+            of natural, effective skincare products crafted with care.
+          </p>
 
-        {/* CTA Button - responsive sizing */}
-        <Link
-          href="/shop"
-          className="mt-6 sm:mt-8 inline-block bg-trichomes-gold text-trichomes-forest font-semibold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg hover:bg-trichomes-gold-hover transition-all duration-150 ease-out hover:shadow-lg font-body"
-        >
-          Shop Now
-        </Link>
+          {/* CTA Button - Inter font - Rounded corners */}
+          <Link
+            href="/products"
+            className="inline-block bg-[#407029] text-white rounded-lg font-semibold py-3 px-7 sm:py-2.5 sm:px-10 lg:py-3 lg:px-12 text-[15px] sm:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
+            style={{ animationDelay: "300ms", animationFillMode: "both" }}
+          >
+            Shop Now
+          </Link>
+        </div>
       </div>
     </section>
   );

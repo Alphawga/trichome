@@ -1,4 +1,4 @@
-declare module 'monnify-js' {
-    const Monnify: any;
-    export default Monnify;
+declare module "monnify-js" {
+  const Monnify: unknown;
+  export default Monnify;
 }

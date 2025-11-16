@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { LogoIcon, EyeIcon, GoogleIcon, CheckCircleIcon } from '@/components/ui/icons';
-import { useAuth } from '../../contexts/auth-context';
-import Image from 'next/image';
-import { signUpSchema, type SignUpInput } from '@/lib/validations/user';
-import { ZodError } from 'zod';
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { ZodError } from "zod";
+import { EyeIcon, GoogleIcon } from "@/components/ui/icons";
+import { signUpSchema } from "@/lib/validations/user";
+import { useAuth } from "../../contexts/auth-context";
 
 interface SignUpForm {
   first_name: string;
@@ -27,51 +27,59 @@ interface PasswordStrength {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { signUpWithCredentials, signInWithGoogle, isLoading: authLoading } = useAuth();
-  const [shouldRedirectToCheckout, setShouldRedirectToCheckout] = useState(false);
+  const {
+    signUpWithCredentials,
+    signInWithGoogle,
+    isLoading: authLoading,
+  } = useAuth();
+  const [shouldRedirectToCheckout, setShouldRedirectToCheckout] =
+    useState(false);
 
   useEffect(() => {
     // Check if user came from cart and should redirect to checkout after registration
-    const checkoutRedirect = localStorage.getItem('trichomes_checkout_redirect');
-    if (checkoutRedirect === 'true') {
+    const checkoutRedirect = localStorage.getItem(
+      "trichomes_checkout_redirect",
+    );
+    if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
     }
   }, []);
 
   const [form, setForm] = useState<SignUpForm>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
     acceptTerms: false,
-    newsletterOptIn: true
+    newsletterOptIn: true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<SignUpForm>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isLoading = authLoading;
+  const isLoading = authLoading || isSubmitting;
 
   const getPasswordStrength = (password: string): PasswordStrength => {
     let score = 0;
     const feedback: string[] = [];
 
     if (password.length >= 8) score++;
-    else feedback.push('At least 8 characters');
+    else feedback.push("At least 8 characters");
 
     if (/[A-Z]/.test(password)) score++;
-    else feedback.push('One uppercase letter');
+    else feedback.push("One uppercase letter");
 
     if (/[a-z]/.test(password)) score++;
-    else feedback.push('One lowercase letter');
+    else feedback.push("One lowercase letter");
 
     if (/[0-9]/.test(password)) score++;
-    else feedback.push('One number');
+    else feedback.push("One number");
 
     if (/[^A-Za-z0-9]/.test(password)) score++;
-    else feedback.push('One special character');
+    else feedback.push("One special character");
 
     return { score, feedback };
   };
@@ -107,14 +115,14 @@ export default function SignUpPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
 
     // Clear specific error when user starts typing
     if (errors[name as keyof SignUpForm]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -123,6 +131,7 @@ export default function SignUpPage() {
 
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
     try {
       // Following CODING_RULES.md - data aligned with Prisma model
       await signUpWithCredentials({
@@ -134,23 +143,25 @@ export default function SignUpPage() {
       });
 
       // Clear checkout redirect flag
-      localStorage.removeItem('trichomes_checkout_redirect');
+      localStorage.removeItem("trichomes_checkout_redirect");
 
       // Redirect based on context
       if (shouldRedirectToCheckout) {
-        router.push('/checkout');
+        router.push("/checkout");
       } else {
-        router.push('/');
+        router.push("/");
       }
     } catch (err: unknown) {
       // Following CODING_RULES.md - proper error handling
-      if (err instanceof Error && err.message.includes('already exists')) {
-        setErrors({ email: 'An account with this email already exists' });
+      if (err instanceof Error && err.message.includes("already exists")) {
+        setErrors({ email: "An account with this email already exists" });
       } else if (err instanceof Error) {
         setErrors({ email: err.message });
       } else {
-        setErrors({ email: 'Registration failed. Please try again.' });
+        setErrors({ email: "Registration failed. Please try again." });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -158,15 +169,20 @@ export default function SignUpPage() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      
-      console.error('Google sign-up failed:', error);
-      setErrors({ email: 'Google sign-up failed. Please try again.' });
+      console.error("Google sign-up failed:", error);
+      setErrors({ email: "Google sign-up failed. Please try again." });
     }
   };
 
   const passwordStrength = getPasswordStrength(form.password);
-  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const strengthColors = [
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-yellow-500",
+    "bg-blue-500",
+    "bg-green-500",
+  ];
+  const strengthLabels = ["Very Weak", "Weak", "Fair", "Good", "Strong"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
@@ -174,12 +190,22 @@ export default function SignUpPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-          <Link href="/" className="flex items-center h-full">
-           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
-          </Link>
-            </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h1>
-          <p className="text-gray-600">Join us for the best skincare experience</p>
+            <Link href="/" className="flex items-center h-full">
+              <Image
+                src="/T3.png"
+                alt="Trichomes Logo"
+                width={120}
+                height={100}
+                className="object-contain"
+              />
+            </Link>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Create your account
+          </h1>
+          <p className="text-gray-600">
+            Join us for the best skincare experience
+          </p>
         </div>
 
         {/* Sign Up Form */}
@@ -188,7 +214,10 @@ export default function SignUpPage() {
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="first_name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   First Name
                 </label>
                 <input
@@ -198,15 +227,22 @@ export default function SignUpPage() {
                   value={form.first_name}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                    errors.first_name ? 'border-red-500' : 'border-gray-300'
+                    errors.first_name ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="First name"
                 />
-                {errors.first_name && <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>}
+                {errors.first_name && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.first_name}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="last_name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Last Name
                 </label>
                 <input
@@ -216,17 +252,24 @@ export default function SignUpPage() {
                   value={form.last_name}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                    errors.last_name ? 'border-red-500' : 'border-gray-300'
+                    errors.last_name ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Last name"
                 />
-                {errors.last_name && <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>}
+                {errors.last_name && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.last_name}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -236,16 +279,21 @@ export default function SignUpPage() {
                 value={form.email}
                 onChange={handleInputChange}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                  errors.email ? "border-red-500" : "border-gray-300"
                 }`}
                 placeholder="Enter your email"
               />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             {/* Phone */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Phone Number
               </label>
               <input
@@ -255,27 +303,32 @@ export default function SignUpPage() {
                 value={form.phone}
                 onChange={handleInputChange}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
+                  errors.phone ? "border-red-500" : "border-gray-300"
                 }`}
                 placeholder="+234 801 234 5678"
               />
-              {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={form.password}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
+                    errors.password ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Create a password"
                 />
@@ -291,44 +344,54 @@ export default function SignUpPage() {
               {form.password && (
                 <div className="mt-2">
                   <div className="flex space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
+                    {["a", "b", "c", "d", "e"].map((key, i) => (
                       <div
-                        key={i}
+                        key={key}
                         className={`h-1 flex-1 rounded-full ${
-                          i < passwordStrength.score ? strengthColors[passwordStrength.score - 1] : 'bg-gray-200'
+                          i < passwordStrength.score
+                            ? strengthColors[passwordStrength.score - 1]
+                            : "bg-gray-200"
                         }`}
                       />
                     ))}
                   </div>
                   <p className="text-xs text-gray-600">
-                    Password strength: {strengthLabels[passwordStrength.score - 1] || 'Very Weak'}
+                    Password strength:{" "}
+                    {strengthLabels[passwordStrength.score - 1] || "Very Weak"}
                   </p>
                   {passwordStrength.feedback.length > 0 && (
                     <ul className="text-xs text-gray-500 mt-1 space-y-1">
-                      {passwordStrength.feedback.map((item, i) => (
-                        <li key={i}>• {item}</li>
+                      {passwordStrength.feedback.map((item) => (
+                        <li key={item}>• {item}</li>
                       ))}
                     </ul>
                   )}
                 </div>
               )}
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm Password
               </label>
               <div className="relative">
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-300"
                   }`}
                   placeholder="Confirm your password"
                 />
@@ -340,7 +403,11 @@ export default function SignUpPage() {
                   <EyeIcon className="w-5 h-5" />
                 </button>
               </div>
-              {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
+              )}
             </div>
 
             {/* Checkboxes */}
@@ -353,21 +420,32 @@ export default function SignUpPage() {
                   checked={form.acceptTerms}
                   onChange={handleInputChange}
                   className={`mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded ${
-                    errors.acceptTerms ? 'border-red-500' : ''
+                    errors.acceptTerms ? "border-red-500" : ""
                   }`}
                 />
-                <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-700">
-                  I agree to the{' '}
-                  <Link href="/terms" className="text-green-600 hover:text-green-700 underline">
+                <label
+                  htmlFor="acceptTerms"
+                  className="ml-2 text-sm text-gray-700"
+                >
+                  I agree to the{" "}
+                  <Link
+                    href="/terms"
+                    className="text-green-600 hover:text-green-700 underline"
+                  >
                     Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="/privacy" className="text-green-600 hover:text-green-700 underline">
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy"
+                    className="text-green-600 hover:text-green-700 underline"
+                  >
                     Privacy Policy
                   </Link>
                 </label>
               </div>
-              {errors.acceptTerms && <p className="text-sm text-red-600">{errors.acceptTerms}</p>}
+              {errors.acceptTerms && (
+                <p className="text-sm text-red-600">{errors.acceptTerms}</p>
+              )}
 
               <div className="flex items-center">
                 <input
@@ -378,7 +456,10 @@ export default function SignUpPage() {
                   onChange={handleInputChange}
                   className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                 />
-                <label htmlFor="newsletterOptIn" className="ml-2 text-sm text-gray-700">
+                <label
+                  htmlFor="newsletterOptIn"
+                  className="ml-2 text-sm text-gray-700"
+                >
                   Send me skincare tips and special offers
                 </label>
               </div>
@@ -395,7 +476,7 @@ export default function SignUpPage() {
                   Creating Account...
                 </>
               ) : (
-                'Create Account'
+                "Create Account"
               )}
             </button>
           </form>
@@ -409,6 +490,7 @@ export default function SignUpPage() {
 
           {/* Google Sign Up */}
           <button
+            type="button"
             onClick={handleGoogleSignUp}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >
@@ -418,8 +500,11 @@ export default function SignUpPage() {
 
           {/* Sign In Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link href="/auth/signin" className="text-green-600 hover:text-green-700 font-medium">
+            Already have an account?{" "}
+            <Link
+              href="/auth/signin"
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
               Sign in
             </Link>
           </p>

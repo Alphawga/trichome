@@ -1,26 +1,41 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { SearchIcon, ExportIcon, EyeIcon, EditIcon, MailIcon } from '@/components/ui/icons';
-import { trpc } from '@/utils/trpc';
-import { UserStatus } from '@prisma/client';
-import type { User, Address } from '@prisma/client';
-import { DataTable, type Column } from '@/components/ui/data-table';
-import { toast } from 'sonner';
-import { CustomerViewSheet } from './CustomerViewSheet';
-import { CustomerEditSheet } from './CustomerEditSheet';
+import type { Address, User, UserStatus } from "@prisma/client";
+import Image from "next/image";
+import type React from "react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { type Column, DataTable } from "@/components/ui/data-table";
+import {
+  EditIcon,
+  ExportIcon,
+  EyeIcon,
+  MailIcon,
+  SearchIcon,
+} from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
+import { CustomerEditSheet } from "./CustomerEditSheet";
+import { CustomerViewSheet } from "./CustomerViewSheet";
 
 // Type for customer from backend (extending Prisma User with computed fields)
 type Customer = Pick<
   User,
-  'id' | 'email' | 'first_name' | 'last_name' | 'phone' | 'status' | 'role' | 'image' | 'created_at' | 'last_login_at'
+  | "id"
+  | "email"
+  | "first_name"
+  | "last_name"
+  | "phone"
+  | "status"
+  | "role"
+  | "image"
+  | "created_at"
+  | "last_login_at"
 > & {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate?: Date;
   loyaltyPoints: number;
-  addresses: Array<Pick<Address, 'city' | 'state' | 'country'>>;
+  addresses: Array<Pick<Address, "city" | "state" | "country">>;
 };
 
 // Actions dropdown component
@@ -39,27 +54,34 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   onEdit,
   onContact,
   openDropdownId,
-  setOpenDropdownId
+  setOpenDropdownId,
 }) => (
   <div className="relative">
     <button
-      onClick={() => setOpenDropdownId(openDropdownId === customer.id ? null : customer.id)}
+      type="button"
+      onClick={() =>
+        setOpenDropdownId(openDropdownId === customer.id ? null : customer.id)
+      }
       className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
       title="Actions"
     >
       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <title>Open actions</title>
         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
       </svg>
     </button>
 
     {openDropdownId === customer.id && (
       <>
-        <div
+        <button
+          type="button"
           className="fixed inset-0 z-10"
           onClick={() => setOpenDropdownId(null)}
+          aria-label="Close actions menu"
         />
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
           <button
+            type="button"
             onClick={() => {
               onView(customer.id);
               setOpenDropdownId(null);
@@ -70,6 +92,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
             View Details
           </button>
           <button
+            type="button"
             onClick={() => {
               onEdit(customer.id);
               setOpenDropdownId(null);
@@ -81,6 +104,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
           </button>
           <div className="border-t border-gray-100 my-1" />
           <button
+            type="button"
             onClick={() => {
               onContact(customer.email);
               setOpenDropdownId(null);
@@ -97,8 +121,8 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
 );
 
 export default function AdminCustomersPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<UserStatus | 'All'>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<UserStatus | "All">("All");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [editCustomerId, setEditCustomerId] = useState<string | null>(null);
@@ -106,13 +130,20 @@ export default function AdminCustomersPage() {
   // Define table columns
   const columns: Column<Customer>[] = [
     {
-      header: 'Customer',
+      header: "Customer",
       cell: (customer) => (
         <div className="flex items-center">
           <div className="relative w-10 h-10 mr-4 flex-shrink-0">
             <Image
-              src={customer.image || 'https://placehold.co/80x80/38761d/white?text=' + (customer.first_name?.[0] || 'U')}
-              alt={`${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer'}
+              src={
+                customer.image ||
+                "https://placehold.co/80x80/38761d/white?text=" +
+                  (customer.first_name?.[0] || "U")
+              }
+              alt={
+                `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
+                "Customer"
+              }
               fill
               className="rounded-full object-cover"
             />
@@ -120,81 +151,94 @@ export default function AdminCustomersPage() {
           <div>
             <span className="font-medium text-gray-900">
               {customer.first_name || customer.last_name
-                ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
-                : 'No name'}
+                ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
+                : "No name"}
             </span>
-            <p className="text-sm text-gray-500">ID: {customer.id.slice(0, 8)}</p>
+            <p className="text-sm text-gray-500">
+              ID: {customer.id.slice(0, 8)}
+            </p>
           </div>
         </div>
       ),
     },
     {
-      header: 'Contact',
+      header: "Contact",
       cell: (customer) => (
         <div>
           <span className="text-gray-900">{customer.email}</span>
-          <p className="text-sm text-gray-500">{customer.phone || 'No phone'}</p>
+          <p className="text-sm text-gray-500">
+            {customer.phone || "No phone"}
+          </p>
         </div>
       ),
     },
     {
-      header: 'Location',
+      header: "Location",
       cell: (customer) => {
         const address = customer.addresses[0];
         return (
           <span className="text-gray-600">
-            {address ? `${address.city}, ${address.state}` : 'No address'}
+            {address ? `${address.city}, ${address.state}` : "No address"}
           </span>
         );
       },
     },
     {
-      header: 'Orders',
+      header: "Orders",
       cell: (customer) => (
         <span className="text-gray-600">{customer.totalOrders}</span>
       ),
     },
     {
-      header: 'Total Spent',
+      header: "Total Spent",
       cell: (customer) => (
-        <span className="text-gray-900 font-medium">₦{customer.totalSpent.toLocaleString()}</span>
+        <span className="text-gray-900 font-medium">
+          ₦{customer.totalSpent.toLocaleString()}
+        </span>
       ),
     },
     {
-      header: 'Loyalty Points',
+      header: "Loyalty Points",
       cell: (customer) => (
         <span className="text-gray-600">{customer.loyaltyPoints}</span>
       ),
     },
     {
-      header: 'Status',
+      header: "Status",
       cell: (customer) => (
-        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          customer.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-          customer.status === 'INACTIVE' ? 'bg-gray-100 text-gray-800' :
-          customer.status === 'SUSPENDED' ? 'bg-red-100 text-red-800' :
-          'bg-yellow-100 text-yellow-800'
-        }`}>
-          {customer.status === 'PENDING_VERIFICATION' ? 'Pending' : customer.status.toLowerCase()}
+        <span
+          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            customer.status === "ACTIVE"
+              ? "bg-green-100 text-green-800"
+              : customer.status === "INACTIVE"
+                ? "bg-gray-100 text-gray-800"
+                : customer.status === "SUSPENDED"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
+          }`}
+        >
+          {customer.status === "PENDING_VERIFICATION"
+            ? "Pending"
+            : customer.status.toLowerCase()}
         </span>
       ),
     },
     {
-      header: 'Last Order',
+      header: "Last Order",
       cell: (customer) => (
         <span className="text-gray-600">
           {customer.lastOrderDate
-            ? new Date(customer.lastOrderDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
+            ? new Date(customer.lastOrderDate).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
               })
-            : 'No orders'}
+            : "No orders"}
         </span>
       ),
     },
     {
-      header: 'Actions',
+      header: "Actions",
       cell: (customer) => (
         <ActionsDropdown
           customer={customer}
@@ -205,7 +249,7 @@ export default function AdminCustomersPage() {
           setOpenDropdownId={setOpenDropdownId}
         />
       ),
-      className: 'w-20',
+      className: "w-20",
     },
   ];
 
@@ -214,12 +258,12 @@ export default function AdminCustomersPage() {
     {
       page: 1,
       limit: 100,
-      status: statusFilter !== 'All' ? statusFilter : undefined,
+      status: statusFilter !== "All" ? statusFilter : undefined,
       search: searchTerm || undefined,
     },
     {
       refetchOnWindowFocus: false,
-    }
+    },
   );
 
   // Fetch customer statistics
@@ -243,22 +287,30 @@ export default function AdminCustomersPage() {
   };
 
   // Get selected customers for sheets
-  const selectedViewCustomer = customers.find(c => c.id === viewCustomerId) || null;
-  const selectedEditCustomer = customers.find(c => c.id === editCustomerId) || null;
+  const selectedViewCustomer =
+    customers.find((c) => c.id === viewCustomerId) || null;
+  const selectedEditCustomer =
+    customers.find((c) => c.id === editCustomerId) || null;
 
   const handleExportCSV = () => {
-    console.log('Export customers CSV');
-    toast.info('CSV export coming soon');
+    console.log("Export customers CSV");
+    toast.info("CSV export coming soon");
   };
 
-  const statuses: Array<UserStatus | 'All'> = ['All', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'];
+  const statuses: Array<UserStatus | "All"> = [
+    "All",
+    "ACTIVE",
+    "INACTIVE",
+    "SUSPENDED",
+    "PENDING_VERIFICATION",
+  ];
 
-  const statusLabels: Record<UserStatus | 'All', string> = {
-    All: 'All Status',
-    ACTIVE: 'Active',
-    INACTIVE: 'Inactive',
-    SUSPENDED: 'Suspended',
-    PENDING_VERIFICATION: 'Pending Verification',
+  const statusLabels: Record<UserStatus | "All", string> = {
+    All: "All Status",
+    ACTIVE: "Active",
+    INACTIVE: "Inactive",
+    SUSPENDED: "Suspended",
+    PENDING_VERIFICATION: "Pending Verification",
   };
 
   // Get top customers by spending
@@ -268,7 +320,7 @@ export default function AdminCustomersPage() {
 
   // Get location distribution
   const locationMap = new Map<string, number>();
-  customers.forEach(customer => {
+  customers.forEach((customer) => {
     const location = customer.addresses[0];
     if (location) {
       const key = location.state;
@@ -283,26 +335,29 @@ export default function AdminCustomersPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Customers Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Customers Management
+        </h1>
         <p className="text-gray-600">Manage customer relationships and data</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {statsQuery.isLoading ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                  <div className="ml-4 flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-16"></div>
-                  </div>
+          [1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
+            >
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                <div className="ml-4 flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
                 </div>
               </div>
-            ))}
-          </>
+            </div>
+          ))
         ) : stats ? (
           <>
             <div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -336,7 +391,9 @@ export default function AdminCustomersPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Total Revenue</p>
-                  <p className="text-2xl font-bold">₦{Number(stats.revenue).toLocaleString()}</p>
+                  <p className="text-2xl font-bold">
+                    ₦{Number(stats.revenue).toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -348,7 +405,9 @@ export default function AdminCustomersPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Avg Order Value</p>
-                  <p className="text-2xl font-bold">₦{Math.round(stats.avgOrderValue).toLocaleString()}</p>
+                  <p className="text-2xl font-bold">
+                    ₦{Math.round(stats.avgOrderValue).toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -378,15 +437,20 @@ export default function AdminCustomersPage() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as UserStatus | 'All')}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as UserStatus | "All")
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
           >
-            {statuses.map(status => (
-              <option key={status} value={status}>{statusLabels[status]}</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabels[status]}
+              </option>
             ))}
           </select>
 
           <button
+            type="button"
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium transition-colors"
           >
@@ -409,16 +473,28 @@ export default function AdminCustomersPage() {
       {/* Customer Insights */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Top Customers by Spending</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Top Customers by Spending
+          </h3>
           <div className="space-y-3">
             {topCustomers.length > 0 ? (
-              topCustomers.map(customer => (
-                <div key={customer.id} className="flex items-center justify-between">
+              topCustomers.map((customer) => (
+                <div
+                  key={customer.id}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center">
                     <div className="relative w-8 h-8 mr-3">
                       <Image
-                        src={customer.image || 'https://placehold.co/80x80/38761d/white?text=' + (customer.first_name?.[0] || 'U')}
-                        alt={`${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Customer'}
+                        src={
+                          customer.image ||
+                          "https://placehold.co/80x80/38761d/white?text=" +
+                            (customer.first_name?.[0] || "U")
+                        }
+                        alt={
+                          `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
+                          "Customer"
+                        }
                         fill
                         className="rounded-full object-cover"
                       />
@@ -426,31 +502,43 @@ export default function AdminCustomersPage() {
                     <div>
                       <p className="font-medium">
                         {customer.first_name || customer.last_name
-                          ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
+                          ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
                           : customer.email}
                       </p>
-                      <p className="text-sm text-gray-500">{customer.totalOrders} orders</p>
+                      <p className="text-sm text-gray-500">
+                        {customer.totalOrders} orders
+                      </p>
                     </div>
                   </div>
-                  <p className="font-semibold">₦{customer.totalSpent.toLocaleString()}</p>
+                  <p className="font-semibold">
+                    ₦{customer.totalSpent.toLocaleString()}
+                  </p>
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-4">No customer data available</p>
+              <p className="text-gray-500 text-center py-4">
+                No customer data available
+              </p>
             )}
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Customer Distribution by Location</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Customer Distribution by Location
+          </h3>
           <div className="space-y-3">
             {locationDistribution.length > 0 ? (
               locationDistribution.map(([location, count]) => {
-                const percentage = customers.length > 0
-                  ? Math.round((count / customers.length) * 100)
-                  : 0;
+                const percentage =
+                  customers.length > 0
+                    ? Math.round((count / customers.length) * 100)
+                    : 0;
                 return (
-                  <div key={location} className="flex items-center justify-between">
+                  <div
+                    key={location}
+                    className="flex items-center justify-between"
+                  >
                     <span className="font-medium">{location}</span>
                     <div className="flex items-center">
                       <div className="w-24 bg-gray-200 rounded-full h-2 mr-3">
@@ -465,7 +553,9 @@ export default function AdminCustomersPage() {
                 );
               })
             ) : (
-              <p className="text-gray-500 text-center py-4">No location data available</p>
+              <p className="text-gray-500 text-center py-4">
+                No location data available
+              </p>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RangeSliderProps {
   min: number;
@@ -19,10 +20,10 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   maxValue,
   onChange,
   step = 1000,
-  className = '',
+  className = "",
 }) => {
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
+  const [isDragging, setIsDragging] = useState<"min" | "max" | null>(null);
   const [localMin, setLocalMin] = useState(minValue);
   const [localMax, setLocalMax] = useState(maxValue);
 
@@ -35,12 +36,15 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
     return ((value - min) / (max - min)) * 100;
   };
 
-  const getValueFromPercentage = (percentage: number) => {
-    const value = min + (percentage / 100) * (max - min);
-    return Math.round(value / step) * step;
-  };
+  const getValueFromPercentage = useCallback(
+    (percentage: number) => {
+      const value = min + (percentage / 100) * (max - min);
+      return Math.round(value / step) * step;
+    },
+    [min, max, step],
+  );
 
-  const handleMouseDown = useCallback((type: 'min' | 'max') => {
+  const handleMouseDown = useCallback((type: "min" | "max") => {
     setIsDragging(type);
   }, []);
 
@@ -49,11 +53,14 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
       if (!isDragging || !sliderRef.current) return;
 
       const rect = sliderRef.current.getBoundingClientRect();
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const percentage = Math.max(
+        0,
+        Math.min(100, ((clientX - rect.left) / rect.width) * 100),
+      );
       const value = getValueFromPercentage(percentage);
 
-      if (isDragging === 'min') {
+      if (isDragging === "min") {
         const newMin = Math.max(min, Math.min(value, localMax - step));
         setLocalMin(newMin);
         onChange(newMin, localMax);
@@ -63,7 +70,16 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
         onChange(localMin, newMax);
       }
     },
-    [isDragging, localMin, localMax, min, max, step, onChange]
+    [
+      isDragging,
+      localMin,
+      localMax,
+      min,
+      max,
+      step,
+      onChange,
+      getValueFromPercentage,
+    ],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -76,15 +92,15 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleMouseMove);
-      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("touchmove", handleMouseMove);
+      document.addEventListener("touchend", handleTouchEnd);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.removeEventListener('touchmove', handleMouseMove);
-        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        document.removeEventListener("touchmove", handleMouseMove);
+        document.removeEventListener("touchend", handleTouchEnd);
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp, handleTouchEnd]);
@@ -93,7 +109,10 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   const maxPercentage = getPercentage(localMax);
 
   return (
-    <div ref={sliderRef} className={`relative w-full h-1.5 sm:h-2 bg-[#1E3024]/30 ${className}`}>
+    <div
+      ref={sliderRef}
+      className={`relative w-full h-1.5 sm:h-2 bg-[#1E3024]/30 ${className}`}
+    >
       {/* Active range track */}
       <div
         className="absolute h-full bg-[#1E3024]"
@@ -102,35 +121,38 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
           width: `${maxPercentage - minPercentage}%`,
         }}
       />
-      
+
       {/* Min handle */}
-      <div
+      <button
+        type="button"
         className="absolute w-3 h-3 sm:w-3.5 sm:h-3.5 bg-[#1E3024] rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-125 active:scale-110 transition-transform duration-150 ease-out shadow-sm touch-none"
         style={{ left: `${minPercentage}%` }}
         onMouseDown={(e) => {
           e.preventDefault();
-          handleMouseDown('min');
+          handleMouseDown("min");
         }}
         onTouchStart={(e) => {
           e.preventDefault();
-          handleMouseDown('min');
+          handleMouseDown("min");
         }}
+        aria-label="Minimum value"
       />
 
       {/* Max handle */}
-      <div
+      <button
+        type="button"
         className="absolute w-3 h-3 sm:w-3.5 sm:h-3.5 bg-[#1E3024] rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-125 active:scale-110 transition-transform duration-150 ease-out shadow-sm touch-none"
         style={{ left: `${maxPercentage}%` }}
         onMouseDown={(e) => {
           e.preventDefault();
-          handleMouseDown('max');
+          handleMouseDown("max");
         }}
         onTouchStart={(e) => {
           e.preventDefault();
-          handleMouseDown('max');
+          handleMouseDown("max");
         }}
+        aria-label="Maximum value"
       />
     </div>
   );
 };
-

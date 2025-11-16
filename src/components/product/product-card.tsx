@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { HeartIcon, PlusIcon, MinusIcon } from '../ui/icons';
-import type { ProductWithRelations } from './product-grid';
+import Image from "next/image";
+import type React from "react";
+import { useState } from "react";
+import { HeartIcon, MinusIcon, PlusIcon } from "../ui/icons";
+import type { ProductWithRelations } from "./product-grid";
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -15,30 +16,33 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
-  onProductClick,
+  onProductClick: _onProductClick,
   onAddToCart,
   wishlist,
-  onToggleWishlist
+  onToggleWishlist,
 }) => {
   const [quantity, setQuantity] = useState(1);
   const isInWishlist = wishlist.includes(product.id);
-  
+
   // Get the primary image or first image
-  const primaryImage = product.images?.find(img => img.is_primary) || product.images?.[0];
-  const imageUrl = primaryImage?.url || `https://placehold.co/400x400/e6e4c6/3a643b?text=${encodeURIComponent(product.name.charAt(0))}`;
-  
+  const primaryImage =
+    product.images?.find((img) => img.is_primary) || product.images?.[0];
+  const imageUrl =
+    primaryImage?.url ||
+    `https://placehold.co/400x400/e6e4c6/3a643b?text=${encodeURIComponent(product.name.charAt(0))}`;
+
   // Check if product is in stock
   const inStock = !product.track_quantity || product.quantity > 0;
   const maxQuantity = product.track_quantity ? product.quantity : 999;
 
   const handleDecrement = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setQuantity(prev => Math.max(1, prev - 1));
+    setQuantity((prev) => Math.max(1, prev - 1));
   };
 
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setQuantity(prev => Math.min(maxQuantity, prev + 1));
+    setQuantity((prev) => Math.min(maxQuantity, prev + 1));
   };
 
   const handleAddToBag = (e: React.MouseEvent) => {
@@ -54,10 +58,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div
-      className="bg-white border border-[#1E3024]/10 flex flex-col group transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] cursor-pointer h-full w-full overflow-hidden"
-      onClick={() => onProductClick(product)}
-    >
+    <div className="bg-white border border-[#1E3024]/10 flex flex-col group transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] h-full w-full overflow-hidden">
       {/* Product Image */}
       <div className="relative overflow-hidden mb-3 aspect-square w-full flex-shrink-0">
         <Image
@@ -80,55 +81,72 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="text-[14px] leading-tight font-body font-medium text-[#1E3024] mb-1 line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-[12px] font-body text-[#1E3024]/60 mb-1.5">{product.category.name}</p>
+        <p className="text-[12px] font-body text-[#1E3024]/60 mb-1.5">
+          {product.category.name}
+        </p>
         <div className="flex items-baseline gap-1.5 mb-4">
           <p className="text-[16px] font-body font-semibold text-[#1E3024]">
-            ₦{Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₦
+            {Number(product.price).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </p>
-          {product.compare_price && Number(product.compare_price) > Number(product.price) && (
-            <p className="text-[12px] font-body text-[#1E3024]/40 line-through">
-              ₦{Number(product.compare_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          )}
+          {product.compare_price &&
+            Number(product.compare_price) > Number(product.price) && (
+              <p className="text-[12px] font-body text-[#1E3024]/40 line-through">
+                ₦
+                {Number(product.compare_price).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            )}
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 mt-auto">
-          <button 
-            onClick={handleToggleWishlistClick} 
+          <button
+            type="button"
+            onClick={handleToggleWishlistClick}
             className="p-1.5 border border-[#1E3024]/20  hover:bg-[#E6E4C6]/50 hover:border-[#1E3024]/40 transition-all duration-150 ease-out text-[#1E3024]/60 hover:text-red-600 flex-shrink-0"
-            aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-label={
+              isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+            }
           >
-            <HeartIcon filled={isInWishlist} className={`w-3.5 h-3.5 ${isInWishlist ? 'text-red-600' : 'text-[#1E3024]/60'}`} />
+            <HeartIcon
+              filled={isInWishlist}
+              className={`w-3.5 h-3.5 ${isInWishlist ? "text-red-600" : "text-[#1E3024]/60"}`}
+            />
           </button>
           <div className="flex items-center border border-[#1E3024]/20  overflow-hidden flex-shrink-0">
-            <button 
-              onClick={handleDecrement} 
+            <button
+              type="button"
+              onClick={handleDecrement}
               className="px-2 py-1.5 text-[#1E3024]/60 hover:text-[#1E3024] hover:bg-[#E6E4C6]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 ease-out"
               disabled={quantity <= 1}
             >
               <MinusIcon className="w-3 h-3" />
             </button>
-            <span 
-              onClick={(e) => e.stopPropagation()} 
-              className="px-2 py-1.5 text-center min-w-[2rem] text-[12px] font-body font-semibold text-[#1E3024] border-x border-[#1E3024]/10"
-            >
+            <span className="px-2 py-1.5 text-center min-w-[2rem] text-[12px] font-body font-semibold text-[#1E3024] border-x border-[#1E3024]/10">
               {quantity}
             </span>
-            <button 
-              onClick={handleIncrement} 
+            <button
+              type="button"
+              onClick={handleIncrement}
               className="px-2 py-1.5 text-[#1E3024]/60 hover:text-[#1E3024] hover:bg-[#E6E4C6]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 ease-out"
               disabled={quantity >= maxQuantity}
             >
               <PlusIcon className="w-3 h-3" />
             </button>
           </div>
-          <button 
-            onClick={handleAddToBag} 
+          <button
+            type="button"
+            onClick={handleAddToBag}
             disabled={!inStock}
             className="flex-1 bg-[#3A643B] text-white py-1.5 px-2.5 hover:bg-[#3A643B]/90 hover:shadow-md transition-all duration-150 ease-out font-body font-semibold disabled:bg-[#1E3024]/20 disabled:text-[#1E3024]/40 disabled:cursor-not-allowed text-[13px] whitespace-nowrap"
           >
-            {inStock ? 'Add to bag' : 'Out of Stock'}
+            {inStock ? "Add to bag" : "Out of Stock"}
           </button>
         </div>
       </div>

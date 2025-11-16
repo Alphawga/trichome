@@ -1,4 +1,4 @@
-import { Product, Category, ProductImage } from '@prisma/client';
+import type { Category, Product, ProductImage } from "@prisma/client";
 
 // Use Prisma-generated types as base and extend with computed fields
 export type ProductWithImages = Product & {
@@ -23,5 +23,5 @@ export interface FilterState {
     min: number;
     max: number;
   };
-  sortBy: 'name' | 'price-low' | 'price-high' | 'newest';
+  sortBy: "name" | "price-low" | "price-high" | "newest";
 }

@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { InventoryIcon, ProductsIcon, OrdersIcon, CustomersIcon, PromotionsIcon, PermissionsIcon } from '../ui/icons';
+import type React from "react";
+import {
+  CustomersIcon,
+  InventoryIcon,
+  OrdersIcon,
+  PermissionsIcon,
+  ProductsIcon,
+  PromotionsIcon,
+} from "../ui/icons";
 
 interface AdminSidebarProps {
   currentPath: string;
@@ -9,19 +16,26 @@ interface AdminSidebarProps {
 }
 
 const navItems: { path: string; label: string; icon: React.ReactNode }[] = [
-  { path: '/admin', label: 'Dashboard', icon: <InventoryIcon /> },
-  { path: '/admin/products', label: 'Products', icon: <ProductsIcon /> },
-  { path: '/admin/orders', label: 'Orders', icon: <OrdersIcon /> },
-  { path: '/admin/customers', label: 'Customers', icon: <CustomersIcon /> },
-  { path: '/admin/promotions', label: 'Promotions', icon: <PromotionsIcon /> },
-  { path: '/admin/permissions', label: 'Permissions', icon: <PermissionsIcon /> },
+  { path: "/admin", label: "Dashboard", icon: <InventoryIcon /> },
+  { path: "/admin/products", label: "Products", icon: <ProductsIcon /> },
+  { path: "/admin/orders", label: "Orders", icon: <OrdersIcon /> },
+  { path: "/admin/customers", label: "Customers", icon: <CustomersIcon /> },
+  { path: "/admin/promotions", label: "Promotions", icon: <PromotionsIcon /> },
+  {
+    path: "/admin/permissions",
+    label: "Permissions",
+    icon: <PermissionsIcon />,
+  },
 ];
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentPath, onNavigate }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  currentPath,
+  onNavigate,
+}) => {
   const isActive = (itemPath: string) => {
     // Exact match for dashboard
-    if (itemPath === '/admin') {
-      return currentPath === '/admin';
+    if (itemPath === "/admin") {
+      return currentPath === "/admin";
     }
     // For other paths, check if current path starts with the item path
     return currentPath.startsWith(itemPath);
@@ -37,11 +51,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentPath, onNavig
           {navItems.map((item) => (
             <li key={item.path}>
               <button
+                type="button"
                 onClick={() => onNavigate(item.path)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'bg-green-100 text-[#38761d]'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? "bg-green-100 text-[#38761d]"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 {item.icon}

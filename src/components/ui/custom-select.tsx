@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDownIcon } from './icons';
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDownIcon } from "./icons";
 
 interface SelectOption {
   readonly label: string;
@@ -21,27 +22,30 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Select...',
-  className = '',
-  id
+  placeholder = "Select...",
+  className = "",
+  id,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = options.find((opt) => opt.value === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+      if (
+        selectRef.current &&
+        !selectRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
 
@@ -61,8 +65,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         <span className="truncate">
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDownIcon 
-          className={`w-4 h-4 text-[#1E3024]/60 transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`}
+        <ChevronDownIcon
+          className={`w-4 h-4 text-[#1E3024]/60 transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -78,8 +82,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 onClick={() => handleSelect(option.value)}
                 className={`w-full text-left px-3 py-2 text-[13px] font-body transition-all duration-150 ease-out ${
                   isSelected
-                    ? 'bg-[#3A643B] text-white'
-                    : 'text-[#1E3024] hover:bg-[#E6E4C6]/50 hover:text-[#1E3024]'
+                    ? "bg-[#3A643B] text-white"
+                    : "text-[#1E3024] hover:bg-[#E6E4C6]/50 hover:text-[#1E3024]"
                 }`}
               >
                 {option.label}
@@ -91,4 +95,3 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     </div>
   );
 };
-

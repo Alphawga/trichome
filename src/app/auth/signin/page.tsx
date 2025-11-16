@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { LogoIcon, EyeIcon, GoogleIcon } from '@/components/ui/icons';
-import { useAuth } from '../../contexts/auth-context';
-import Image from 'next/image';
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { EyeIcon, GoogleIcon } from "@/components/ui/icons";
+import { useAuth } from "../../contexts/auth-context";
 
 interface SignInForm {
   email: string;
@@ -15,67 +15,77 @@ interface SignInForm {
 
 export default function SignInPage() {
   const router = useRouter();
-  const { signInWithCredentials, signInWithGoogle, isLoading: authLoading } = useAuth();
+  const {
+    signInWithCredentials,
+    signInWithGoogle,
+    isLoading: authLoading,
+  } = useAuth();
   const [form, setForm] = useState<SignInForm>({
-    email: '',
-    password: '',
-    rememberMe: false
+    email: "",
+    password: "",
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [shouldRedirectToCheckout, setShouldRedirectToCheckout] = useState(false);
+  const [error, setError] = useState("");
+  const [shouldRedirectToCheckout, setShouldRedirectToCheckout] =
+    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isLoading = authLoading;
+  const isLoading = authLoading || isSubmitting;
 
   useEffect(() => {
-    
-    const checkoutRedirect = localStorage.getItem('trichomes_checkout_redirect');
-    if (checkoutRedirect === 'true') {
+    const checkoutRedirect = localStorage.getItem(
+      "trichomes_checkout_redirect",
+    );
+    if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
     }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
-    if (error) setError('');
+    if (error) setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Basic form validation
     if (!form.email.trim() || !form.password.trim()) {
-      setError('Please fill in all fields.');
+      setError("Please fill in all fields.");
       return;
     }
 
+    setIsSubmitting(true);
     try {
       // Use NextAuth credentials sign-in
       await signInWithCredentials(form.email, form.password);
 
       // Clear checkout redirect flag
-      localStorage.removeItem('trichomes_checkout_redirect');
+      localStorage.removeItem("trichomes_checkout_redirect");
 
       // Redirect based on user type and context
-      if (form.email.includes('admin')) {
-        router.push('/admin');
+      if (form.email.includes("admin")) {
+        router.push("/admin");
       } else if (shouldRedirectToCheckout) {
-        router.push('/checkout');
+        router.push("/checkout");
       } else {
-        router.push('/');
+        router.push("/");
       }
     } catch (err: unknown) {
       // Following CODING_RULES.md - proper error handling
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError("An unexpected error occurred. Please try again.");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,8 +94,8 @@ export default function SignInPage() {
       await signInWithGoogle();
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
-      console.error('Google sign-in failed:', error);
-      setError('Google sign-in failed. Please try again.');
+      console.error("Google sign-in failed:", error);
+      setError("Google sign-in failed. Please try again.");
     }
   };
 
@@ -95,11 +105,19 @@ export default function SignInPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-           <Link href="/" className="flex items-center h-full">
-           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
-          </Link>
+            <Link href="/" className="flex items-center h-full">
+              <Image
+                src="/T3.png"
+                alt="Trichomes Logo"
+                width={120}
+                height={100}
+                className="object-contain"
+              />
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Welcome back
+          </h1>
           <p className="text-gray-600">Sign in to your account to continue</p>
         </div>
 
@@ -108,8 +126,17 @@ export default function SignInPage() {
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
               <div className="flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <title>Error</title>
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 {error}
               </div>
@@ -118,7 +145,10 @@ export default function SignInPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -134,12 +164,15 @@ export default function SignInPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={form.password}
@@ -168,7 +201,10 @@ export default function SignInPage() {
                   onChange={handleInputChange}
                   className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                 />
-                <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700">
+                <label
+                  htmlFor="rememberMe"
+                  className="ml-2 text-sm text-gray-700"
+                >
                   Remember me
                 </label>
               </div>
@@ -182,7 +218,9 @@ export default function SignInPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !form.email.trim() || !form.password.trim()}
+              disabled={
+                isLoading || !form.email.trim() || !form.password.trim()
+              }
               className="w-full bg-[#38761d] text-white py-3 px-4 rounded-lg hover:bg-opacity-90 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isLoading ? (
@@ -191,7 +229,7 @@ export default function SignInPage() {
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
@@ -205,6 +243,7 @@ export default function SignInPage() {
 
           {/* Google Sign In */}
           <button
+            type="button"
             onClick={handleGoogleSignIn}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >
@@ -214,8 +253,11 @@ export default function SignInPage() {
 
           {/* Sign Up Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/auth/signup" className="text-green-600 hover:text-green-700 font-medium">
+            Don't have an account?{" "}
+            <Link
+              href="/auth/signup"
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
               Sign up
             </Link>
           </p>
@@ -223,15 +265,21 @@ export default function SignInPage() {
 
         {/* Demo Accounts */}
         <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Accounts</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Demo Accounts
+          </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Admin:</span>
-              <span className="font-mono text-gray-800">admin@trichomes.com</span>
+              <span className="font-mono text-gray-800">
+                admin@trichomes.com
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Customer:</span>
-              <span className="font-mono text-gray-800">customer@example.com</span>
+              <span className="font-mono text-gray-800">
+                customer@example.com
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Password:</span>

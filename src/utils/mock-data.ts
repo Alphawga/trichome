@@ -1,6 +1,6 @@
-import { ProductCardData, ProductCategory } from "@/types/product";
 import { ProductStatus } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
+import type { ProductCardData, ProductCategory } from "@/types/product";
 
 // Mock data for demonstration - in production this would come from the database
 export const mockCategories: ProductCategory[] = [
@@ -15,7 +15,7 @@ export const mockCategories: ProductCategory[] = [
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
-    productCount: 15
+    productCount: 15,
   },
   {
     id: "2",
@@ -28,7 +28,7 @@ export const mockCategories: ProductCategory[] = [
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
-    productCount: 8
+    productCount: 8,
   },
   {
     id: "3",
@@ -41,7 +41,7 @@ export const mockCategories: ProductCategory[] = [
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
-    productCount: 12
+    productCount: 12,
   },
   {
     id: "4",
@@ -54,8 +54,8 @@ export const mockCategories: ProductCategory[] = [
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
-    productCount: 6
-  }
+    productCount: 6,
+  },
 ];
 
 export const mockProducts: ProductCardData[] = [
@@ -67,9 +67,9 @@ export const mockProducts: ProductCardData[] = [
     short_description: "Purifying foaming gel for oily skin",
     sku: "LRP-EFF-001",
     barcode: null,
-    price: new Decimal(89.00),
-    compare_price: new Decimal(109.00),
-    cost_price: new Decimal(65.00),
+    price: new Decimal(89.0),
+    compare_price: new Decimal(109.0),
+    cost_price: new Decimal(65.0),
     track_quantity: true,
     quantity: 25,
     reserved_quantity: 0,
@@ -84,7 +84,7 @@ export const mockProducts: ProductCardData[] = [
     seo_description: null,
     view_count: 150,
     sale_count: 12,
-    created_at: new Date('2024-01-15'),
+    created_at: new Date("2024-01-15"),
     updated_at: new Date(),
     category_id: "1",
     category: mockCategories[0],
@@ -96,13 +96,13 @@ export const mockProducts: ProductCardData[] = [
         alt_text: "LA Roche-Posay Effaclar Purifying Foaming Gel",
         sort_order: 1,
         is_primary: true,
-        created_at: new Date()
-      }
+        created_at: new Date(),
+      },
     ],
     rating: 4.5,
     reviewCount: 89,
     isNew: false,
-    isOnSale: true
+    isOnSale: true,
   },
   {
     id: "2",
@@ -112,9 +112,9 @@ export const mockProducts: ProductCardData[] = [
     short_description: "Hydrating cleanser for dry skin",
     sku: "CRV-HYD-001",
     barcode: null,
-    price: new Decimal(65.00),
+    price: new Decimal(65.0),
     compare_price: null,
-    cost_price: new Decimal(45.00),
+    cost_price: new Decimal(45.0),
     track_quantity: true,
     quantity: 18,
     reserved_quantity: 2,
@@ -129,7 +129,7 @@ export const mockProducts: ProductCardData[] = [
     seo_description: null,
     view_count: 89,
     sale_count: 8,
-    created_at: new Date('2024-02-01'),
+    created_at: new Date("2024-02-01"),
     updated_at: new Date(),
     category_id: "1",
     category: mockCategories[0],
@@ -141,13 +141,13 @@ export const mockProducts: ProductCardData[] = [
         alt_text: "CeraVe Hydrating Cleanser",
         sort_order: 1,
         is_primary: true,
-        created_at: new Date()
-      }
+        created_at: new Date(),
+      },
     ],
     rating: 4.2,
     reviewCount: 64,
     isNew: true,
-    isOnSale: false
+    isOnSale: false,
   },
   {
     id: "3",
@@ -157,9 +157,9 @@ export const mockProducts: ProductCardData[] = [
     short_description: "Gentle cleanser for sensitive skin",
     sku: "NEU-ULT-001",
     barcode: null,
-    price: new Decimal(45.00),
+    price: new Decimal(45.0),
     compare_price: null,
-    cost_price: new Decimal(32.00),
+    cost_price: new Decimal(32.0),
     track_quantity: true,
     quantity: 30,
     reserved_quantity: 1,
@@ -174,7 +174,7 @@ export const mockProducts: ProductCardData[] = [
     seo_description: null,
     view_count: 67,
     sale_count: 5,
-    created_at: new Date('2024-01-20'),
+    created_at: new Date("2024-01-20"),
     updated_at: new Date(),
     category_id: "1",
     category: mockCategories[0],
@@ -186,14 +186,14 @@ export const mockProducts: ProductCardData[] = [
         alt_text: "Neutrogena Ultra Gentle Daily Cleanser",
         sort_order: 1,
         is_primary: true,
-        created_at: new Date()
-      }
+        created_at: new Date(),
+      },
     ],
     rating: 4.0,
     reviewCount: 43,
     isNew: false,
-    isOnSale: false
-  }
+    isOnSale: false,
+  },
 ];
 
 // Generate more products by repeating the pattern
@@ -208,21 +208,25 @@ export const generateMockProducts = (count: number): ProductCardData[] => {
     products.push({
       ...baseProduct,
       id: `${baseProduct.id}-${productNumber}`,
-      name: `${baseProduct.name} ${productNumber > 1 ? `(${productNumber})` : ''}`,
+      name: `${baseProduct.name} ${productNumber > 1 ? `(${productNumber})` : ""}`,
       slug: `${baseProduct.slug}-${productNumber}`,
       sku: `${baseProduct.sku}-${productNumber}`,
-      price: new Decimal((baseProduct.price.toNumber() + Math.random() * 20 - 10).toFixed(2)),
-      images: baseProduct.images.map(img => ({
+      price: new Decimal(
+        (baseProduct.price.toNumber() + Math.random() * 20 - 10).toFixed(2),
+      ),
+      images: baseProduct.images.map((img) => ({
         ...img,
         id: `${img.id}-${productNumber}`,
-        product_id: `${baseProduct.id}-${productNumber}`
+        product_id: `${baseProduct.id}-${productNumber}`,
       })),
-      category_id: mockCategories[Math.floor(Math.random() * mockCategories.length)].id,
-      category: mockCategories[Math.floor(Math.random() * mockCategories.length)],
+      category_id:
+        mockCategories[Math.floor(Math.random() * mockCategories.length)].id,
+      category:
+        mockCategories[Math.floor(Math.random() * mockCategories.length)],
       rating: Number((3.5 + Math.random() * 1.5).toFixed(1)),
       reviewCount: Math.floor(Math.random() * 100) + 10,
       isNew: Math.random() > 0.7,
-      isOnSale: Math.random() > 0.6
+      isOnSale: Math.random() > 0.6,
     });
   }
 

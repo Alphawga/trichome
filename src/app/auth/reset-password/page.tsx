@@ -1,10 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { LogoIcon, EyeIcon, CheckCircleIcon } from '@/components/ui/icons';
-import Image from 'next/image';
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CheckCircleIcon, EyeIcon } from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
 
 interface ResetPasswordForm {
   password: string;
@@ -17,60 +20,78 @@ interface PasswordStrength {
 }
 
 function ResetPasswordForm() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
+  const email = searchParams.get("email");
 
   const [form, setForm] = useState<ResetPasswordForm>({
-    password: '',
-    confirmPassword: ''
+    password: "",
+    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Partial<ResetPasswordForm>>({});
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
 
+  // Validate token query
+  const tokenValidationQuery = trpc.validatePasswordResetToken.useQuery(
+    {
+      email: email || "",
+      token: token || "",
+    },
+    {
+      enabled: !!token && !!email,
+      retry: false,
+      onSuccess: (data) => {
+        setTokenValid(data.isValid);
+      },
+      onError: () => {
+        setTokenValid(false);
+      },
+    },
+  );
+
+  // Reset password mutation
+  const resetPasswordMutation = trpc.resetPassword.useMutation({
+    onSuccess: () => {
+      setIsSuccess(true);
+      toast.success("Password reset successfully");
+    },
+    onError: (error) => {
+      setErrors({
+        password:
+          error.message || "Failed to reset password. Please try again.",
+      });
+      toast.error(error.message || "Failed to reset password");
+    },
+  });
+
   useEffect(() => {
-    // Validate token on page load
-    const validateToken = async () => {
-      if (!token) {
-        setTokenValid(false);
-        return;
-      }
-
-      try {
-        // TODO: Implement token validation with tRPC
-        console.log('Validating token:', token);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setTokenValid(true);
-      } catch (err) {
-        setTokenValid(false);
-      }
-    };
-
-    validateToken();
-  }, [token]);
+    if (!token || !email) {
+      setTokenValid(false);
+    }
+  }, [token, email]);
 
   const getPasswordStrength = (password: string): PasswordStrength => {
     let score = 0;
     const feedback: string[] = [];
 
     if (password.length >= 8) score++;
-    else feedback.push('At least 8 characters');
+    else feedback.push("At least 8 characters");
 
     if (/[A-Z]/.test(password)) score++;
-    else feedback.push('One uppercase letter');
+    else feedback.push("One uppercase letter");
 
     if (/[a-z]/.test(password)) score++;
-    else feedback.push('One lowercase letter');
+    else feedback.push("One lowercase letter");
 
     if (/[0-9]/.test(password)) score++;
-    else feedback.push('One number');
+    else feedback.push("One number");
 
     if (/[^A-Za-z0-9]/.test(password)) score++;
-    else feedback.push('One special character');
+    else feedback.push("One special character");
 
     return { score, feedback };
   };
@@ -79,18 +100,18 @@ function ResetPasswordForm() {
     const newErrors: Partial<ResetPasswordForm> = {};
 
     if (!form.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else {
       const passwordStrength = getPasswordStrength(form.password);
       if (passwordStrength.score < 3) {
-        newErrors.password = 'Password is too weak';
+        newErrors.password = "Password is too weak";
       }
     }
 
     if (!form.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = "Please confirm your password";
     } else if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     setErrors(newErrors);
@@ -99,11 +120,11 @@ function ResetPasswordForm() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
 
     // Clear specific error when user starts typing
     if (errors[name as keyof ResetPasswordForm]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -112,26 +133,20 @@ function ResetPasswordForm() {
 
     if (!validateForm()) return;
 
-    setIsLoading(true);
-
-    try {
-      // TODO: Implement password reset with tRPC
-      console.log('Reset password with token:', token);
-      console.log('New password:', form.password);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      setIsSuccess(true);
-    } catch (err) {
-      setErrors({ password: 'Failed to reset password. Please try again.' });
-    } finally {
-      setIsLoading(false);
+    if (!token || !email) {
+      setErrors({ password: "Invalid reset link. Please request a new one." });
+      return;
     }
+
+    resetPasswordMutation.mutate({
+      email: email,
+      token: token,
+      newPassword: form.password,
+    });
   };
 
   // Loading state while validating token
-  if (tokenValid === null) {
+  if (tokenValid === null || tokenValidationQuery.isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -149,22 +164,42 @@ function ResetPasswordForm() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-             <Link href="/" className="flex items-center h-full">
-           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
-          </Link>
-           </div>
+              <Link href="/" className="flex items-center h-full">
+                <Image
+                  src="/T3.png"
+                  alt="Trichomes Logo"
+                  width={120}
+                  height={100}
+                  className="object-contain"
+                />
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Error</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid reset link</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Invalid reset link
+            </h1>
             <p className="text-gray-600 mb-6">
-              This password reset link is invalid or has expired. Please request a new one.
+              This password reset link is invalid or has expired. Please request
+              a new one.
             </p>
 
             <div className="space-y-3">
@@ -195,9 +230,15 @@ function ResetPasswordForm() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
               <Link href="/" className="flex items-center h-full">
-           <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
-          </Link>
-           </div>
+                <Image
+                  src="/T3.png"
+                  alt="Trichomes Logo"
+                  width={120}
+                  height={100}
+                  className="object-contain"
+                />
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -205,9 +246,12 @@ function ResetPasswordForm() {
               <CheckCircleIcon />
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Password reset successful</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Password reset successful
+            </h1>
             <p className="text-gray-600 mb-6">
-              Your password has been successfully updated. You can now sign in with your new password.
+              Your password has been successfully updated. You can now sign in
+              with your new password.
             </p>
 
             <Link
@@ -223,8 +267,14 @@ function ResetPasswordForm() {
   }
 
   const passwordStrength = getPasswordStrength(form.password);
-  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const strengthColors = [
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-yellow-500",
+    "bg-blue-500",
+    "bg-green-500",
+  ];
+  const strengthLabels = ["Very Weak", "Weak", "Fair", "Good", "Strong"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
@@ -233,9 +283,18 @@ function ResetPasswordForm() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Link href="/" className="flex items-center h-full">
-                      <Image src="/T3.png" alt="Trichomes Logo" width={120} height={100} className="object-contain" /> 
-                     </Link>  </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset your password</h1>
+              <Image
+                src="/T3.png"
+                alt="Trichomes Logo"
+                width={120}
+                height={100}
+                className="object-contain"
+              />
+            </Link>{" "}
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Reset your password
+          </h1>
           <p className="text-gray-600">Enter your new password below</p>
         </div>
 
@@ -244,18 +303,21 @@ function ResetPasswordForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* New Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 New Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={form.password}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
+                    errors.password ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter new password"
                 />
@@ -271,37 +333,46 @@ function ResetPasswordForm() {
               {form.password && (
                 <div className="mt-2">
                   <div className="flex space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
+                    {["a", "b", "c", "d", "e"].map((key, i) => (
                       <div
-                        key={i}
+                        key={key}
                         className={`h-1 flex-1 rounded-full ${
-                          i < passwordStrength.score ? strengthColors[passwordStrength.score - 1] : 'bg-gray-200'
+                          i < passwordStrength.score
+                            ? strengthColors[passwordStrength.score - 1]
+                            : "bg-gray-200"
                         }`}
                       />
                     ))}
                   </div>
                   <p className="text-xs text-gray-600">
-                    Password strength: {strengthLabels[passwordStrength.score - 1] || 'Very Weak'}
+                    Password strength:{" "}
+                    {strengthLabels[passwordStrength.score - 1] || "Very Weak"}
                   </p>
                 </div>
               )}
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
-           
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm New Password
               </label>
               <div className="relative">
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-300"
                   }`}
                   placeholder="Confirm new password"
                 />
@@ -313,15 +384,21 @@ function ResetPasswordForm() {
                   <EyeIcon className="w-5 h-5" />
                 </button>
               </div>
-              {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={resetPasswordMutation.isPending}
               className="w-full bg-[#38761d] text-white py-3 px-4 rounded-lg hover:bg-opacity-90 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Resetting Password...' : 'Reset Password'}
+              {resetPasswordMutation.isPending
+                ? "Resetting Password..."
+                : "Reset Password"}
             </button>
           </form>
 

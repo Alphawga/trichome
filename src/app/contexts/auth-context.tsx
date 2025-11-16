@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
-import { UserRole } from '@prisma/client';
-import type { Session } from 'next-auth';
+import type { UserRole } from "@prisma/client";
+import type { Session } from "next-auth";
+import { signIn, signOut, useSession } from "next-auth/react";
+import type React from "react";
+import { createContext, useContext } from "react";
 
 // Following CODING_RULES.md - use Prisma-generated types
 interface AuthUser {
@@ -37,35 +38,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
 
   // Following CODING_RULES.md - use Prisma-generated types and proper type safety
-  const user: AuthUser | null = session?.user ? {
-    id: session.user.id,
-    email: session.user.email!,
-    first_name: session.user.first_name,
-    last_name: session.user.last_name,
-    role: session.user.role,
-  } : null;
+  const user: AuthUser | null = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email ?? "",
+        first_name: session.user.first_name,
+        last_name: session.user.last_name,
+        role: session.user.role,
+      }
+    : null;
 
   // Google OAuth sign-in using NextAuth
   const signInWithGoogle = async (): Promise<void> => {
     try {
-      await signIn('google', {
-        callbackUrl: '/',
-        redirect: true
+      await signIn("google", {
+        callbackUrl: "/",
+        redirect: true,
       });
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
-      console.error('Google sign in failed:', error);
+      console.error("Google sign in failed:", error);
       throw error;
     }
   };
 
   // Traditional email/password login using NextAuth credentials provider
-  const signInWithCredentials = async (email: string, password: string): Promise<void> => {
+  const signInWithCredentials = async (
+    email: string,
+    password: string,
+  ): Promise<void> => {
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email,
         password,
-        redirect: false
+        redirect: false,
       });
 
       if (result?.error) {
@@ -73,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
       throw error;
     }
   };
@@ -88,24 +94,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }): Promise<void> => {
     try {
       // Call our registration endpoint
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
+        throw new Error(errorData.message || "Registration failed");
       }
 
       // After successful registration, sign in the user
       await signInWithCredentials(data.email, data.password);
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
-      console.error('Registration failed:', error);
+      console.error("Registration failed:", error);
       throw error;
     }
   };
@@ -116,13 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signOut({ redirect: false });
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
       throw error;
     }
   };
 
   // Following CODING_RULES.md - proper loading state management
-  const isLoading = status === 'loading';
+  const isLoading = status === "loading";
 
   const value: AuthContextType = {
     user,
@@ -132,20 +138,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signInWithCredentials,
     signUpWithCredentials,
-    logout
+    logout,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

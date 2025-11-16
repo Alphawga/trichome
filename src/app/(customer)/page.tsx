@@ -1,17 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { ProductStatus } from "@prisma/client";
 import Image from "next/image";
-import { ProductGrid } from "@/components/product/product-grid";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useAuth } from "@/app/contexts/auth-context";
 import type { ProductWithRelations } from "@/components/product/product-grid";
+import { ProductGrid } from "@/components/product/product-grid";
 import { Hero } from "@/components/sections/hero";
 import { ChevronRightIcon } from "@/components/ui/icons";
+import { addToLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
-import { useAuth } from "@/app/contexts/auth-context";
-import { toast } from "sonner";
-import { ProductStatus } from "@prisma/client";
 
 export default function Page() {
   const router = useRouter();
@@ -25,27 +26,33 @@ export default function Page() {
   });
 
   // Fetch featured products
-  const featuredProductsQuery = trpc.getProducts.useQuery({
-    page: 1,
-    limit: 4,
-    status: ProductStatus.ACTIVE,
-    is_featured: true,
-    sort_by: 'featured',
-  }, {
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
-  });
+  const featuredProductsQuery = trpc.getProducts.useQuery(
+    {
+      page: 1,
+      limit: 4,
+      status: ProductStatus.ACTIVE,
+      is_featured: true,
+      sort_by: "featured",
+    },
+    {
+      staleTime: 30000,
+      refetchOnWindowFocus: false,
+    },
+  );
 
   // Fetch top sellers (popular products)
-  const topSellersQuery = trpc.getProducts.useQuery({
-    page: 1,
-    limit: 4,
-    status: ProductStatus.ACTIVE,
-    sort_by: 'popular',
-  }, {
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
-  });
+  const topSellersQuery = trpc.getProducts.useQuery(
+    {
+      page: 1,
+      limit: 4,
+      status: ProductStatus.ACTIVE,
+      sort_by: "popular",
+    },
+    {
+      staleTime: 30000,
+      refetchOnWindowFocus: false,
+    },
+  );
 
   // Wishlist state
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -54,15 +61,10 @@ export default function Page() {
   const addToCartMutation = trpc.addToCart.useMutation({
     onSuccess: () => {
       utils.getCart.invalidate();
-      toast.success('Added to cart');
+      toast.success("Added to cart");
     },
     onError: (error) => {
-      if (!isAuthenticated) {
-        toast.error('Please sign in to add items to cart');
-        router.push('/auth/signin');
-      } else {
-        toast.error(error.message || 'Failed to add to cart');
-      }
+      toast.error(error.message || "Failed to add to cart");
     },
   });
 
@@ -72,13 +74,22 @@ export default function Page() {
   };
 
   const handleAddToCart = (product: ProductWithRelations, quantity: number) => {
-    addToCartMutation.mutate({ product_id: product.id, quantity });
+    if (!isAuthenticated) {
+      // Add to localStorage for unauthenticated users
+      addToLocalCart(product.id, quantity);
+      toast.success("Added to cart");
+      // Trigger a custom event to update cart count in header
+      window.dispatchEvent(new Event("localCartUpdated"));
+    } else {
+      // Use tRPC mutation for authenticated users
+      addToCartMutation.mutate({ product_id: product.id, quantity });
+    }
   };
 
   const handleToggleWishlist = (product: ProductWithRelations) => {
     const isInWishlist = wishlist.includes(product.id);
     if (isInWishlist) {
-      setWishlist(wishlist.filter(id => id !== product.id));
+      setWishlist(wishlist.filter((id) => id !== product.id));
     } else {
       setWishlist([...wishlist, product.id]);
     }
@@ -86,69 +97,91 @@ export default function Page() {
 
   // Get first 4 top-level categories for the collection section
   const collections = categoriesQuery.data?.slice(0, 4) || [];
-  
+
   // Get products
   const featuredProducts = featuredProductsQuery.data?.products || [];
   const topSellers = topSellersQuery.data?.products || [];
 
-
   return (
-    <main className="bg-trichomes-soft">
+    <main className="bg-trichomes-soft overflow-x-hidden">
       <Hero />
 
-      
-      <section className="py-12 sm:py-16 lg:py-20 bg-trichomes-soft">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <h2 className="text-[28px] sm:text-[36px] lg:text-[40px]  text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
+      <section className="py-8 sm:py-12 lg:py-20 bg-trichomes-soft animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[1900px]">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-12 xl:px-20">
+          <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
             Our Collection
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full"></div>
+
           {categoriesQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="text-center animate-pulse">
-                  <div className="w-full h-80 sm:h-96 bg-trichomes-sage rounded-lg mb-4 sm:mb-6"></div>
-                  <div className="h-12 bg-trichomes-sage rounded"></div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4">
+              {["c1", "c2", "c3", "c4"].map((key) => (
+                <div key={key} className="animate-pulse">
+                  <div className="relative mx-auto md:w-[350px] h-[280px] md:h-[550px] bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm">
+                    {/* Image area placeholder */}
+                    <div className="absolute inset-0 bg-trichomes-sage/40" />
+                    {/* Bottom gradient to mimic overlay */}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+                    {/* Label placeholder */}
+                    <div className="absolute inset-x-0 bottom-0 px-4 py-4">
+                      <div className="h-5 w-1/2 bg-white/40 rounded"></div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           ) : categoriesQuery.error ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">Unable to load collections. Please try again later.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                Unable to load collections. Please try again later.
+              </p>
             </div>
           ) : collections.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">No collections available at the moment.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                No collections available at the moment.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {collections.map((category) => (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4">
+              {collections.map((category, index) => (
                 <Link
                   key={category.id}
                   href={`/products?category=${category.slug}`}
-                  className="text-center group block"
+                  className="group block"
+                  style={{
+                    animation: `staggerFadeIn 500ms cubic-bezier(0.16, 1, 0.3, 1) ${index * 100}ms both`,
+                  }}
                 >
-                  <div className="overflow-hidden mb-4 sm:mb-6 shadow-sm">
-                    {category.image ? (
-                      <div className="relative w-full h-80 sm:h-96">
+                  {/* Card with rounded corners and image bleed */}
+                  <div className="relative mx-auto md:w-[350px] h-[280px] md:h-[550px]  bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-200">
+                    {/* Category image/products display area - now full bleeding */}
+                    <div className="relative w-full h-full">
+                      {category.image ? (
                         <Image
                           src={category.image}
                           alt={category.name}
                           fill
-                          className="object-cover transition-transform duration-200 ease-in-out group-hover:scale-105"
+                          className="object-cover object-center"
                         />
-                      </div>
-                    ) : (
-                      <div className="w-full h-80 sm:h-96 bg-trichomes-sage flex items-center justify-center">
-                        <span className="text-6xl font-bold text-trichomes-forest/20">
-                          {category.name.charAt(0)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-full text-[15px] sm:text-[16px] font-semibold py-2.5 sm:py-3 px-5 sm:px-6 border-2 border-trichomes-primary text-trichomes-primary group-hover:bg-trichomes-primary group-hover:text-white transition-all duration-150 ease-out font-body">
-                    {category.name}
+                      ) : (
+                        <div className="w-full h-full bg-trichomes-soft flex items-center justify-center">
+                          <span className="text-4xl sm:text-5xl lg:text-6xl font-bold text-trichomes-forest/20">
+                            {category.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Dark gradient overlay for tunable opacity (bottom darker) */}
+                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 right-0 bg-transparent px-4 md:px-8 py-8 md:py-10">
+                      <h3 className="text-white text-2xl text-left font-body leading-tight line-clamp-1">
+                        {category.name}
+                      </h3>
+                      <div className="w-10 md:w-15 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 my-2 rounded-full"></div>
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -157,18 +190,17 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Featured Items - Design Guide: White background, clean spacing */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white">
+      <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <h2 className="text-[28px] sm:text-[36px] lg:text-[40px]  text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
+          <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
             Featured Items
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto sm:mx-0"></div>
+
           {featuredProductsQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {["f1", "f2", "f3", "f4"].map((key) => (
+                <div key={key} className="animate-pulse">
                   <div className="bg-white border border-[#1E3024]/10 flex flex-col h-full">
                     <div className="aspect-square w-full bg-trichomes-sage"></div>
                     <div className="p-3 space-y-2">
@@ -183,11 +215,15 @@ export default function Page() {
             </div>
           ) : featuredProductsQuery.error ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">Unable to load featured products. Please try again later.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                Unable to load featured products. Please try again later.
+              </p>
             </div>
           ) : featuredProducts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">No featured products available at the moment.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                No featured products available at the moment.
+              </p>
             </div>
           ) : (
             <>
@@ -200,7 +236,8 @@ export default function Page() {
               />
               <div className="text-center mt-8 sm:mt-12">
                 <button
-                  onClick={() => router.push('/products?sort=featured')}
+                  type="button"
+                  onClick={() => router.push("/products?sort=featured")}
                   className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
                 >
                   View All <ChevronRightIcon />
@@ -212,17 +249,17 @@ export default function Page() {
       </section>
 
       {/* Top Sellers - Design Guide: Sage background for sections */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-trichomes-sage">
+      <section className="py-8 sm:py-12 lg:py-20 bg-trichomes-sage animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <h2 className="text-[28px] sm:text-[36px] lg:text-[40px]  text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
+          <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
             Top Sellers
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-8 sm:mb-12 mx-auto sm:mx-0"></div>
-          
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto sm:mx-0"></div>
+
           {topSellersQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {["t1", "t2", "t3", "t4"].map((key) => (
+                <div key={key} className="animate-pulse">
                   <div className="bg-white border border-[#1E3024]/10 flex flex-col h-full">
                     <div className="aspect-square w-full bg-trichomes-soft"></div>
                     <div className="p-3 space-y-2">
@@ -237,11 +274,15 @@ export default function Page() {
             </div>
           ) : topSellersQuery.error ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">Unable to load top sellers. Please try again later.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                Unable to load top sellers. Please try again later.
+              </p>
             </div>
           ) : topSellers.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-trichomes-forest/70 text-lg">No top sellers available at the moment.</p>
+              <p className="text-trichomes-forest/70 text-lg">
+                No top sellers available at the moment.
+              </p>
             </div>
           ) : (
             <>
@@ -254,7 +295,8 @@ export default function Page() {
               />
               <div className="text-center mt-8 sm:mt-12">
                 <button
-                  onClick={() => router.push('/products?sort=popular')}
+                  type="button"
+                  onClick={() => router.push("/products?sort=popular")}
                   className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
                 >
                   View All <ChevronRightIcon />
@@ -266,88 +308,132 @@ export default function Page() {
       </section>
 
       {/* Banners - Design Guide: Warm Sand for lifestyle sections, Gold buttons */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-12 sm:py-16 lg:py-20 bg-trichomes-soft">
-        <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 sm:py-12 lg:py-20 bg-trichomes-soft animate-[sectionEntrance_600ms_ease-out]">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
           <div
-            className="flex-1 bg-cover bg-center rounded-xl min-h-[300px] sm:min-h-[400px] flex items-end p-6 sm:p-8 shadow-md"
-            style={{backgroundImage: "url('/back-instock.png')"}}
+            className="flex-1 bg-cover bg-center min-h-[250px] sm:min-h-[300px] lg:min-h-[400px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group"
+            style={{ backgroundImage: "url('/back-instock.png')" }}
           >
-            <button className="bg-trichomes-gold text-trichomes-forest font-semibold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg hover:bg-trichomes-gold-hover transition-all duration-150 ease-out hover:shadow-lg font-body">
-              Top Sellers <ChevronRightIcon className="inline-block" />
+            <button
+              type="button"
+              className="bg-trichomes-gold text-trichomes-forest font-semibold py-2.5 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-trichomes-gold-hover transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body"
+            >
+              Top Sellers{" "}
+              <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>
           <div
-            className="flex-1 bg-cover bg-center rounded-xl min-h-[300px] sm:min-h-[400px] flex items-end p-6 sm:p-8 shadow-md"
-            style={{backgroundImage: "url('/new-arrival.png')"}}
+            className="flex-1 bg-cover bg-center min-h-[250px] sm:min-h-[300px] lg:min-h-[400px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group"
+            style={{ backgroundImage: "url('/new-arrival.png')" }}
           >
-            <button className="bg-trichomes-gold text-trichomes-forest font-semibold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg hover:bg-trichomes-gold-hover transition-all duration-150 ease-out hover:shadow-lg font-body">
-              New arrivals <ChevronRightIcon className="inline-block" />
+            <button
+              type="button"
+              className="bg-trichomes-gold text-trichomes-forest font-semibold py-2.5 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-trichomes-gold-hover transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body"
+            >
+              New arrivals{" "}
+              <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>
         </div>
       </section>
 
-      {/* Consultation - Design Guide: Sage background */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-trichomes-sage">
+      <section className="py-8 sm:py-12 lg:py-20 bg-trichomes-sage animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl text-center text-trichomes-forest">
-          <h2 className="text-[28px] sm:text-[36px] lg:text-[40px]  max-w-3xl mx-auto leading-tight font-heading">
+          <h2 className="text-[22px] sm:text-[28px] lg:text-[40px] max-w-3xl mx-auto leading-tight font-heading px-2">
             Unlock your best skin, style, and scent. Book a 1-on-1 session.
           </h2>
-          <p className="mt-4 sm:mt-6 max-w-3xl mx-auto text-[15px] sm:text-[17px] leading-relaxed text-trichomes-forest/80 px-4 font-body font-normal">
-            Stop guessing, start glowing. Your beauty journey is unique, and true refinement requires expert guidance. Our private consultations are designed to go beyond surface-level advice, offering you a tailored roadmap across Skincare, Haircare, Bodycare, Decorative Artistry, and Fragrance.
+          <p className="mt-4 sm:mt-6 max-w-3xl mx-auto text-[14px] sm:text-[15px] lg:text-[17px] leading-relaxed text-trichomes-forest/80 px-2 sm:px-4 font-body font-normal">
+            Stop guessing, start glowing. Your beauty journey is unique, and
+            true refinement requires expert guidance. Our private consultations
+            are designed to go beyond surface-level advice, offering you a
+            tailored roadmap across Skincare, Haircare, Bodycare, Decorative
+            Artistry, and Fragrance.
           </p>
-          <button className="mt-6 sm:mt-8 bg-trichomes-gold text-trichomes-forest font-semibold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg hover:bg-trichomes-gold-hover transition-all duration-150 ease-out hover:shadow-lg font-body">
+          <button
+            type="button"
+            className="mt-6 sm:mt-8 bg-trichomes-gold text-trichomes-forest font-semibold py-2.5 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-trichomes-gold-hover transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body"
+          >
             Book my session
           </button>
         </div>
       </section>
 
-      {/* Why Choose Us - Design Guide: Clean, minimal with ample spacing */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white">
+      <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <h2 className="text-[28px] sm:text-[36px] lg:text-[40px]  text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
-            Why Choose Trichomes?
-          </h2>
-          <div className="w-20 sm:w-24 h-1 bg-trichomes-primary mx-auto mb-10 sm:mb-16"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12">
-            <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-trichomes-sage rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+          <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-16 items-stretch">
+            {/* Left Side - Store Image */}
+            <div className="w-full lg:w-[48%] order-2 lg:order-1">
+              <div className="relative w-full aspect-[3/4] sm:aspect-[4/5] lg:aspect-[4/5] group">
+                {/* Decorative frame with sage background */}
+                <div className="absolute -inset-2 sm:-inset-3 lg:-inset-4 bg-trichomes-sage/20 border-2 border-trichomes-forest/10"></div>
+
+                {/* Image container */}
+                <div className="relative w-full h-full shadow-lg overflow-hidden border-2 border-trichomes-forest/5">
+                  <Image
+                    src="/store.png"
+                    alt="Trichomes Store Interior"
+                    fill
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                    quality={100}
+                    sizes="(max-width: 1024px) 100vw, 48vw"
+                  />
+
+                  {/* Subtle gradient overlay for depth */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-trichomes-forest/3 pointer-events-none"></div>
+                </div>
               </div>
-              <h3 className="text-[20px] sm:text-[24px] font-semibold mb-2 sm:mb-3 text-trichomes-forest font-heading">
-                Premium Quality
-              </h3>
-              <p className="text-[15px] sm:text-[16px] text-trichomes-primary leading-relaxed px-2 font-body font-normal">
-                Only the finest ingredients, scientifically proven to deliver results.
-              </p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-trichomes-sage rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+
+            {/* Right Side - Content */}
+            <div className="w-full lg:w-[52%] flex flex-col justify-center order-1 lg:order-2">
+              <h2 className="text-[24px] sm:text-[28px] lg:text-[40px] text-trichomes-forest font-heading mb-3 sm:mb-4 lg:mb-6 leading-tight">
+                Why Choose Trichomes?
+              </h2>
+              <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-10"></div>
+
+              <div className="space-y-6 sm:space-y-8 lg:space-y-10">
+                <div
+                  className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+                  style={{ animationDelay: "100ms", animationFillMode: "both" }}
+                >
+                  <h3 className="text-[18px] sm:text-[20px] lg:text-[22px] font-heading text-trichomes-forest mb-2 sm:mb-3 lg:mb-4">
+                    Premium Quality
+                  </h3>
+                  <p className="text-[14px] sm:text-[15px] lg:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
+                    Only the finest ingredients, scientifically proven to
+                    deliver results. Our modern clinic space combines advanced
+                    skin analysis technology with expert care.
+                  </p>
+                </div>
+
+                <div
+                  className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+                  style={{ animationDelay: "200ms", animationFillMode: "both" }}
+                >
+                  <h3 className="text-[18px] sm:text-[20px] lg:text-[22px] font-heading text-trichomes-forest mb-2 sm:mb-3 lg:mb-4">
+                    Expert Guidance
+                  </h3>
+                  <p className="text-[14px] sm:text-[15px] lg:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
+                    Personalized consultations to help you find your perfect
+                    routine. Every visit is an opportunity to understand your
+                    unique needs and discover products that truly work.
+                  </p>
+                </div>
+
+                <div
+                  className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+                  style={{ animationDelay: "300ms", animationFillMode: "both" }}
+                >
+                  <h3 className="text-[18px] sm:text-[20px] lg:text-[22px] font-heading text-trichomes-forest mb-2 sm:mb-3 lg:mb-4">
+                    Trusted by Thousands
+                  </h3>
+                  <p className="text-[14px] sm:text-[15px] lg:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
+                    Join our community of satisfied customers who've transformed
+                    their skin. We believe in the power of education first,
+                    consultation second, and products third.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-[20px] sm:text-[24px] font-semibold mb-2 sm:mb-3 text-trichomes-forest font-heading">
-                Expert Guidance
-              </h3>
-              <p className="text-[15px] sm:text-[16px] text-trichomes-primary leading-relaxed px-2 font-body font-normal">
-                Personalized consultations to help you find your perfect routine.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-trichomes-sage rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-trichomes-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <h3 className="text-[20px] sm:text-[24px] font-semibold mb-2 sm:mb-3 text-trichomes-forest font-heading">
-                Trusted by Thousands
-              </h3>
-              <p className="text-[15px] sm:text-[16px] text-trichomes-primary leading-relaxed px-2 font-body font-normal">
-                Join our community of satisfied customers who've transformed their skin.
-              </p>
             </div>
           </div>
         </div>

@@ -1,13 +1,30 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { GoogleIcon } from '@/components/ui/icons';
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function AccountPage() {
-  const handleGoogleSignUp = () => {
-    console.log('Redirecting to Google Sign-up...');
-    // TODO: Implement Google OAuth
+import { toast } from "sonner";
+import { GoogleIcon } from "@/components/ui/icons";
+
+function AccountPageContent() {
+  const searchParams = useSearchParams();
+
+  const handleGoogleSignUp = async () => {
+    try {
+      // Get callback URL from query params or default to home
+      const callbackUrl = searchParams.get("callbackUrl") || "/";
+
+      // Use NextAuth signIn for Google OAuth
+      const { signIn } = await import("next-auth/react");
+      await signIn("google", {
+        callbackUrl,
+        redirect: true,
+      });
+    } catch (error) {
+      console.error("Google sign in failed:", error);
+      toast.error("Failed to sign in with Google. Please try again.");
+    }
   };
 
   return (
@@ -26,6 +43,7 @@ export default function AccountPage() {
               Create account
             </Link>
             <button
+              type="button"
               onClick={handleGoogleSignUp}
               className="w-full bg-white border-2 border-trichomes-forest/20 text-trichomes-forest py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-soft transition-all duration-150 ease-out shadow-sm flex items-center justify-center font-body"
             >
@@ -33,7 +51,7 @@ export default function AccountPage() {
               Sign up with Google
             </button>
             <Link
-              href="/checkout"
+              href="/checkout?guest=true"
               className="w-full bg-white text-trichomes-primary border-2 border-trichomes-primary py-3 sm:py-4 px-6 rounded-full text-[15px] sm:text-[16px] lg:text-[17px] font-semibold hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out block text-center font-body"
             >
               Continue as guest
@@ -44,7 +62,9 @@ export default function AccountPage() {
         {/* Divider */}
         <div className="flex items-center mb-12 sm:mb-16">
           <div className="flex-1 border-t border-trichomes-forest/20"></div>
-          <span className="px-4 text-trichomes-forest/60 text-sm font-body">or</span>
+          <span className="px-4 text-trichomes-forest/60 text-sm font-body">
+            or
+          </span>
           <div className="flex-1 border-t border-trichomes-forest/20"></div>
         </div>
 
@@ -62,5 +82,17 @@ export default function AccountPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-trichomes-soft flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-trichomes-forest font-body">Loading...</p>
+      </div>
+    </div>}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

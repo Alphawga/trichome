@@ -1,7 +1,6 @@
-import { z } from 'zod'
-import { protectedProcedure } from '../trpc'
-import { TRPCError } from '@trpc/server'
-
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { protectedProcedure } from "../trpc";
 
 export const getCart = protectedProcedure.query(async ({ ctx }) => {
   const cartItems = await ctx.prisma.cartItem.findMany({
@@ -22,19 +21,19 @@ export const getCart = protectedProcedure.query(async ({ ctx }) => {
         },
       },
     },
-    orderBy: { created_at: 'desc' },
-  })
+    orderBy: { created_at: "desc" },
+  });
 
   const total = cartItems.reduce((sum, item) => {
-    return sum + Number(item.product.price) * item.quantity
-  }, 0)
+    return sum + Number(item.product.price) * item.quantity;
+  }, 0);
 
   return {
     items: cartItems,
     total,
     count: cartItems.length,
-  }
-})
+  };
+});
 
 // Add item to cart
 export const addToCart = protectedProcedure
@@ -42,24 +41,30 @@ export const addToCart = protectedProcedure
     z.object({
       product_id: z.string(),
       quantity: z.number().int().min(1).default(1),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     // Check if product exists and is available
     const product = await ctx.prisma.product.findUnique({
       where: { id: input.product_id },
-    })
+    });
 
     if (!product) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Product not found' })
+      throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
     }
 
-    if (product.status !== 'ACTIVE') {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Product is not available' })
+    if (product.status !== "ACTIVE") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Product is not available",
+      });
     }
 
     if (product.track_quantity && product.quantity < input.quantity) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Insufficient stock' })
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Insufficient stock",
+      });
     }
 
     // Check if item already exists in cart
@@ -70,7 +75,7 @@ export const addToCart = protectedProcedure
           product_id: input.product_id,
         },
       },
-    })
+    });
 
     if (existingItem) {
       // Update quantity
@@ -87,9 +92,9 @@ export const addToCart = protectedProcedure
             },
           },
         },
-      })
+      });
 
-      return { cartItem, message: 'Cart updated successfully' }
+      return { cartItem, message: "Cart updated successfully" };
     }
 
     // Create new cart item
@@ -109,10 +114,10 @@ export const addToCart = protectedProcedure
           },
         },
       },
-    })
+    });
 
-    return { cartItem, message: 'Item added to cart' }
-  })
+    return { cartItem, message: "Item added to cart" };
+  });
 
 // Update cart item quantity
 export const updateCartItem = protectedProcedure
@@ -120,20 +125,29 @@ export const updateCartItem = protectedProcedure
     z.object({
       id: z.string(),
       quantity: z.number().int().min(1),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     const cartItem = await ctx.prisma.cartItem.findUnique({
       where: { id: input.id },
       include: { product: true },
-    })
+    });
 
     if (!cartItem || cartItem.user_id !== ctx.user.id) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Cart item not found' })
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Cart item not found",
+      });
     }
 
-    if (cartItem.product.track_quantity && cartItem.product.quantity < input.quantity) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Insufficient stock' })
+    if (
+      cartItem.product.track_quantity &&
+      cartItem.product.quantity < input.quantity
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Insufficient stock",
+      });
     }
 
     const updatedItem = await ctx.prisma.cartItem.update({
@@ -149,10 +163,10 @@ export const updateCartItem = protectedProcedure
           },
         },
       },
-    })
+    });
 
-    return { cartItem: updatedItem, message: 'Cart item updated' }
-  })
+    return { cartItem: updatedItem, message: "Cart item updated" };
+  });
 
 // Remove item from cart
 export const removeFromCart = protectedProcedure
@@ -160,24 +174,27 @@ export const removeFromCart = protectedProcedure
   .mutation(async ({ input, ctx }) => {
     const cartItem = await ctx.prisma.cartItem.findUnique({
       where: { id: input.id },
-    })
+    });
 
     if (!cartItem || cartItem.user_id !== ctx.user.id) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Cart item not found' })
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Cart item not found",
+      });
     }
 
     await ctx.prisma.cartItem.delete({
       where: { id: input.id },
-    })
+    });
 
-    return { message: 'Item removed from cart' }
-  })
+    return { message: "Item removed from cart" };
+  });
 
 // Clear cart
 export const clearCart = protectedProcedure.mutation(async ({ ctx }) => {
   await ctx.prisma.cartItem.deleteMany({
     where: { user_id: ctx.user.id },
-  })
+  });
 
-  return { message: 'Cart cleared' }
-})
+  return { message: "Cart cleared" };
+});

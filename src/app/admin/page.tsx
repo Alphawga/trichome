@@ -1,9 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { ArrowUpIcon, ArrowDownIcon, ViewAllArrowIcon, SearchIcon, FilterIcon, ExportIcon, DocumentTextIcon, OrdersIcon, CustomersIcon, ProductsIcon } from '@/components/ui/icons';
-import { trpc } from '@/utils/trpc';
+import Image from "next/image";
+import type React from "react";
+import { useState } from "react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CustomersIcon,
+  DocumentTextIcon,
+  ExportIcon,
+  FilterIcon,
+  OrdersIcon,
+  ProductsIcon,
+  SearchIcon,
+  ViewAllArrowIcon,
+} from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
 
 interface AdminProduct {
   id: string;
@@ -12,7 +24,7 @@ interface AdminProduct {
   category: string;
   price: number;
   stock: number;
-  status: 'In stock' | 'Out of stock';
+  status: "In stock" | "Out of stock";
   totalSold: number;
 }
 
@@ -34,7 +46,7 @@ interface ProductRowProps {
   product: AdminProduct;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, trend, trendPositive = true, icon }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
   const trendValue = Number.parseFloat(trend);
   const isPositive = trendValue >= 0;
 
@@ -48,8 +60,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, trend, trendPositive 
         <div className="text-gray-400">{icon}</div>
       </div>
       <div className="flex items-center text-sm mt-4">
-        <span className={`flex items-center mr-2 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {isPositive ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}
+        <span
+          className={`flex items-center mr-2 ${isPositive ? "text-green-600" : "text-red-600"}`}
+        >
+          {isPositive ? (
+            <ArrowUpIcon className="w-4 h-4" />
+          ) : (
+            <ArrowDownIcon className="w-4 h-4" />
+          )}
           {Math.abs(trendValue)}%
         </span>
         <span className="text-gray-500">Since last month</span>
@@ -67,7 +85,10 @@ const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon }) => (
       </div>
       <div className="text-gray-400">{icon}</div>
     </div>
-    <button className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800">
+    <button
+      type="button"
+      className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800"
+    >
       View all <ViewAllArrowIcon className="ml-1" />
     </button>
   </div>
@@ -90,9 +111,13 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
     <td className="p-4 text-gray-600">₦{product.price.toLocaleString()}</td>
     <td className="p-4 text-gray-600">{product.stock}pcs</td>
     <td className="p-4">
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-        product.status === 'In stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-      }`}>
+      <span
+        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          product.status === "In stock"
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
         {product.status}
       </span>
     </td>
@@ -100,7 +125,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
 );
 
 export default function AdminDashboard() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch dashboard stats
   const dashboardStatsQuery = trpc.getDashboardStats.useQuery(undefined, {
@@ -110,18 +135,18 @@ export default function AdminDashboard() {
   // Fetch top products
   const topProductsQuery = trpc.getTopProducts.useQuery(
     { limit: 10 },
-    { refetchOnWindowFocus: false }
+    { refetchOnWindowFocus: false },
   );
 
   const stats = dashboardStatsQuery.data;
   const topProducts = topProductsQuery.data || [];
 
-  const filteredProducts = topProducts.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = topProducts.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleExportCSV = () => {
-    console.log('Export CSV functionality will be implemented');
+    console.log("Export CSV functionality will be implemented");
     // TODO: Implement CSV export
   };
 
@@ -129,22 +154,27 @@ export default function AdminDashboard() {
     <div>
       {/* Welcome Section */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
-        <p className="text-gray-600">Welcome back! Here's what's happening with your store today.</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Dashboard Overview
+        </h1>
+        <p className="text-gray-600">
+          Welcome back! Here's what's happening with your store today.
+        </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {dashboardStatsQuery.isLoading ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
-                <div className="h-8 bg-gray-200 rounded w-16 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-              </div>
-            ))}
-          </>
+          [1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
+            >
+              <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+            </div>
+          ))
         ) : stats ? (
           <>
             <StatCard
@@ -194,10 +224,14 @@ export default function AdminDashboard() {
                 <SearchIcon />
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium transition-colors">
+            <button
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium transition-colors"
+            >
               <FilterIcon /> Filter (last month)
             </button>
             <button
+              type="button"
               onClick={handleExportCSV}
               className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg bg-[#38761d] text-white hover:bg-opacity-90 font-medium transition-colors"
             >
@@ -211,11 +245,21 @@ export default function AdminDashboard() {
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="p-4 font-semibold text-sm text-gray-700">Product</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Category</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Price</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Stock</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Status</th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Product
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Category
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Price
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Stock
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -229,7 +273,7 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ) : filteredProducts.length > 0 ? (
-                filteredProducts.map(product => (
+                filteredProducts.map((product) => (
                   <ProductRow key={product.id} product={product} />
                 ))
               ) : topProducts.length === 0 ? (
@@ -251,7 +295,10 @@ export default function AdminDashboard() {
 
         {filteredProducts.length > 10 && (
           <div className="mt-4 flex justify-center">
-            <button className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button
+              type="button"
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
               Load more products
             </button>
           </div>
@@ -262,15 +309,23 @@ export default function AdminDashboard() {
       <div className="mt-8 bg-white p-6 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-green-600 mb-2">
               <ProductsIcon />
             </div>
             <p className="font-medium">Add Product</p>
-            <p className="text-sm text-gray-500">Create a new product listing</p>
+            <p className="text-sm text-gray-500">
+              Create a new product listing
+            </p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-blue-600 mb-2">
               <OrdersIcon />
             </div>
@@ -278,7 +333,10 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">Manage customer orders</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-purple-600 mb-2">
               <CustomersIcon />
             </div>
@@ -286,7 +344,10 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">View customer details</p>
           </button>
 
-          <button className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-orange-600 mb-2">
               <DocumentTextIcon />
             </div>

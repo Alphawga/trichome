@@ -1,32 +1,31 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import type { User, UserRole, UserStatus } from "@prisma/client";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { UserStatus, UserRole } from '@prisma/client';
-import type { User } from '@prisma/client';
-import { trpc } from '@/utils/trpc';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { trpc } from "@/utils/trpc";
 
 type Customer = Pick<
   User,
-  'id' | 'email' | 'first_name' | 'last_name' | 'phone' | 'status' | 'role'
+  "id" | "email" | "first_name" | "last_name" | "phone" | "status" | "role"
 >;
 
 interface CustomerEditSheetProps {
@@ -44,7 +43,12 @@ interface CustomerFormData {
   role: UserRole;
 }
 
-export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: CustomerEditSheetProps) {
+export function CustomerEditSheet({
+  customer,
+  open,
+  onOpenChange,
+  onSuccess,
+}: CustomerEditSheetProps) {
   const {
     register,
     handleSubmit,
@@ -57,7 +61,7 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
   const utils = trpc.useUtils();
   const updateUserMutation = trpc.updateUser.useMutation({
     onSuccess: () => {
-      toast.success('Customer updated successfully');
+      toast.success("Customer updated successfully");
       utils.getCustomers.invalidate();
       utils.getUserStats.invalidate();
       onOpenChange(false);
@@ -71,9 +75,9 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
   useEffect(() => {
     if (customer) {
       reset({
-        first_name: customer.first_name || '',
-        last_name: customer.last_name || '',
-        phone: customer.phone || '',
+        first_name: customer.first_name || "",
+        last_name: customer.last_name || "",
+        phone: customer.phone || "",
         status: customer.status,
         role: customer.role,
       });
@@ -95,8 +99,8 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
 
   if (!customer) return null;
 
-  const statusValue = watch('status');
-  const roleValue = watch('role');
+  const statusValue = watch("status");
+  const roleValue = watch("role");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -123,7 +127,9 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
               {customer.email}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Email cannot be changed
+            </p>
           </div>
 
           {/* First Name */}
@@ -133,12 +139,16 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             </Label>
             <Input
               id="first_name"
-              {...register('first_name', { required: 'First name is required' })}
+              {...register("first_name", {
+                required: "First name is required",
+              })}
               className="mt-1"
               placeholder="Enter first name"
             />
             {errors.first_name && (
-              <p className="text-sm text-red-500 mt-1">{errors.first_name.message}</p>
+              <p className="text-sm text-red-500 mt-1">
+                {errors.first_name.message}
+              </p>
             )}
           </div>
 
@@ -149,12 +159,14 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             </Label>
             <Input
               id="last_name"
-              {...register('last_name', { required: 'Last name is required' })}
+              {...register("last_name", { required: "Last name is required" })}
               className="mt-1"
               placeholder="Enter last name"
             />
             {errors.last_name && (
-              <p className="text-sm text-red-500 mt-1">{errors.last_name.message}</p>
+              <p className="text-sm text-red-500 mt-1">
+                {errors.last_name.message}
+              </p>
             )}
           </div>
 
@@ -165,7 +177,7 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             </Label>
             <Input
               id="phone"
-              {...register('phone')}
+              {...register("phone")}
               className="mt-1"
               placeholder="Enter phone number"
             />
@@ -178,14 +190,16 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             </Label>
             <Select
               value={statusValue}
-              onValueChange={(value: UserStatus) => setValue('status', value)}
+              onValueChange={(value: UserStatus) => setValue("status", value)}
             >
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="PENDING_VERIFICATION">Pending Verification</SelectItem>
+                <SelectItem value="PENDING_VERIFICATION">
+                  Pending Verification
+                </SelectItem>
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
                 <SelectItem value="INACTIVE">Inactive</SelectItem>
               </SelectContent>
@@ -202,7 +216,7 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
             </Label>
             <Select
               value={roleValue}
-              onValueChange={(value: UserRole) => setValue('role', value)}
+              onValueChange={(value: UserRole) => setValue("role", value)}
             >
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Select role" />
@@ -234,7 +248,7 @@ export function CustomerEditSheet({ customer, open, onOpenChange, onSuccess }: C
               disabled={isSubmitting}
               className="flex-1 bg-[#38761d] hover:bg-[#2d5a16] text-white"
             >
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>

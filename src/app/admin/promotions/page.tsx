@@ -1,14 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { SearchIcon, ExportIcon, PlusIcon, EditIcon, TrashIcon, EyeIcon, CopyIcon } from '@/components/ui/icons';
-import { trpc } from '@/utils/trpc';
-import { PromotionType, PromotionStatus, PromotionTarget } from '@prisma/client';
-import type { Promotion } from '@prisma/client';
-import { DataTable, type Column } from '@/components/ui/data-table';
-import { toast } from 'sonner';
-import { PromotionViewSheet } from './PromotionViewSheet';
-import { PromotionFormSheet } from './PromotionFormSheet';
+import type { Promotion, PromotionStatus, PromotionType } from "@prisma/client";
+import type React from "react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { type Column, DataTable } from "@/components/ui/data-table";
+import {
+  CopyIcon,
+  EditIcon,
+  ExportIcon,
+  EyeIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+} from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
+import { PromotionFormSheet } from "./PromotionFormSheet";
+import { PromotionViewSheet } from "./PromotionViewSheet";
 
 // Type for promotion from backend
 type PromotionWithDetails = Promotion & {
@@ -37,27 +45,34 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   onCopy,
   onToggleStatus,
   openDropdownId,
-  setOpenDropdownId
+  setOpenDropdownId,
 }) => (
   <div className="relative">
     <button
-      onClick={() => setOpenDropdownId(openDropdownId === promotion.id ? null : promotion.id)}
+      type="button"
+      onClick={() =>
+        setOpenDropdownId(openDropdownId === promotion.id ? null : promotion.id)
+      }
       className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
       title="Actions"
     >
       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <title>Open actions</title>
         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
       </svg>
     </button>
 
     {openDropdownId === promotion.id && (
       <>
-        <div
+        <button
+          type="button"
           className="fixed inset-0 z-10"
           onClick={() => setOpenDropdownId(null)}
+          aria-label="Close actions menu"
         />
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
           <button
+            type="button"
             onClick={() => {
               onView(promotion.id);
               setOpenDropdownId(null);
@@ -68,6 +83,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
             View Details
           </button>
           <button
+            type="button"
             onClick={() => {
               onEdit(promotion.id);
               setOpenDropdownId(null);
@@ -78,6 +94,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
             Edit Promotion
           </button>
           <button
+            type="button"
             onClick={() => {
               onCopy(promotion.code);
               setOpenDropdownId(null);
@@ -89,16 +106,18 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
           </button>
           <div className="border-t border-gray-100 my-1" />
           <button
+            type="button"
             onClick={() => {
               onToggleStatus(promotion.id);
               setOpenDropdownId(null);
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           >
-            {promotion.status === 'ACTIVE' ? '⏸️' : '▶️'}
-            {promotion.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+            {promotion.status === "ACTIVE" ? "⏸️" : "▶️"}
+            {promotion.status === "ACTIVE" ? "Deactivate" : "Activate"}
           </button>
           <button
+            type="button"
             onClick={() => {
               onDelete(promotion.id);
               setOpenDropdownId(null);
@@ -115,9 +134,11 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
 );
 
 export default function AdminPromotionsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PromotionStatus | 'All'>('All');
-  const [typeFilter, setTypeFilter] = useState<PromotionType | 'All'>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<PromotionStatus | "All">(
+    "All",
+  );
+  const [typeFilter, setTypeFilter] = useState<PromotionType | "All">("All");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [viewPromotionId, setViewPromotionId] = useState<string | null>(null);
   const [editPromotionId, setEditPromotionId] = useState<string | null>(null);
@@ -126,22 +147,23 @@ export default function AdminPromotionsPage() {
   // Define table columns
   const columns: Column<PromotionWithDetails>[] = [
     {
-      header: 'Promotion Name',
+      header: "Promotion Name",
       cell: (promotion) => (
         <div>
           <span className="font-medium text-gray-900">{promotion.name}</span>
           <p className="text-sm text-gray-500">
-            Created {new Date(promotion.created_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+            Created{" "}
+            {new Date(promotion.created_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             })}
           </p>
         </div>
       ),
     },
     {
-      header: 'Code',
+      header: "Code",
       cell: (promotion) => (
         <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
           {promotion.code}
@@ -149,21 +171,21 @@ export default function AdminPromotionsPage() {
       ),
     },
     {
-      header: 'Discount',
+      header: "Discount",
       cell: (promotion) => {
-        let discountText = '';
+        let discountText = "";
         switch (promotion.type) {
-          case 'PERCENTAGE':
+          case "PERCENTAGE":
             discountText = `${promotion.value}% OFF`;
             break;
-          case 'FIXED_AMOUNT':
+          case "FIXED_AMOUNT":
             discountText = `₦${Number(promotion.value).toLocaleString()} OFF`;
             break;
-          case 'FREE_SHIPPING':
-            discountText = 'FREE SHIPPING';
+          case "FREE_SHIPPING":
+            discountText = "FREE SHIPPING";
             break;
-          case 'BUY_X_GET_Y':
-            discountText = 'BUY X GET Y';
+          case "BUY_X_GET_Y":
+            discountText = "BUY X GET Y";
             break;
         }
         return (
@@ -177,16 +199,17 @@ export default function AdminPromotionsPage() {
       },
     },
     {
-      header: 'Usage',
+      header: "Usage",
       cell: (promotion) => {
         const usageCount = promotion._count.usages;
         const usageLimit = promotion.usage_limit;
-        const percentage = usageLimit > 0 ? Math.min((usageCount / usageLimit) * 100, 100) : 0;
+        const percentage =
+          usageLimit > 0 ? Math.min((usageCount / usageLimit) * 100, 100) : 0;
 
         return (
           <div>
             <span className="text-gray-900">
-              {usageCount} / {usageLimit || '∞'}
+              {usageCount} / {usageLimit || "∞"}
             </span>
             {usageLimit > 0 && (
               <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
@@ -201,53 +224,55 @@ export default function AdminPromotionsPage() {
       },
     },
     {
-      header: 'Duration',
+      header: "Duration",
       cell: (promotion) => (
         <div>
           <span className="text-sm text-gray-600">
-            {new Date(promotion.start_date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+            {new Date(promotion.start_date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             })}
           </span>
           <br />
           <span className="text-sm text-gray-600">
-            {new Date(promotion.end_date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+            {new Date(promotion.end_date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             })}
           </span>
         </div>
       ),
     },
     {
-      header: 'Status',
+      header: "Status",
       cell: (promotion) => {
         const statusColors = {
-          ACTIVE: 'bg-green-100 text-green-800',
-          INACTIVE: 'bg-gray-100 text-gray-800',
-          EXPIRED: 'bg-red-100 text-red-800',
-          SCHEDULED: 'bg-blue-100 text-blue-800',
+          ACTIVE: "bg-green-100 text-green-800",
+          INACTIVE: "bg-gray-100 text-gray-800",
+          EXPIRED: "bg-red-100 text-red-800",
+          SCHEDULED: "bg-blue-100 text-blue-800",
         };
         return (
-          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}>
+          <span
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}
+          >
             {promotion.status}
           </span>
         );
       },
     },
     {
-      header: 'Target',
+      header: "Target",
       cell: (promotion) => (
         <span className="text-gray-600">
-          {promotion.target_customers.replace('_', ' ')}
+          {promotion.target_customers.replace("_", " ")}
         </span>
       ),
     },
     {
-      header: 'Actions',
+      header: "Actions",
       cell: (promotion) => (
         <ActionsDropdown
           promotion={promotion}
@@ -260,7 +285,7 @@ export default function AdminPromotionsPage() {
           setOpenDropdownId={setOpenDropdownId}
         />
       ),
-      className: 'w-20',
+      className: "w-20",
     },
   ];
 
@@ -269,13 +294,13 @@ export default function AdminPromotionsPage() {
     {
       page: 1,
       limit: 100,
-      status: statusFilter !== 'All' ? statusFilter : undefined,
-      type: typeFilter !== 'All' ? typeFilter : undefined,
+      status: statusFilter !== "All" ? statusFilter : undefined,
+      type: typeFilter !== "All" ? typeFilter : undefined,
       search: searchTerm || undefined,
     },
     {
       refetchOnWindowFocus: false,
-    }
+    },
   );
 
   // Fetch promotion statistics
@@ -291,7 +316,7 @@ export default function AdminPromotionsPage() {
   // Delete mutation
   const deletePromotionMutation = trpc.deletePromotion.useMutation({
     onSuccess: () => {
-      toast.success('Promotion deleted successfully');
+      toast.success("Promotion deleted successfully");
       utils.getPromotions.invalidate();
       utils.getPromotionStats.invalidate();
     },
@@ -325,11 +350,17 @@ export default function AdminPromotionsPage() {
   };
 
   // Get selected promotions for sheets
-  const selectedViewPromotion = promotions.find(p => p.id === viewPromotionId) || null;
-  const selectedEditPromotion = promotions.find(p => p.id === editPromotionId) || null;
+  const selectedViewPromotion =
+    promotions.find((p) => p.id === viewPromotionId) || null;
+  const selectedEditPromotion =
+    promotions.find((p) => p.id === editPromotionId) || null;
 
   const handleDeletePromotion = (id: string) => {
-    if (confirm('Are you sure you want to delete this promotion? This action cannot be undone.')) {
+    if (
+      confirm(
+        "Are you sure you want to delete this promotion? This action cannot be undone.",
+      )
+    ) {
       deletePromotionMutation.mutate({ id });
     }
   };
@@ -344,26 +375,38 @@ export default function AdminPromotionsPage() {
   };
 
   const handleExportCSV = () => {
-    toast.info('CSV export coming soon');
+    toast.info("CSV export coming soon");
   };
 
-  const statuses: Array<PromotionStatus | 'All'> = ['All', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'SCHEDULED'];
-  const types: Array<PromotionType | 'All'> = ['All', 'PERCENTAGE', 'FIXED_AMOUNT', 'FREE_SHIPPING', 'BUY_X_GET_Y'];
+  const statuses: Array<PromotionStatus | "All"> = [
+    "All",
+    "ACTIVE",
+    "INACTIVE",
+    "EXPIRED",
+    "SCHEDULED",
+  ];
+  const types: Array<PromotionType | "All"> = [
+    "All",
+    "PERCENTAGE",
+    "FIXED_AMOUNT",
+    "FREE_SHIPPING",
+    "BUY_X_GET_Y",
+  ];
 
-  const statusLabels: Record<PromotionStatus | 'All', string> = {
-    All: 'All Status',
-    ACTIVE: 'Active',
-    INACTIVE: 'Inactive',
-    EXPIRED: 'Expired',
-    SCHEDULED: 'Scheduled',
+  const statusLabels: Record<PromotionStatus | "All", string> = {
+    All: "All Status",
+    ACTIVE: "Active",
+    INACTIVE: "Inactive",
+    EXPIRED: "Expired",
+    SCHEDULED: "Scheduled",
   };
 
-  const typeLabels: Record<PromotionType | 'All', string> = {
-    All: 'All Types',
-    PERCENTAGE: 'Percentage',
-    FIXED_AMOUNT: 'Fixed Amount',
-    FREE_SHIPPING: 'Free Shipping',
-    BUY_X_GET_Y: 'Buy X Get Y',
+  const typeLabels: Record<PromotionType | "All", string> = {
+    All: "All Types",
+    PERCENTAGE: "Percentage",
+    FIXED_AMOUNT: "Fixed Amount",
+    FREE_SHIPPING: "Free Shipping",
+    BUY_X_GET_Y: "Buy X Get Y",
   };
 
   return (
@@ -371,10 +414,15 @@ export default function AdminPromotionsPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Promotions & Discounts</h1>
-          <p className="text-gray-600">Manage discount codes and promotional campaigns</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Promotions & Discounts
+          </h1>
+          <p className="text-gray-600">
+            Manage discount codes and promotional campaigns
+          </p>
         </div>
         <button
+          type="button"
           onClick={handleAddPromotion}
           className="flex items-center gap-2 px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium transition-colors"
         >
@@ -386,19 +434,20 @@ export default function AdminPromotionsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {statsQuery.isLoading ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                  <div className="ml-4 flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-16"></div>
-                  </div>
+          [1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
+            >
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                <div className="ml-4 flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
                 </div>
               </div>
-            ))}
-          </>
+            </div>
+          ))
         ) : stats ? (
           <>
             <div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -420,7 +469,9 @@ export default function AdminPromotionsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Total Usage</p>
-                  <p className="text-2xl font-bold">{stats.totalUsage.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">
+                    {stats.totalUsage.toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -474,25 +525,34 @@ export default function AdminPromotionsPage() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as PromotionStatus | 'All')}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as PromotionStatus | "All")
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
           >
-            {statuses.map(status => (
-              <option key={status} value={status}>{statusLabels[status]}</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabels[status]}
+              </option>
             ))}
           </select>
 
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as PromotionType | 'All')}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as PromotionType | "All")
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
           >
-            {types.map(type => (
-              <option key={type} value={type}>{typeLabels[type]}</option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {typeLabels[type]}
+              </option>
             ))}
           </select>
 
           <button
+            type="button"
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium transition-colors"
           >
@@ -516,37 +576,67 @@ export default function AdminPromotionsPage() {
       <div className="mt-8 bg-white p-6 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Quick Campaign Templates</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-green-600 mb-2">🎯</div>
             <p className="font-medium">New Customer Welcome</p>
             <p className="text-sm text-gray-500">20% off first order</p>
           </button>
 
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-blue-600 mb-2">🚚</div>
             <p className="font-medium">Free Shipping</p>
-            <p className="text-sm text-gray-500">Free delivery above minimum order</p>
+            <p className="text-sm text-gray-500">
+              Free delivery above minimum order
+            </p>
           </button>
 
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-purple-600 mb-2">⭐</div>
             <p className="font-medium">VIP Exclusive</p>
-            <p className="text-sm text-gray-500">Special discount for loyal customers</p>
+            <p className="text-sm text-gray-500">
+              Special discount for loyal customers
+            </p>
           </button>
 
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-red-600 mb-2">🔥</div>
             <p className="font-medium">Flash Sale</p>
             <p className="text-sm text-gray-500">Limited time mega discount</p>
           </button>
 
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-orange-600 mb-2">🎓</div>
             <p className="font-medium">Student Discount</p>
-            <p className="text-sm text-gray-500">Educational institution discount</p>
+            <p className="text-sm text-gray-500">
+              Educational institution discount
+            </p>
           </button>
 
-          <button onClick={() => toast.info('Template coming soon')} className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => toast.info("Template coming soon")}
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <div className="text-yellow-600 mb-2">🎂</div>
             <p className="font-medium">Birthday Special</p>
             <p className="text-sm text-gray-500">Birthday month celebration</p>
