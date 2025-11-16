@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ZodError } from "zod";
-import { EyeIcon, GoogleIcon } from "@/components/ui/icons";
+import { EyeIcon } from "@/components/ui/icons";
 import { signUpSchema } from "@/lib/validations/user";
 import { useAuth } from "../../contexts/auth-context";
 
@@ -494,7 +494,13 @@ export default function SignUpPage() {
             onClick={handleGoogleSignUp}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >
-            <GoogleIcon />
+            <Image
+              src="/google-icon.png"
+              alt="Google"
+              width={20}
+              height={20}
+              className="object-contain"
+            />
             Continue with Google
           </button>
 

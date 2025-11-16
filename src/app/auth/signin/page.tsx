@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { EyeIcon, GoogleIcon } from "@/components/ui/icons";
+import { EyeIcon } from "@/components/ui/icons";
 import { useAuth } from "../../contexts/auth-context";
 
 interface SignInForm {
@@ -247,7 +247,13 @@ export default function SignInPage() {
             onClick={handleGoogleSignIn}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >
-            <GoogleIcon />
+            <Image
+              src="/google-icon.png"
+              alt="Google"
+              width={20}
+              height={20}
+              className="object-contain"
+            />
             Continue with Google
           </button>
 
@@ -261,31 +267,6 @@ export default function SignInPage() {
               Sign up
             </Link>
           </p>
-        </div>
-
-        {/* Demo Accounts */}
-        <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Demo Accounts
-          </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Admin:</span>
-              <span className="font-mono text-gray-800">
-                admin@trichomes.com
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Customer:</span>
-              <span className="font-mono text-gray-800">
-                customer@example.com
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Password:</span>
-              <span className="font-mono text-gray-800">demo123</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -169,9 +169,21 @@ export function ProductFormSheet({
 
   const onSubmit = async (data: CreateProductInput) => {
     try {
+      // Clean up optional numeric fields - remove if 0 or undefined
+      const cleanedData = { ...data };
+      if (!cleanedData.cost_price || cleanedData.cost_price === 0) {
+        delete cleanedData.cost_price;
+      }
+      if (!cleanedData.compare_price || cleanedData.compare_price === 0) {
+        delete cleanedData.compare_price;
+      }
+      if (!cleanedData.weight || cleanedData.weight === 0) {
+        delete cleanedData.weight;
+      }
+
       // Add images to the data
       const productData = {
-        ...data,
+        ...cleanedData,
         images: productImages.map((img, index) => ({
           url: img.url,
           alt_text: img.alt_text || data.name,
@@ -298,14 +310,10 @@ export function ProductFormSheet({
               </div>
 
               <div>
-                <label
-                  htmlFor="product-image"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Product Image
                 </label>
                 <ImageUploader
-                  inputId="product-image"
                   value={productImages[0]?.url}
                   onChange={(url) => {
                     if (productImages.length === 0) {
@@ -346,7 +354,7 @@ export function ProductFormSheet({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label
                     htmlFor="product-price"
@@ -359,11 +367,35 @@ export function ProductFormSheet({
                     {...register("price", { valueAsNumber: true })}
                     type="number"
                     step="0.01"
+                    min="0"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                   {errors.price && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.price.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="product-cost-price"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Cost Price (₦)
+                  </label>
+                  <input
+                    id="product-cost-price"
+                    {...register("cost_price", { valueAsNumber: true })}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                  />
+                  {errors.cost_price && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.cost_price.message}
                     </p>
                   )}
                 </div>
@@ -380,6 +412,8 @@ export function ProductFormSheet({
                     {...register("compare_price", { valueAsNumber: true })}
                     type="number"
                     step="0.01"
+                    min="0"
+                    placeholder="0.00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>

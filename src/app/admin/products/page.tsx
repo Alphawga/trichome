@@ -11,6 +11,13 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   EditIcon,
   ExportIcon,
   EyeIcon,
@@ -49,7 +56,6 @@ export default function AdminProductsPage() {
   const [viewingProductId, setViewingProductId] = useState<string | undefined>(
     undefined,
   );
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const productsQuery = trpc.getProducts.useQuery(
     {
@@ -133,7 +139,6 @@ export default function AdminProductsPage() {
   const handleViewProduct = useCallback((id: string) => {
     setViewingProductId(id);
     setViewSheetOpen(true);
-    setOpenDropdownId(null);
   }, []);
 
   const handleExportCSV = () => {
@@ -234,86 +239,59 @@ export default function AdminProductsPage() {
       {
         header: "Actions",
         cell: (product) => (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setOpenDropdownId(
-                  openDropdownId === product.id ? null : product.id,
-                )
-              }
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Actions"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <title>Open actions</title>
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-            </button>
-
-            {openDropdownId === product.id && (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-10"
-                  onClick={() => setOpenDropdownId(null)}
-                  aria-label="Close actions menu"
-                />
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleViewProduct(product.id);
-                      setOpenDropdownId(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <EyeIcon className="w-4 h-4" />
-                    View Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleEditProduct(product.id);
-                      setOpenDropdownId(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <EditIcon className="w-4 h-4" />
-                    Edit Product
-                  </button>
-                  <div className="border-t border-gray-100 my-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleDeleteProduct(product.id);
-                      setOpenDropdownId(null);
-                    }}
-                    disabled={deletingProductId === product.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    {deletingProductId === product.id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <TrashIcon className="w-4 h-4" />
-                        Delete Product
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Actions"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <title>Open actions</title>
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleViewProduct(product.id)}
+                className="cursor-pointer"
+              >
+                <EyeIcon className="w-4 h-4 mr-2" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleEditProduct(product.id)}
+                className="cursor-pointer"
+              >
+                <EditIcon className="w-4 h-4 mr-2" />
+                Edit Product
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeleteProduct(product.id)}
+                disabled={deletingProductId === product.id}
+                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                {deletingProductId === product.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Delete Product
+                  </>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ),
       },
     ],
     [
       deletingProductId,
-      openDropdownId,
       handleViewProduct,
       handleEditProduct,
       handleDeleteProduct,
