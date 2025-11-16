@@ -21,7 +21,7 @@ export const Hero: React.FC = () => {
       </div>
 
       {/* Mobile: gradient top bar to blend into the image */}
-      <div className="absolute top-0 inset-x-0 h-[235px] md:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
+      <div className="absolute top-0 inset-x-0 h-[260px] md:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
 
       <div className="hidden lg:block absolute inset-0 bg-[#1E3024]/10 pointer-events-none" />
 
