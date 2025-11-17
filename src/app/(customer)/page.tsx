@@ -106,8 +106,8 @@ export default function Page() {
     <main className="bg-trichomes-soft overflow-x-hidden">
       <Hero />
 
-      <section className="py-8 sm:py-12 lg:py-20 bg-trichomes-soft animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[1900px]">
-        <div className="w-full mx-auto px-4 sm:px-6 lg:px-12 xl:px-20">
+      <section className="py-8 sm:py-12 lg:py-20 bg-trichomes-soft animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[2200px]">
+        <div className="w-full mx-auto px-4 md:px-6">
           <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
             Our Collection
           </h2>
@@ -117,7 +117,7 @@ export default function Page() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4">
               {["c1", "c2", "c3", "c4"].map((key) => (
                 <div key={key} className="animate-pulse">
-                  <div className="relative mx-auto md:w-[350px] h-[280px] md:h-[550px] bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm">
+                  <div className="relative mx-auto md:w-[450px] h-[280px] md:h-[650px] bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm">
                     {/* Image area placeholder */}
                     <div className="absolute inset-0 bg-trichomes-sage/40" />
                     {/* Bottom gradient to mimic overlay */}
@@ -154,7 +154,7 @@ export default function Page() {
                   }}
                 >
                   {/* Card with rounded corners and image bleed */}
-                  <div className="relative mx-auto md:w-[350px] h-[280px] md:h-[550px]  bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-200">
+                  <div className="relative mx-auto md:w-[450px] h-[280px] md:h-[650px]  bg-white border border-trichomes-forest/10 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-200">
                     {/* Category image/products display area - now full bleeding */}
                     <div className="relative w-full h-full">
                       {category.image ? (
@@ -191,11 +191,11 @@ export default function Page() {
       </section>
 
       <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out]">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center sm:text-left mb-2 sm:mb-3 text-trichomes-forest font-heading">
+      <div className="w-full mx-auto px-4 md:px-6">
+        <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
             Featured Items
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto sm:mx-0"></div>
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full"></div>
 
           {featuredProductsQuery.isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
