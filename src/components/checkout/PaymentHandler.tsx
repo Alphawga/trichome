@@ -217,7 +217,6 @@ export function PaymentHandler({
     );
   }
 
-  // Show loading status during order creation
   if (isLoading || paymentStatus === "success") {
     return <OrderCreationStatus status="processing" />;
   }
