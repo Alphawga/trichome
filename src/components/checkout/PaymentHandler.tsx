@@ -222,12 +222,10 @@ export function PaymentHandler({
     return <OrderCreationStatus status="processing" />;
   }
 
-  return null; // idle state - don't render anything
+  return null; 
 }
 
-/**
- * Hook version for easier use in checkout page
- */
+
 export function usePaymentHandler(
   props: Omit<
     PaymentHandlerProps,
@@ -250,7 +248,7 @@ export function usePaymentHandler(
     setPaymentError(null);
 
     try {
-      // Dynamically import Monnify only on client side
+     
       const Monnify = (await import("monnify-js")).default;
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
