@@ -2,6 +2,74 @@ import { UserRole, UserStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, staffProcedure } from "../trpc";
+import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
+
+// Create user (admin only)
+export const createUser = adminProcedure
+  .input(
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+      first_name: z.string().optional(),
+      last_name: z.string().optional(),
+      phone: z.string().optional(),
+      role: z.nativeEnum(UserRole).default("CUSTOMER"),
+      status: z.nativeEnum(UserStatus).default("ACTIVE"),
+      permissions: z.array(z.string()).optional(),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { password, permissions, ...userData } = input;
+
+    // Check if user already exists
+    const existingUser = await ctx.prisma.user.findUnique({
+      where: { email: input.email },
+    });
+
+    if (existingUser) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "User with this email already exists",
+      });
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: passwordValidation.error || "Invalid password",
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user
+    const user = await ctx.prisma.user.create({
+      data: {
+        ...userData,
+        password_hash: hashedPassword,
+        email_verified_at: new Date(), // Auto-verify admin-created users
+      },
+    });
+
+    // Grant permissions if provided
+    if (permissions && permissions.length > 0) {
+      await ctx.prisma.userPermission.createMany({
+        data: permissions.map((permission) => ({
+          user_id: user.id,
+          permission,
+          granted_by: ctx.user.id,
+        })),
+      });
+    }
+
+    return {
+      user,
+      message: "User created successfully",
+    };
+  });
 
 // Get all users (admin/staff only)
 export const getUsers = staffProcedure
@@ -141,6 +209,50 @@ export const getUserPermissions = staffProcedure
     return permissions;
   });
 
+// Get all available permissions (admin/staff only)
+export const getAvailablePermissions = staffProcedure.query(async ({ ctx }) => {
+  // Common permissions list - can be extended
+  const commonPermissions = [
+    "products.create",
+    "products.update",
+    "products.delete",
+    "orders.view",
+    "orders.update",
+    "orders.cancel",
+    "customers.view",
+    "customers.update",
+    "customers.delete",
+    "analytics.view",
+    "settings.view",
+    "settings.update",
+    "promotions.create",
+    "promotions.update",
+    "promotions.delete",
+    "reviews.moderate",
+    "consultations.view",
+    "consultations.update",
+    "payments.view",
+    "payments.refund",
+  ];
+
+  // Get all unique permissions from database
+  const dbPermissions = await ctx.prisma.userPermission.findMany({
+    select: { permission: true },
+    distinct: ["permission"],
+  });
+
+  const dbPermissionSet = new Set(
+    dbPermissions.map((p) => p.permission),
+  );
+
+  // Combine common permissions with database permissions
+  const allPermissions = Array.from(
+    new Set([...commonPermissions, ...Array.from(dbPermissionSet)]),
+  ).sort();
+
+  return allPermissions;
+});
+
 // Grant permission to user (admin only)
 export const grantPermission = adminProcedure
   .input(
@@ -150,6 +262,23 @@ export const grantPermission = adminProcedure
     }),
   )
   .mutation(async ({ input, ctx }) => {
+    // Check if permission already exists
+    const existing = await ctx.prisma.userPermission.findUnique({
+      where: {
+        user_id_permission: {
+          user_id: input.userId,
+          permission: input.permission,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Permission already granted",
+      });
+    }
+
     const permission = await ctx.prisma.userPermission.create({
       data: {
         user_id: input.userId,
@@ -159,6 +288,45 @@ export const grantPermission = adminProcedure
     });
 
     return { permission, message: "Permission granted successfully" };
+  });
+
+// Grant multiple permissions to user (admin only)
+export const grantPermissions = adminProcedure
+  .input(
+    z.object({
+      userId: z.string(),
+      permissions: z.array(z.string()),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    // Get existing permissions
+    const existing = await ctx.prisma.userPermission.findMany({
+      where: {
+        user_id: input.userId,
+        permission: { in: input.permissions },
+      },
+    });
+
+    const existingSet = new Set(existing.map((p) => p.permission));
+    const newPermissions = input.permissions.filter(
+      (p) => !existingSet.has(p),
+    );
+
+    if (newPermissions.length === 0) {
+      return { message: "All permissions already granted" };
+    }
+
+    await ctx.prisma.userPermission.createMany({
+      data: newPermissions.map((permission) => ({
+        user_id: input.userId,
+        permission,
+        granted_by: ctx.user.id,
+      })),
+    });
+
+    return {
+      message: `Granted ${newPermissions.length} permission(s) successfully`,
+    };
   });
 
 // Revoke permission from user (admin only)

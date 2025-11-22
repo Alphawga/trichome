@@ -15,6 +15,8 @@ import {
   UserIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { UserFormSheet } from "./UserFormSheet";
+import { PermissionAssignmentSheet } from "./PermissionAssignmentSheet";
 
 // Type for user with permissions from backend
 type AdminUser = Pick<
@@ -277,6 +279,7 @@ interface UserRowProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onManagePermissions: (id: string) => void;
 }
 
 interface RoleCardProps {
@@ -291,6 +294,7 @@ const UserRow: React.FC<UserRowProps> = ({
   onView,
   onEdit,
   onDelete,
+  onManagePermissions,
 }) => {
   const roleConfig = ROLE_CONFIGS.find((r) => r.id === user.role);
   const statusColors = {
@@ -380,6 +384,14 @@ const UserRow: React.FC<UserRowProps> = ({
             title="Edit user"
           >
             <EditIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onManagePermissions(user.id)}
+            className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
+            title="Manage permissions"
+          >
+            <ShieldIcon className="w-4 h-4" />
           </button>
           <button
             type="button"
@@ -501,8 +513,14 @@ export default function AdminPermissionsPage() {
     toast.info("Role creation feature coming soon");
   };
 
+  const [userFormOpen, setUserFormOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | undefined>();
+  const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
+  const [permissionUserId, setPermissionUserId] = useState<string | undefined>();
+
   const handleAddUser = () => {
-    toast.info("User creation feature coming soon");
+    setEditingUserId(undefined);
+    setUserFormOpen(true);
   };
 
   const handleEditRole = (roleId: UserRole) => {
@@ -518,18 +536,34 @@ export default function AdminPermissionsPage() {
     toast.info("User details view coming soon");
   };
 
-  const handleEditUser = (_id: string) => {
-    toast.info("User editing feature coming soon");
+  const handleEditUser = (id: string) => {
+    setEditingUserId(id);
+    setUserFormOpen(true);
   };
 
-  const handleDeleteUser = (_id: string) => {
+  const deleteUserMutation = trpc.deleteUser.useMutation({
+    onSuccess: () => {
+      toast.success("User deleted successfully");
+      usersQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete user: ${error.message}`);
+    },
+  });
+
+  const handleDeleteUser = (id: string) => {
     if (
       confirm(
         "Are you sure you want to delete this user? This action cannot be undone.",
       )
     ) {
-      toast.info("User deletion feature coming soon");
+      deleteUserMutation.mutate({ id });
     }
+  };
+
+  const handleManagePermissions = (id: string) => {
+    setPermissionUserId(id);
+    setPermissionSheetOpen(true);
   };
 
   const roles: Array<UserRole | "All"> = ["All", "ADMIN", "STAFF", "CUSTOMER"];
@@ -725,6 +759,7 @@ export default function AdminPermissionsPage() {
                       onView={handleViewUser}
                       onEdit={handleEditUser}
                       onDelete={handleDeleteUser}
+                      onManagePermissions={handleManagePermissions}
                     />
                   ))
                 ) : (
@@ -806,6 +841,36 @@ export default function AdminPermissionsPage() {
           </div>
         </div>
       )}
+
+      {/* User Form Sheet */}
+      <UserFormSheet
+        userId={editingUserId}
+        open={userFormOpen}
+        onOpenChange={(open) => {
+          setUserFormOpen(open);
+          if (!open) {
+            setEditingUserId(undefined);
+          }
+        }}
+        onSuccess={() => {
+          usersQuery.refetch();
+        }}
+      />
+
+      {/* Permission Assignment Sheet */}
+      <PermissionAssignmentSheet
+        userId={permissionUserId}
+        open={permissionSheetOpen}
+        onOpenChange={(open) => {
+          setPermissionSheetOpen(open);
+          if (!open) {
+            setPermissionUserId(undefined);
+          }
+        }}
+        onSuccess={() => {
+          usersQuery.refetch();
+        }}
+      />
     </div>
   );
 }
