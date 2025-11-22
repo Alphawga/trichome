@@ -14,6 +14,7 @@ import {
   SearchIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 import { CustomerEditSheet } from "./CustomerEditSheet";
 import { CustomerViewSheet } from "./CustomerViewSheet";
 
@@ -293,8 +294,43 @@ export default function AdminCustomersPage() {
     customers.find((c) => c.id === editCustomerId) || null;
 
   const handleExportCSV = () => {
-    console.log("Export customers CSV");
-    toast.info("CSV export coming soon");
+    const columns: CSVColumn<Customer>[] = [
+      {
+        key: (c) =>
+          c.first_name || c.last_name
+            ? `${c.first_name || ""} ${c.last_name || ""}`.trim()
+            : "No name",
+        label: "Name",
+      },
+      { key: "email", label: "Email" },
+      { key: (c) => c.phone || "N/A", label: "Phone" },
+      {
+        key: (c) => c.addresses[0]?.city || "N/A",
+        label: "City",
+      },
+      {
+        key: (c) => c.addresses[0]?.state || "N/A",
+        label: "State",
+      },
+      { key: "totalOrders", label: "Total Orders" },
+      { key: (c) => c.totalSpent.toLocaleString(), label: "Total Spent (₦)" },
+      { key: "loyaltyPoints", label: "Loyalty Points" },
+      {
+        key: (c) =>
+          c.status === "PENDING_VERIFICATION"
+            ? "Pending"
+            : c.status.toLowerCase(),
+        label: "Status",
+      },
+      {
+        key: (c) =>
+          c.lastOrderDate
+            ? new Date(c.lastOrderDate).toLocaleDateString()
+            : "No orders",
+        label: "Last Order",
+      },
+    ];
+    exportToCSV(customers, columns, "customers");
   };
 
   const statuses: Array<UserStatus | "All"> = [

@@ -60,38 +60,43 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 pr-8 border border-[#1E3024]/15 focus:border-[#3A643B] focus:ring-1 focus:ring-[#3A643B]/20 outline-none bg-[#FAFAF7] text-[#1E3024] text-[13px] font-body transition-all duration-150 ease-out appearance-none cursor-pointer flex items-center justify-between hover:border-[#1E3024]/25"
+        className="w-full px-3 py-2 pr-8 border border-gray-200 focus:border-black focus:ring-1 focus:ring-black/10 outline-none bg-white text-gray-900 text-[12px] sm:text-[13px] font-body font-medium transition-all duration-150 ease-out appearance-none cursor-pointer flex items-center justify-between hover:border-gray-300 rounded-sm"
       >
         <span className="truncate">
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDownIcon
-          className={`w-4 h-4 text-[#1E3024]/60 transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-gray-600 transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-[#FAFAF7] border border-[#1E3024]/15 shadow-lg max-h-60 overflow-auto">
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleSelect(option.value)}
-                className={`w-full text-left px-3 py-2 text-[13px] font-body transition-all duration-150 ease-out ${
-                  isSelected
-                    ? "bg-[#3A643B] text-white"
-                    : "text-[#1E3024] hover:bg-[#E6E4C6]/50 hover:text-[#1E3024]"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div
+        className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 shadow-lg max-h-60 overflow-auto rounded-sm transition-all duration-200 ease-out ${
+          isOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+        }`}
+      >
+        {options.map((option, index) => {
+          const isSelected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleSelect(option.value)}
+              className={`w-full text-left px-3 py-2 text-[12px] sm:text-[13px] font-body transition-all duration-150 ease-out ${
+                isSelected
+                  ? "bg-black text-white font-medium"
+                  : "text-gray-900 hover:bg-gray-100"
+              }`}
+              style={{
+                transitionDelay: isOpen ? `${index * 20}ms` : "0ms",
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

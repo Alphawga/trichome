@@ -158,7 +158,7 @@ export const getProductBySlug = publicProcedure
   });
 
 // Get product by ID (staff)
-export const getProductById = staffProcedure
+export const getProductById = publicProcedure
   .input(z.object({ id: z.string() }))
   .query(async ({ input, ctx }) => {
     const product = await ctx.prisma.product.findUnique({

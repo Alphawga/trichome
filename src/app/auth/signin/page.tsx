@@ -27,6 +27,7 @@ export default function SignInPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [redirectUrl, setRedirectUrl] = useState("/");
   const [shouldRedirectToCheckout, setShouldRedirectToCheckout] =
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,11 +35,17 @@ export default function SignInPage() {
   const isLoading = authLoading || isSubmitting;
 
   useEffect(() => {
+    // Check for stored redirect URL
+    const storedRedirectUrl = localStorage.getItem("trichomes_redirect_url");
     const checkoutRedirect = localStorage.getItem(
       "trichomes_checkout_redirect",
     );
+    
     if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
+      setRedirectUrl("/checkout");
+    } else if (storedRedirectUrl) {
+      setRedirectUrl(storedRedirectUrl);
     }
   }, []);
 
@@ -66,16 +73,15 @@ export default function SignInPage() {
       // Use NextAuth credentials sign-in
       await signInWithCredentials(form.email, form.password);
 
-      // Clear checkout redirect flag
+      // Clear redirect flags
       localStorage.removeItem("trichomes_checkout_redirect");
+      localStorage.removeItem("trichomes_redirect_url");
 
       // Redirect based on user type and context
       if (form.email.includes("admin")) {
         router.push("/admin");
-      } else if (shouldRedirectToCheckout) {
-        router.push("/checkout");
       } else {
-        router.push("/");
+        router.push(redirectUrl);
       }
     } catch (err: unknown) {
       // Following CODING_RULES.md - proper error handling
@@ -91,7 +97,8 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      // Pass the redirect URL to Google sign-in
+      await signInWithGoogle(redirectUrl);
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
       console.error("Google sign-in failed:", error);

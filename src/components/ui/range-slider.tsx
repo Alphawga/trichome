@@ -111,11 +111,11 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   return (
     <div
       ref={sliderRef}
-      className={`relative w-full h-1.5 sm:h-2 bg-[#1E3024]/30 ${className}`}
+      className={`relative w-full h-1 bg-[#1E3024]/20 rounded-full ${className}`}
     >
       {/* Active range track */}
       <div
-        className="absolute h-full bg-[#1E3024]"
+        className="absolute h-full bg-black rounded-full"
         style={{
           left: `${minPercentage}%`,
           width: `${maxPercentage - minPercentage}%`,
@@ -125,7 +125,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
       {/* Min handle */}
       <button
         type="button"
-        className="absolute w-3 h-3 sm:w-3.5 sm:h-3.5 bg-[#1E3024] rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-125 active:scale-110 transition-transform duration-150 ease-out shadow-sm touch-none"
+        className="absolute w-4 h-4 bg-black rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-110 active:scale-105 transition-transform duration-150 ease-out shadow-md touch-none"
         style={{ left: `${minPercentage}%` }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -141,7 +141,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
       {/* Max handle */}
       <button
         type="button"
-        className="absolute w-3 h-3 sm:w-3.5 sm:h-3.5 bg-[#1E3024] rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-125 active:scale-110 transition-transform duration-150 ease-out shadow-sm touch-none"
+        className="absolute w-4 h-4 bg-black rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2 top-1/2 hover:scale-110 active:scale-105 transition-transform duration-150 ease-out shadow-md touch-none"
         style={{ left: `${maxPercentage}%` }}
         onMouseDown={(e) => {
           e.preventDefault();

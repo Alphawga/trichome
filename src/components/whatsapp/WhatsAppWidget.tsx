@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
-import { WhatsAppIcon, XIcon } from "@/components/ui/icons";
+import { XIcon } from "@/components/ui/icons";
 import { WhatsAppButton } from "./WhatsAppButton";
 
 interface WhatsAppWidgetProps {
@@ -78,10 +79,16 @@ export function WhatsAppWidget({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-[#25D366] text-white rounded-full flex items-center justify-center hover:bg-[#20BA5A] transition-colors duration-300 shadow-lg hover:shadow-xl"
+        className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
         aria-label={isOpen ? "Close WhatsApp menu" : "Open WhatsApp menu"}
       >
-        <WhatsAppIcon className="w-7 h-7" filled={!isOpen} />
+        <Image
+          src="/logo/whatsapp-green.png"
+          alt="WhatsApp"
+          width={56}
+          height={56}
+          className="w-full h-full object-contain"
+        />
       </button>
     </div>
   );

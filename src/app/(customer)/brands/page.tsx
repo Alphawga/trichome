@@ -309,28 +309,47 @@ function BrandsPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-trichomes-soft">
+    <div className="min-h-screen bg-white">
       {/* Hero Header Section */}
-      <div className="bg-trichomes-sand w-full">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20 pb-12 sm:pb-16 lg:pb-20">
-          <div className="flex flex-col items-start">
+      <div className="relative w-full h-[300px] sm:h-[350px] lg:h-[400px] animate-[sectionEntrance_600ms_ease-out]">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <div 
+            className="w-full h-full bg-cover bg-center"
+            style={{ backgroundImage: "url('/bg-image.png')" }}
+          />
+          {/* Gradient Overlay - Elegant gray/charcoal tone */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to right, rgba(75, 75, 75, 0.88), rgba(75, 75, 75, 0.70), rgba(75, 75, 75, 0.35))'
+            }}
+          ></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative h-full mx-auto px-4 sm:px-6 lg:px-8 max-w-[2200px] flex flex-col justify-center">
+          <div className="flex flex-col items-start max-w-2xl">
             {/* Main Title */}
-            <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-trichomes-forest leading-tight mb-4">
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-white leading-tight mb-4 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]">
               {showProducts && selectedBrands.length > 0
                 ? selectedBrands.join(", ")
                 : "Shop by Brand"}
             </h1>
 
             {/* Breadcrumbs */}
-            <nav className="flex items-center space-x-2">
+            <nav 
+              className="flex items-center space-x-2 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+              style={{ animationDelay: "100ms", animationFillMode: "both" }}
+            >
               <Link
                 href="/"
-                className="text-[14px] text-trichomes-forest/70 hover:text-trichomes-forest transition-colors duration-150 ease-out font-body"
+                className="text-[14px] text-white/80 hover:text-white transition-colors duration-150 ease-out font-body"
               >
                 Home
               </Link>
-              <ChevronRightIcon className="w-4 h-4 text-trichomes-forest/50" />
-              <span className="text-[14px] text-trichomes-forest font-body">
+              <ChevronRightIcon className="w-4 h-4 text-white/60" />
+              <span className="text-[14px] text-white font-body">
                 Brands
               </span>
             </nav>
@@ -339,17 +358,17 @@ function BrandsPageContent() {
       </div>
 
       {/* Main Content Area */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 max-w-[1500px]">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 max-w-[2200px] animate-[sectionEntrance_600ms_ease-out]">
         {!showProducts ? (
           /* Brand List View */
           <div className="w-full">
             {/* Alphabetical Brand List */}
-            <div className="bg-white border border-trichomes-forest/10 p-6 sm:p-8 shadow-sm">
+            <div className="bg-white border border-gray-200 p-6 sm:p-8 rounded-sm shadow-sm">
               {Object.keys(groupedBrands)
                 .sort()
                 .map((letter) => (
                   <div key={letter} className="mb-8 last:mb-0">
-                    <h2 className="text-[24px] font-heading text-trichomes-primary mb-4 pb-2 border-b border-trichomes-forest/10">
+                    <h2 className="text-[24px] font-heading text-gray-900 mb-4 pb-2 border-b border-gray-200">
                       {letter}
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -362,7 +381,7 @@ function BrandsPageContent() {
                             handleApplyFilters();
                             setShowProducts(true);
                           }}
-                          className="text-left px-4 py-3 border border-trichomes-forest/10 bg-white hover:bg-trichomes-sage hover:border-trichomes-primary transition-all duration-150 ease-out font-body text-[14px] sm:text-[15px] text-trichomes-forest/80 hover:text-trichomes-forest shadow-sm hover:shadow-md"
+                          className="text-left px-4 py-3 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 ease-out font-body text-[14px] sm:text-[15px] text-gray-900 shadow-sm hover:shadow-md"
                         >
                           {brand}
                         </button>
@@ -373,7 +392,7 @@ function BrandsPageContent() {
 
               {Object.keys(groupedBrands).length === 0 && (
                 <div className="text-center py-12">
-                  <p className="text-trichomes-forest/60 font-body text-[15px] sm:text-[16px]">
+                  <p className="text-gray-600 font-body text-[15px] sm:text-[16px]">
                     No brands available at the moment.
                   </p>
                 </div>
@@ -400,10 +419,10 @@ function BrandsPageContent() {
             <div className="w-full">
               {/* Controls Bar - Sort and Clear Filters */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   {/* Results count */}
                   {!productsQuery.isLoading && !productsQuery.error && (
-                    <p className="text-[13px] text-trichomes-forest/60 font-body">
+                    <p className="text-[13px] text-gray-600 font-body">
                       {filteredAndSortedProducts.length} of{" "}
                       {productsQuery.data?.pagination.total || 0} products
                     </p>
@@ -413,7 +432,7 @@ function BrandsPageContent() {
                   <button
                     type="button"
                     onClick={() => setShowProducts(false)}
-                    className="text-[13px] text-trichomes-primary hover:text-trichomes-forest underline font-body transition-colors duration-150 ease-out"
+                    className="text-[13px] text-[#40702A] hover:text-gray-900 underline font-body transition-colors duration-150 ease-out"
                   >
                     ← Back to brands
                   </button>
@@ -423,7 +442,7 @@ function BrandsPageContent() {
                     <button
                       type="button"
                       onClick={handleClearFilters}
-                      className="text-[13px] text-trichomes-primary hover:text-trichomes-forest underline font-body transition-colors duration-150 ease-out"
+                      className="text-[13px] text-[#40702A] hover:text-gray-900 underline font-body transition-colors duration-150 ease-out"
                     >
                       Clear all filters
                     </button>
@@ -434,7 +453,7 @@ function BrandsPageContent() {
                 <div className="flex items-center gap-2.5">
                   <label
                     htmlFor="sort"
-                    className="text-[13px] text-trichomes-forest whitespace-nowrap font-body"
+                    className="text-[13px] text-gray-900 whitespace-nowrap font-body font-medium"
                   >
                     Sort by:
                   </label>
@@ -442,7 +461,7 @@ function BrandsPageContent() {
                     id="sort"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-3 py-2 border border-trichomes-forest/20 text-[14px] focus:ring-1 focus:ring-trichomes-primary/20 focus:border-trichomes-primary outline-none bg-trichomes-soft text-trichomes-forest font-body transition-all duration-150 min-w-[180px]"
+                    className="px-3 py-2 rounded-sm border border-gray-200 text-[13px] focus:ring-1 focus:ring-black/10 focus:border-black outline-none bg-white text-gray-900 font-body transition-all duration-150 min-w-[180px]"
                   >
                     {sortOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -455,27 +474,34 @@ function BrandsPageContent() {
 
               {/* Products */}
               {productsQuery.isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                  {["p1", "p2", "p3", "p4", "p5", "p6"].map((key) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"].map((key) => (
                     <div
                       key={key}
-                      className="bg-white border border-trichomes-forest/10 p-4 animate-pulse shadow-sm"
+                      className="bg-[#FAFAF7] rounded-sm overflow-hidden animate-pulse"
                     >
-                      <div className="w-full h-64 bg-trichomes-sage mb-4"></div>
-                      <div className="h-4 bg-trichomes-sage mb-2"></div>
-                      <div className="h-4 bg-trichomes-sage w-1/2"></div>
+                      <div className="w-full aspect-3/4 bg-gray-200"></div>
+                      <div className="p-4">
+                        <div className="h-4 bg-gray-200 mb-2 rounded"></div>
+                        <div className="h-6 bg-gray-200 mb-4 w-1/2 rounded"></div>
+                        <div className="flex items-center justify-between">
+                          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                          <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
+                          <div className="h-8 w-20 bg-gray-200 rounded-full"></div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : productsQuery.error ? (
-                <div className="text-center py-12 sm:py-20 bg-white border border-trichomes-forest/10 shadow-sm">
+                <div className="text-center py-12 sm:py-20 bg-white border border-gray-200 rounded-sm shadow-sm">
                   <p className="text-[18px] sm:text-[20px] text-red-600 font-body mb-4">
                     Error loading products
                   </p>
                   <button
                     type="button"
                     onClick={() => productsQuery.refetch()}
-                    className="px-6 py-3 bg-trichomes-primary text-trichomes-soft hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
+                    className="px-6 py-3 bg-[#1E3024] text-white rounded-full hover:bg-[#1E3024]/90 font-medium transition-all duration-150 ease-out hover:shadow-md text-[14px] sm:text-[15px] font-body"
                   >
                     Retry
                   </button>
@@ -493,14 +519,14 @@ function BrandsPageContent() {
                   />
 
                   {filteredAndSortedProducts.length === 0 && (
-                    <div className="text-center py-12 sm:py-20 bg-white border border-trichomes-forest/10 shadow-sm">
-                      <p className="text-[18px] sm:text-[20px] text-trichomes-forest/70 font-body mb-4">
+                    <div className="text-center py-12 sm:py-20 bg-white border border-gray-200 rounded-sm shadow-sm">
+                      <p className="text-[18px] sm:text-[20px] text-gray-600 font-body mb-4">
                         No products found for this brand.
                       </p>
                       <button
                         type="button"
                         onClick={() => setShowProducts(false)}
-                        className="px-6 py-3 bg-trichomes-primary text-trichomes-soft hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
+                        className="px-6 py-3 bg-[#1E3024] text-white rounded-full hover:bg-[#1E3024]/90 font-medium transition-all duration-150 ease-out hover:shadow-md text-[14px] sm:text-[15px] font-body"
                       >
                         Browse all brands
                       </button>
@@ -513,7 +539,7 @@ function BrandsPageContent() {
                         type="button"
                         onClick={loadMoreProducts}
                         disabled={productsQuery.isFetching}
-                        className="px-6 sm:px-8 py-3 border-2 border-trichomes-primary text-trichomes-primary hover:bg-trichomes-primary hover:text-trichomes-soft font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 ease-out text-[14px] sm:text-[15px] font-body shadow-sm hover:shadow-md"
+                        className="px-6 sm:px-8 py-3 border-2 border-[#1E3024] text-[#1E3024] rounded-full hover:bg-[#1E3024] hover:text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 ease-out text-[14px] sm:text-[15px] font-body shadow-sm hover:shadow-md"
                       >
                         {productsQuery.isFetching
                           ? "Loading..."
@@ -533,9 +559,9 @@ function BrandsPageContent() {
 
 export default function BrandsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-trichomes-soft flex items-center justify-center">
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
-        <p className="text-trichomes-forest font-body">Loading...</p>
+        <p className="text-gray-900 font-body">Loading...</p>
       </div>
     </div>}>
       <BrandsPageContent />

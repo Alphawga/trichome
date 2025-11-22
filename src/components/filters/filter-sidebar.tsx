@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDownIcon, FilterIcon, SearchIcon } from "../ui/icons";
 import { RangeSlider } from "../ui/range-slider";
 
@@ -91,27 +91,40 @@ const CategoryAccordion: React.FC<{ category: Category }> = ({ category }) => {
     <div className="py-2">
       <button
         type="button"
-        className="w-full flex justify-between items-center text-left text-[15px] font-body text-[#1E3024] hover:text-[#3A643B] transition-colors duration-150 ease-out"
+        className="w-full flex justify-between items-center text-left text-xs font-body text-black hover:text-black/50 transition-colors duration-150 ease-out border-b border-black/10 pb-2"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
       >
         <span>{category.name}</span>
         <span
-          className={`transform transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
+          className={`transform transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`}
         >
-          <ChevronDownIcon className="w-4 h-4 text-[#1E3024]/60" />
+          <ChevronDownIcon className="w-4 h-4 text-black/60" />
         </span>
       </button>
-      {isOpen &&
-        category.subcategories &&
-        category.subcategories.length > 0 && (
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-out ${
+          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        {category.subcategories && category.subcategories.length > 0 && (
           <div className="pt-3 pl-4">
             <ul className="space-y-1.5">
-              {category.subcategories.map((subcategory) => (
-                <li key={subcategory}>
+              {category.subcategories.map((subcategory, index) => (
+                <li
+                  key={subcategory}
+                  className={`transform transition-all duration-300 ease-out ${
+                    isOpen
+                      ? "translate-y-0 opacity-100"
+                      : "-translate-y-2 opacity-0"
+                  }`}
+                  style={{
+                    transitionDelay: isOpen ? `${index * 30}ms` : "0ms",
+                  }}
+                >
                   <button
                     type="button"
-                    className="text-[14px] font-body text-[#1E3024]/70 hover:text-[#1E3024] transition-colors duration-150 ease-out"
+                    className="text-[9px] font-body text-black/70 hover:text-black/80 transition-colors duration-150 ease-out"
                   >
                     {subcategory}
                   </button>
@@ -120,6 +133,7 @@ const CategoryAccordion: React.FC<{ category: Category }> = ({ category }) => {
             </ul>
           </div>
         )}
+      </div>
     </div>
   );
 };
@@ -146,7 +160,7 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
   const [tempMaxPrice, setTempMaxPrice] = useState(price);
 
   // Update temp values when props change
-  React.useEffect(() => {
+  useEffect(() => {
     setTempMinPrice(minPrice);
     setTempMaxPrice(price);
   }, [minPrice, price]);
@@ -162,13 +176,13 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-full lg:w-72 lg:flex-shrink-0">
+    <aside className="w-full lg:w-72 ">
       {/* Search input - Hidden on mobile, visible on desktop */}
       <div className="hidden lg:block relative mb-4 sm:mb-5">
         <input
           type="text"
           placeholder="Search product name or conditions"
-          className="w-full pl-9 pr-9 py-2.5 border border-[#1E3024]/15 focus:border-[#3A643B] focus:ring-1 focus:ring-[#3A643B]/20 outline-none bg-[#FAFAF7] text-[#1E3024] text-[13px] font-body transition-all duration-150 ease-out placeholder:text-[#1E3024]/40"
+          className="w-full pl-9 pr-9 py-2.5 rounded-sm border border-[#1E3024]/15  focus:ring-none focus:ring-none outline-none bg-white text-black text-[12px] md:text-xs font-body transition-all duration-150 ease-out placeholder:text-[#1E3024]/40"
           value={searchTerm}
           onChange={handleSearchChange}
           onFocus={() =>
@@ -202,7 +216,7 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Filter by Price Section - Always Visible */}
-      <div className="bg-[#FAFAF7] p-4 sm:p-5 border border-[#1E3024]/10 shadow-sm mb-4 sm:mb-5">
+      <div className="bg-white p-4 sm:p-5 border border-[#1E3024]/10 shadow-sm mb-4 sm:mb-5 rounded-sm">
         <div className="space-y-4">
           {/* Title */}
           <div className="flex items-center justify-between pb-2 border-b border-[#1E3024]/10">
@@ -235,11 +249,11 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
                 onPriceChange(tempMaxPrice);
                 onApplyFilters();
               }}
-              className="bg-[#E6E4C6] text-[#1E3024] px-4 py-2 sm:py-2.5 text-[12px] font-body font-medium uppercase hover:bg-[#E6E4C6]/80 transition-colors duration-150 ease-out w-full sm:w-auto"
+              className="bg-black text-white px-4 py-2 sm:py-2.5 text-[12px] font-body font-medium uppercase hover:bg-black/80 transition-colors duration-150 ease-out w-full sm:w-auto rounded-sm"
             >
               FILTER
             </button>
-            <div className="text-[12px] sm:text-[13px] font-body text-[#1E3024] text-center sm:text-right flex-shrink-0">
+            <div className="text-[12px] sm:text-[13px] font-body text-[#1E3024] text-center sm:text-right ">
               Price: ₦{tempMinPrice.toLocaleString()} — ₦
               {tempMaxPrice.toLocaleString()}
             </div>
@@ -248,7 +262,7 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
       </div>
 
       {showFilters ? (
-        <div className="space-y-5 bg-[#FAFAF7] p-4 sm:p-5 border border-[#1E3024]/10 shadow-sm">
+        <div className="space-y-5 bg-[#FAFAF7] p-4 sm:p-5 border border-[#1E3024]/10 shadow-sm rounded-sm">
           <h3 className="text-[16px] font-body font-medium text-[#1E3024]">
             Search filter
           </h3>

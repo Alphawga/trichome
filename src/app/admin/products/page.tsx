@@ -26,6 +26,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 import { ProductFormSheet } from "./ProductFormSheet";
 import { ProductViewSheet } from "./ProductViewSheet";
 
@@ -142,7 +143,20 @@ export default function AdminProductsPage() {
   }, []);
 
   const handleExportCSV = () => {
-    console.log("Export products CSV");
+    const columns: CSVColumn<ProductWithRelations>[] = [
+      { key: "name", label: "Product Name" },
+      { key: "sku", label: "SKU" },
+      { key: (p) => p.category.name, label: "Category" },
+      { key: (p) => Number(p.price).toLocaleString(), label: "Price (₦)" },
+      { key: "stock", label: "Stock" },
+      { key: "statusDisplay", label: "Status" },
+      { key: "sales", label: "Sales" },
+      {
+        key: (p) => new Date(p.created_at).toLocaleDateString(),
+        label: "Date Added",
+      },
+    ];
+    exportToCSV(adminProducts, columns, "products");
   };
 
   const handleFormSuccess = () => {

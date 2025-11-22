@@ -124,7 +124,7 @@ export function PaymentHandler({
         onLoadComplete: () => {
           console.log("Monnify payment modal loaded");
         },
-        onComplete: async (response: {
+        onComplete: (response: {
           paymentStatus?: string;
           transactionReference?: string;
           paymentReference?: string;
@@ -138,8 +138,10 @@ export function PaymentHandler({
 
           if (response.paymentStatus === "PAID") {
             setPaymentStatus("success");
+            console.log("Payment successful, creating order...", response);
 
-            // Create order after successful payment
+            // Always use original email/name from checkout form
+            // Monnify may return masked email (e.g., "al***ga@gmail.com")
             createOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,
@@ -147,8 +149,8 @@ export function PaymentHandler({
                 paymentReference: response.paymentReference || paymentReference,
                 amountPaid: response.amountPaid?.toString(),
                 paymentDescription: response.paymentDescription,
-                customerEmail: response.customerEmail || customerEmail,
-                customerName: response.customerName || customerName,
+                customerEmail: customerEmail,
+                customerName: customerName,
               },
               address,
               items,
@@ -277,7 +279,7 @@ export function usePaymentHandler(
         onLoadComplete: () => {
           console.log("Monnify payment modal loaded");
         },
-        onComplete: async (response: {
+        onComplete: (response: {
           paymentStatus?: string;
           transactionReference?: string;
           paymentReference?: string;
@@ -292,7 +294,8 @@ export function usePaymentHandler(
           if (response.paymentStatus === "PAID") {
             setPaymentStatus("success");
 
-            // Create order after successful payment
+            // Always use original email/name from checkout form
+            // Monnify may return masked email (e.g., "al***ga@gmail.com")
             createOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,
@@ -300,8 +303,8 @@ export function usePaymentHandler(
                 paymentReference: response.paymentReference || paymentReference,
                 amountPaid: response.amountPaid?.toString(),
                 paymentDescription: response.paymentDescription,
-                customerEmail: response.customerEmail || props.customerEmail,
-                customerName: response.customerName || props.customerName,
+                customerEmail: props.customerEmail,
+                customerName: props.customerName,
               },
               address: props.address,
               items: props.items,
@@ -309,7 +312,6 @@ export function usePaymentHandler(
               payment_method: props.paymentMethod || "WALLET",
               currency: props.currency || "NGN",
               notes: props.notes,
-              promo_code: props.promoCode,
             });
           } else {
             setPaymentStatus("error");

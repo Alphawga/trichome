@@ -370,3 +370,20 @@ export const updateReviewStatus = staffProcedure
       message: "Review status updated successfully",
     };
   });
+
+// Get review statistics (staff/admin)
+export const getReviewStats = staffProcedure.query(async ({ ctx }) => {
+  const [total, pending, approved, rejected] = await Promise.all([
+    ctx.prisma.review.count(),
+    ctx.prisma.review.count({ where: { status: "PENDING" } }),
+    ctx.prisma.review.count({ where: { status: "APPROVED" } }),
+    ctx.prisma.review.count({ where: { status: "REJECTED" } }),
+  ]);
+
+  return {
+    total,
+    pending,
+    approved,
+    rejected,
+  };
+});

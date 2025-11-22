@@ -178,7 +178,7 @@ export function ComparisonTable({
                   <div className="flex flex-col items-center gap-3">
                     {product.image && (
                       <Link
-                        href={`/products/${product.slug || product.id}`}
+                        href={`/products/${product.id}`}
                         className="relative w-32 h-32 bg-trichomes-soft rounded border border-trichomes-forest/10 overflow-hidden hover:border-trichomes-primary transition-colors duration-150"
                       >
                         <Image
@@ -191,7 +191,7 @@ export function ComparisonTable({
                       </Link>
                     )}
                     <Link
-                      href={`/products/${product.slug || product.id}`}
+                      href={`/products/${product.id}`}
                       className="font-semibold text-trichomes-forest hover:text-trichomes-primary transition-colors duration-150 font-body text-sm text-center"
                     >
                       {product.name}

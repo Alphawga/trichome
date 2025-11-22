@@ -2,12 +2,18 @@
 
 import type React from "react";
 import {
+  AnalyticsIcon,
+  BrandsIcon,
+  CategoriesIcon,
+  ConsultationsIcon,
   CustomersIcon,
   InventoryIcon,
   OrdersIcon,
   PermissionsIcon,
   ProductsIcon,
   PromotionsIcon,
+  ReviewsIcon,
+  SettingsIcon,
 } from "../ui/icons";
 
 interface AdminSidebarProps {
@@ -18,9 +24,19 @@ interface AdminSidebarProps {
 const navItems: { path: string; label: string; icon: React.ReactNode }[] = [
   { path: "/admin", label: "Dashboard", icon: <InventoryIcon /> },
   { path: "/admin/products", label: "Products", icon: <ProductsIcon /> },
+  { path: "/admin/categories", label: "Categories", icon: <CategoriesIcon /> },
+  { path: "/admin/brands", label: "Brands", icon: <BrandsIcon /> },
   { path: "/admin/orders", label: "Orders", icon: <OrdersIcon /> },
   { path: "/admin/customers", label: "Customers", icon: <CustomersIcon /> },
   { path: "/admin/promotions", label: "Promotions", icon: <PromotionsIcon /> },
+  {
+    path: "/admin/consultations",
+    label: "Consultations",
+    icon: <ConsultationsIcon />,
+  },
+  { path: "/admin/reviews", label: "Reviews", icon: <ReviewsIcon /> },
+  { path: "/admin/analytics", label: "Analytics", icon: <AnalyticsIcon /> },
+  { path: "/admin/settings", label: "Settings", icon: <SettingsIcon /> },
   {
     path: "/admin/permissions",
     label: "Permissions",
@@ -42,7 +58,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 min-h-screen sticky top-0">
+    <aside className="w-64 bg-white border-r border-gray-200 shrink-0 min-h-screen sticky top-0">
       <div className="h-20 flex items-center px-6">
         <h2 className="text-lg font-semibold text-gray-800">Admin Panel</h2>
       </div>

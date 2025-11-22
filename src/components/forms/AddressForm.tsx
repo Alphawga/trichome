@@ -61,6 +61,8 @@ interface AddressFormProps {
   className?: string;
   /** Form ID for accessibility */
   formId?: string;
+  /** Make specific fields read-only */
+  readOnlyFields?: Array<keyof AddressFormData>;
 }
 
 /**
@@ -93,6 +95,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
       className = "",
       formId = "address-form",
       asDiv = false,
+      readOnlyFields = [],
     },
     ref,
   ) {
@@ -116,13 +119,16 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
       Partial<Record<keyof AddressFormData, boolean>>
     >({});
 
-    // Update form data when initialValues change
+    // Update form data when initialValues change (only on mount)
+    // Using a ref to track if we've initialized to prevent focus loss
+    const initializedRef = React.useRef(false);
     useEffect(() => {
-      if (initialValues) {
+      if (initialValues && !initializedRef.current) {
         setFormData((prev) => ({
           ...prev,
           ...initialValues,
         }));
+        initializedRef.current = true;
       }
     }, [initialValues]);
 
@@ -328,7 +334,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
             onChange={(value) => handleChange("first_name", value)}
             onBlur={() => handleBlur("first_name")}
             error={errors.first_name}
-            readOnly={readOnly}
+            readOnly={readOnly || readOnlyFields.includes("first_name")}
           />
 
           {/* Last Name */}
@@ -342,7 +348,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
             onChange={(value) => handleChange("last_name", value)}
             onBlur={() => handleBlur("last_name")}
             error={errors.last_name}
-            readOnly={readOnly}
+            readOnly={readOnly || readOnlyFields.includes("last_name")}
           />
 
           {/* Email */}
@@ -358,7 +364,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
               onChange={(value) => handleChange("email", value)}
               onBlur={() => handleBlur("email")}
               error={errors.email}
-              readOnly={readOnly}
+              readOnly={readOnly || readOnlyFields.includes("email")}
             />
           )}
 

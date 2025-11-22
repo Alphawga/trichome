@@ -169,7 +169,7 @@ export const getConsultations = staffProcedure
     };
   });
 
-// Get consultation by ID
+// Get consultation by ID (staff/admin can view any, customers can only view their own)
 export const getConsultationById = protectedProcedure
   .input(z.object({ id: z.string() }))
   .query(async ({ input, ctx }) => {
@@ -195,8 +195,39 @@ export const getConsultationById = protectedProcedure
     }
 
     // Users can only view their own consultations unless they're staff/admin
-    if (consultation.user_id !== ctx.user.id && ctx.user.role === "CUSTOMER") {
+    if (
+      consultation.user_id !== ctx.user.id &&
+      ctx.user.role === "CUSTOMER"
+    ) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+    }
+
+    return consultation;
+  });
+
+// Get consultation by ID (staff/admin only - no restrictions)
+export const getConsultationByIdAdmin = staffProcedure
+  .input(z.object({ id: z.string() }))
+  .query(async ({ input, ctx }) => {
+    const consultation = await ctx.prisma.consultation.findUnique({
+      where: { id: input.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
+      },
+    });
+
+    if (!consultation) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Consultation not found",
+      });
     }
 
     return consultation;

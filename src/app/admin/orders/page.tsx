@@ -19,6 +19,7 @@ import {
   TruckIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 import { OrderViewSheet } from "./OrderViewSheet";
 
 type OrderWithRelations = Order & {
@@ -363,8 +364,18 @@ export default function AdminOrdersPage() {
   };
 
   const handleExportCSV = () => {
-    console.log("Export orders CSV");
-    // TODO: Implement CSV export
+    const columns: CSVColumn<AdminOrder>[] = [
+      { key: "id", label: "Order ID" },
+      { key: "customerName", label: "Customer Name" },
+      { key: "customerEmail", label: "Customer Email" },
+      { key: (o) => o.items.length, label: "Items Count" },
+      { key: (o) => o.total.toLocaleString(), label: "Total (₦)" },
+      { key: "status", label: "Order Status" },
+      { key: "paymentStatus", label: "Payment Status" },
+      { key: "orderDate", label: "Order Date" },
+      { key: (o) => o.trackingNumber || "N/A", label: "Tracking Number" },
+    ];
+    exportToCSV(filteredOrders, columns, "orders");
   };
 
   const statuses: Array<OrderStatus | "All"> = [

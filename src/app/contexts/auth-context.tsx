@@ -20,7 +20,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   session: Session | null;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (callbackUrl?: string) => Promise<void>;
   signInWithCredentials: (email: string, password: string) => Promise<void>;
   signUpWithCredentials: (data: {
     firstName: string;
@@ -49,10 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : null;
 
   // Google OAuth sign-in using NextAuth
-  const signInWithGoogle = async (): Promise<void> => {
+  const signInWithGoogle = async (callbackUrl?: string): Promise<void> => {
     try {
+      // Use stored redirect URL or provided callbackUrl or default to home
+      const redirectUrl = callbackUrl || 
+                         (typeof window !== 'undefined' ? localStorage.getItem("trichomes_redirect_url") : null) || 
+                         "/";
+      
       await signIn("google", {
-        callbackUrl: "/",
+        callbackUrl: redirectUrl,
         redirect: true,
       });
     } catch (error) {

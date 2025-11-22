@@ -1014,6 +1014,40 @@ export const updateOrderStatus = staffProcedure
     return { order, message: "Order status updated successfully" };
   });
 
+// Update tracking number (staff)
+export const updateTrackingNumber = staffProcedure
+  .input(
+    z.object({
+      id: z.string(),
+      trackingNumber: z.string().min(1, "Tracking number is required"),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const order = await ctx.prisma.order.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!order) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+    }
+
+    const updatedOrder = await ctx.prisma.order.update({
+      where: { id: input.id },
+      data: {
+        tracking_number: input.trackingNumber,
+      },
+      include: {
+        items: true,
+        shipping_address: true,
+      },
+    });
+
+    return {
+      order: updatedOrder,
+      message: "Tracking number updated successfully",
+    };
+  });
+
 // Cancel order
 export const cancelOrder = protectedProcedure
   .input(

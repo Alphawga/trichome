@@ -44,7 +44,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             <Heart className="w-2 h-2 text-gray-600" />
           </button>
 
-          <div className="flex-grow flex items-center justify-between border border-gray-300 rounded-full px-4 py-2">
+          <div className=" flex items-center justify-between border border-gray-300 rounded-full px-4 py-2">
             <button
               type="button"
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200"

@@ -32,16 +32,22 @@ export default function SignUpPage() {
     signInWithGoogle,
     isLoading: authLoading,
   } = useAuth();
+  const [redirectUrl, setRedirectUrl] = useState("/");
   const [shouldRedirectToCheckout, setShouldRedirectToCheckout] =
     useState(false);
 
   useEffect(() => {
     // Check if user came from cart and should redirect to checkout after registration
+    const storedRedirectUrl = localStorage.getItem("trichomes_redirect_url");
     const checkoutRedirect = localStorage.getItem(
       "trichomes_checkout_redirect",
     );
+    
     if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
+      setRedirectUrl("/checkout");
+    } else if (storedRedirectUrl) {
+      setRedirectUrl(storedRedirectUrl);
     }
   }, []);
 
@@ -142,15 +148,12 @@ export default function SignUpPage() {
         password: form.password,
       });
 
-      // Clear checkout redirect flag
+      // Clear redirect flags
       localStorage.removeItem("trichomes_checkout_redirect");
+      localStorage.removeItem("trichomes_redirect_url");
 
       // Redirect based on context
-      if (shouldRedirectToCheckout) {
-        router.push("/checkout");
-      } else {
-        router.push("/");
-      }
+      router.push(redirectUrl);
     } catch (err: unknown) {
       // Following CODING_RULES.md - proper error handling
       if (err instanceof Error && err.message.includes("already exists")) {
@@ -167,7 +170,8 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signInWithGoogle();
+      // Pass the redirect URL to Google sign-in
+      await signInWithGoogle(redirectUrl);
     } catch (error) {
       console.error("Google sign-up failed:", error);
       setErrors({ email: "Google sign-up failed. Please try again." });

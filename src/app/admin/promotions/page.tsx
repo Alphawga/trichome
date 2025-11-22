@@ -15,6 +15,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 import { PromotionFormSheet } from "./PromotionFormSheet";
 import { PromotionViewSheet } from "./PromotionViewSheet";
 
@@ -375,7 +376,43 @@ export default function AdminPromotionsPage() {
   };
 
   const handleExportCSV = () => {
-    toast.info("CSV export coming soon");
+    const columns: CSVColumn<PromotionWithDetails>[] = [
+      { key: "name", label: "Promotion Name" },
+      { key: "code", label: "Code" },
+      {
+        key: (p) => {
+          switch (p.type) {
+            case "PERCENTAGE":
+              return `${p.value}% OFF`;
+            case "FIXED_AMOUNT":
+              return `₦${Number(p.value).toLocaleString()} OFF`;
+            case "FREE_SHIPPING":
+              return "FREE SHIPPING";
+            case "BUY_X_GET_Y":
+              return "BUY X GET Y";
+            default:
+              return p.type;
+          }
+        },
+        label: "Discount",
+      },
+      { key: (p) => p._count.usages, label: "Usage Count" },
+      { key: (p) => p.usage_limit || "∞", label: "Usage Limit" },
+      {
+        key: (p) => new Date(p.start_date).toLocaleDateString(),
+        label: "Start Date",
+      },
+      {
+        key: (p) => new Date(p.end_date).toLocaleDateString(),
+        label: "End Date",
+      },
+      { key: "status", label: "Status" },
+      {
+        key: (p) => p.target_customers.replace("_", " "),
+        label: "Target",
+      },
+    ];
+    exportToCSV(promotions, columns, "promotions");
   };
 
   const statuses: Array<PromotionStatus | "All"> = [

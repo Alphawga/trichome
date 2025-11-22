@@ -278,13 +278,29 @@ function ProductsPageContent() {
   }, [mobileFilterOpen]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7]">
+    <div className="min-h-screen bg-white ">
       {/* Hero Header Section */}
-      <div className="bg-[#E9DDAA] w-full animate-[sectionEntrance_600ms_ease-out]">
-        <div className="container mx-4 px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20 pb-12 sm:pb-16 lg:pb-20 ">
-          <div className="flex flex-col items-start">
+      <div className="relative w-full h-[300px] sm:h-[350px] lg:h-[400px] animate-[sectionEntrance_600ms_ease-out] ">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <div 
+            className="w-full h-full bg-cover bg-center"
+            style={{ backgroundImage: "url('/banners/product-banner.jpg')" }}
+          />
+          {/* Gradient Overlay */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)'
+            }}
+          ></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative h-full mx-auto px-4 sm:px-6 lg:px-8 max-w-[2200px] flex flex-col justify-center">
+          <div className="flex flex-col items-start max-w-2xl">
             {/* Main Title */}
-            <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-[#1E3024] leading-tight mb-4 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]">
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-white leading-tight mb-4 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]">
               {categoryDisplayName}
             </h1>
 
@@ -295,21 +311,21 @@ function ProductsPageContent() {
             >
               <Link
                 href="/"
-                className="text-[14px] text-[#1E3024]/70 hover:text-[#1E3024] transition-colors duration-150 ease-out font-body"
+                className="text-[14px] text-white/80 hover:text-white transition-colors duration-150 ease-out font-body"
               >
                 Home
               </Link>
-              <ChevronRightIcon className="w-4 h-4 text-[#1E3024]/50" />
+              <ChevronRightIcon className="w-4 h-4 text-white/60" />
               <Link
                 href="/shop"
-                className="text-[14px] text-[#1E3024]/70 hover:text-[#1E3024] transition-colors duration-150 ease-out font-body"
+                className="text-[14px] text-white/80 hover:text-white transition-colors duration-150 ease-out font-body"
               >
                 Shop
               </Link>
               {categoryParam && (
                 <>
-                  <ChevronRightIcon className="w-4 h-4 text-[#1E3024]/50" />
-                  <span className="text-[14px] text-[#1E3024] font-body">
+                  <ChevronRightIcon className="w-4 h-4 text-white/60" />
+                  <span className="text-[14px] text-white font-body">
                     {categoryDisplayName}
                   </span>
                 </>
@@ -320,7 +336,7 @@ function ProductsPageContent() {
       </div>
 
       {/* Main Content Area */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 max-w-[1500px] animate-[sectionEntrance_600ms_ease-out]">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 max-w-[2200px] animate-[sectionEntrance_600ms_ease-out]">
         {/* Controls Bar - Sort, Filter Icon (Mobile), and Clear Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6">
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -328,18 +344,18 @@ function ProductsPageContent() {
             <button
               type="button"
               onClick={toggleMobileFilter}
-              className="lg:hidden flex items-center gap-2 px-3 py-2 border border-[#1E3024]/20 hover:bg-[#E6E4C6]/50 transition-all duration-150 ease-out text-[#1E3024] hover:text-[#3A643B] flex-shrink-0"
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all duration-150 ease-out shrink-0 rounded"
               aria-label="Open filters"
             >
               <FilterIcon className="w-4 h-4" />
-              <span className="text-[12px] font-body uppercase tracking-wider">
+              <span className="text-[12px] font-body uppercase tracking-wider font-medium">
                 Filters
               </span>
             </button>
 
             {/* Results count */}
             {!productsQuery.isLoading && !productsQuery.error && (
-              <p className="text-[12px] sm:text-[13px] text-[#1E3024]/60 font-body">
+              <p className="text-[12px] sm:text-[13px] text-gray-600 font-body">
                 {productsQuery.data?.pagination.total || 0} products
               </p>
             )}
@@ -349,7 +365,7 @@ function ProductsPageContent() {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="text-[12px] sm:text-[13px] text-[#3A643B] hover:text-[#1E3024] underline font-body transition-colors duration-150 ease-out"
+                className="text-[12px] sm:text-[13px] text-[#407029] hover:text-[#407029]/80 underline font-body transition-colors duration-150 ease-out font-medium"
               >
                 Clear filters
               </button>
@@ -360,7 +376,7 @@ function ProductsPageContent() {
           <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <label
               htmlFor="sort"
-              className="text-[12px] sm:text-[13px] text-[#1E3024] whitespace-nowrap font-body"
+              className="text-[12px] sm:text-[13px] text-gray-900 whitespace-nowrap font-body font-medium"
             >
               Sort:
             </label>
@@ -378,7 +394,7 @@ function ProductsPageContent() {
         {activeFilters && (
           <div className="flex flex-wrap gap-2 mb-6">
             {activeFilters.category_slug && (
-              <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+              <span className="inline-flex items-center px-3 py-1.5 text-[12px] bg-gray-100 text-gray-900 font-body border border-gray-200 rounded">
                 Category:{" "}
                 {getCategoryNameFromTree(activeFilters.category_slug) ||
                   formatCategorySlug(activeFilters.category_slug)}
@@ -396,7 +412,7 @@ function ProductsPageContent() {
                     );
                     router.push("/products");
                   }}
-                  className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                  className="ml-1.5 text-gray-500 hover:text-gray-900 transition-colors duration-150 ease-out text-base leading-none"
                   aria-label="Remove category filter"
                 >
                   ×
@@ -405,7 +421,7 @@ function ProductsPageContent() {
             )}
             {activeFilters.min_price !== undefined &&
               activeFilters.min_price > 0 && (
-                <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+                <span className="inline-flex items-center px-3 py-1.5 text-[12px] bg-gray-100 text-gray-900 font-body border border-gray-200 rounded">
                   Min: ₦{activeFilters.min_price.toLocaleString()}
                   <button
                     type="button"
@@ -422,7 +438,7 @@ function ProductsPageContent() {
                         handleApplyFilters();
                       }
                     }}
-                    className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                    className="ml-1.5 text-gray-500 hover:text-gray-900 transition-colors duration-150 ease-out text-base leading-none"
                     aria-label="Remove min price filter"
                   >
                     ×
@@ -431,7 +447,7 @@ function ProductsPageContent() {
               )}
             {activeFilters.max_price !== undefined &&
               activeFilters.max_price < 100000 && (
-                <span className="inline-flex items-center px-3 py-1 text-[12px] bg-[#E6E4C6] text-[#1E3024] font-body border border-[#1E3024]/10">
+                <span className="inline-flex items-center px-3 py-1.5 text-[12px] bg-gray-100 text-gray-900 font-body border border-gray-200 rounded">
                   Max: ₦{activeFilters.max_price.toLocaleString()}
                   <button
                     type="button"
@@ -448,7 +464,7 @@ function ProductsPageContent() {
                         handleApplyFilters();
                       }
                     }}
-                    className="ml-1.5 text-[#3A643B] hover:text-[#1E3024] transition-colors duration-150 ease-out text-base leading-none"
+                    className="ml-1.5 text-gray-500 hover:text-gray-900 transition-colors duration-150 ease-out text-base leading-none"
                     aria-label="Remove max price filter"
                   >
                     ×
@@ -522,14 +538,14 @@ function ProductsPageContent() {
             >
               <div className="flex flex-col h-full">
                 {/* Filter Header */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#1E3024]/10 bg-[#FAFAF7] sticky top-0">
-                  <h2 className="text-lg font-heading text-[#1E3024] uppercase tracking-wider">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 bg-white sticky top-0">
+                  <h2 className="text-lg font-heading text-gray-900 uppercase tracking-wider font-semibold">
                     Filters
                   </h2>
                   <button
                     type="button"
                     onClick={toggleMobileFilter}
-                    className="text-[#1E3024] hover:text-[#3A643B] transition-colors duration-200 p-2"
+                    className="text-gray-900 hover:text-gray-600 transition-colors duration-200 p-2"
                     aria-label="Close filters"
                   >
                     <XIcon className="w-5 h-5" />

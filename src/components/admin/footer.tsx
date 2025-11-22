@@ -11,209 +11,247 @@ import {
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-trichomes-sage text-trichomes-forest">
-      <div
-        className="mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16"
-        style={{ width: "85%" }}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12">
+    <footer className="bg-[#193C08] text-white">
+      <div className="mx-auto px-6 sm:px-8 lg:px-12 py-16 sm:py-20 max-w-[2200px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
           {/* Logo Section */}
-          <div className="lg:col-span-3 text-center lg:text-left">
-            <Link href="/" className="inline-block mb-4 sm:mb-6">
+          <div className=" max-w-md">
+            <Link href="/" className="inline-block mb-6">
               <Image
                 src="/T3.png"
                 alt="Trichomes Logo"
-                width={120}
-                height={80}
-                className="object-contain sm:w-[150px] sm:h-[100px]"
+                width={140}
+                height={60}
+                className="object-contain "
               />
             </Link>
-            <p className="text-trichomes-forest/70 text-[13px] sm:text-[14px] leading-relaxed font-body font-normal">
+            <p className="text-white/80 text-[14px] leading-relaxed font-body">
               Where science meets nature — luxury simplified.
             </p>
           </div>
 
-          {/* Links Section - Design Guide: Minimal links, clean spacing */}
-          <div className="lg:col-span-9 grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mt-4 lg:mt-0">
-            <div>
-              <h4 className="font-semibold mb-3 sm:mb-4 text-[15px] sm:text-[16px] text-trichomes-forest font-body">
-                Quick Links
-              </h4>
-              <ul className="space-y-2 sm:space-y-3 text-trichomes-forest/70 text-[13px] sm:text-[14px]">
-                <li>
-                  <Link
-                    href="/about"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    About Us
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/consultation"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Book Consultation
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/shop"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Shop
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/brands"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Brands
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/products"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Products
-                  </Link>
-                </li>
-              </ul>
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-semibold mb-4 text-[16px] text-white font-body">
+              Quick Links
+            </h4>
+            <ul className="space-y-3 text-white/80 text-[14px]">
+              <li>
+                <Link
+                  href="/about"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  About us
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/consultation"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Book Consultation
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/shop"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Shop
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/brands"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Brands
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/products"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Products
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* My Account */}
+          <div>
+            <h4 className="font-semibold mb-4 text-[16px] text-white font-body">
+              My Account
+            </h4>
+            <ul className="space-y-3 text-white/80 text-[14px]">
+              <li>
+                <Link
+                  href="/profile"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Profile
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/order-history"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Order History
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/track-order"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Track Order
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/cart"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Cart
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/wishlist"
+                  className="hover:text-white transition-colors duration-150 font-body underline"
+                >
+                  Wishlist
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Connect with us */}
+          <div>
+            <h4 className="font-semibold mb-4 text-[16px] text-white font-body">
+              Connect with us
+            </h4>
+            <div className="flex space-x-4 mb-6">
+              <a
+                href="https://instagram.com/trichome"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity duration-150"
+                aria-label="Instagram"
+              >
+                <Image
+                  src="/logo/instagram-logo.png"
+                  alt="Instagram"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 object-contain brightness-0 invert"
+                />
+              </a>
+              <a
+                href="https://facebook.com/trichome"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity duration-150"
+                aria-label="Facebook"
+              >
+                <Image
+                  src="/logo/facebook.png"
+                  alt="Facebook"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 object-contain brightness-0 invert"
+                />
+              </a>
+              <a
+                href="https://x.com/trichome"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity duration-150"
+                aria-label="X (Twitter)"
+              >
+                <Image
+                  src="/logo/twitter.png"
+                  alt="X (Twitter)"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 object-contain brightness-0 invert"
+                />
+              </a>
+              <a
+                href="https://tiktok.com/@trichome"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity duration-150"
+                aria-label="TikTok"
+              >
+                <Image
+                  src="/logo/tik-tok.png"
+                  alt="TikTok"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 object-contain brightness-0 invert"
+                />
+              </a>
+              <a
+                href="https://wa.me/your-number"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity duration-150"
+                aria-label="WhatsApp"
+              >
+                <Image
+                  src="/logo/whatsapp.png"
+                  alt="WhatsApp"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 object-contain brightness-0 invert"
+                />
+              </a>
             </div>
             <div>
-              <h4 className="font-semibold mb-3 sm:mb-4 text-[15px] sm:text-[16px] text-trichomes-forest font-body">
-                My Account
-              </h4>
-              <ul className="space-y-2 sm:space-y-3 text-trichomes-forest/70 text-[13px] sm:text-[14px]">
-                <li>
-                  <Link
-                    href="/profile"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Profile
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/order-history"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Order History
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/track-order"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Track Order
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/cart"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Cart
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/wishlist"
-                    className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
-                  >
-                    Wishlist
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div className="col-span-2 md:col-span-1">
-              <h4 className="font-semibold mb-3 sm:mb-4 text-[15px] sm:text-[16px] text-trichomes-forest text-center md:text-left font-body">
-                Connect With Us
-              </h4>
-              <div className="flex space-x-3 mb-4 sm:mb-6 justify-center md:justify-start">
-                <a
-                  href="https://wa.me/your-number"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-trichomes-forest/10 rounded-full flex items-center justify-center text-trichomes-forest/70 hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out hover:scale-110"
-                >
-                  <WhatsAppIcon className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://instagram.com/trichome"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-trichomes-forest/10 rounded-full flex items-center justify-center text-trichomes-forest/70 hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out hover:scale-110"
-                >
-                  <InstagramIcon className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://facebook.com/trichome"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-trichomes-forest/10 rounded-full flex items-center justify-center text-trichomes-forest/70 hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out hover:scale-110"
-                >
-                  <FacebookIcon className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://tiktok.com/@trichome"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-trichomes-forest/10 rounded-full flex items-center justify-center text-trichomes-forest/70 hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out hover:scale-110"
-                >
-                  <TiktokIcon className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://x.com/trichome"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-trichomes-forest/10 rounded-full flex items-center justify-center text-trichomes-forest/70 hover:bg-trichomes-primary hover:text-white transition-all duration-150 ease-out hover:scale-110"
-                >
-                  <XIcon className="w-5 h-5" />
-                </a>
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-trichomes-forest/70 text-[13px] sm:text-[14px] mb-2 font-body font-medium">
-                  Contact Us:
-                </p>
-                <p className="text-trichomes-forest text-[13px] sm:text-[14px] font-medium mb-1 font-body">
+              <p className="text-white text-[14px] mb-2 font-body font-semibold">
+                Contact us
+              </p>
+              <p className="text-white/80 text-[14px] mb-1 font-body underline">
+                <a href="mailto:support@trichome.com" className="hover:text-white transition-colors">
                   support@trichome.com
-                </p>
-                <p className="text-trichomes-forest text-[13px] sm:text-[14px] font-medium font-body">
+                </a>
+              </p>
+              <p className="text-white/80 text-[14px] font-body underline">
+                <a href="tel:+2341234567890" className="hover:text-white transition-colors">
                   +234 123 456 7890
-                </p>
-              </div>
+                </a>
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Bottom Bar - Design Guide: Clean spacing */}
-        <div className="border-t border-trichomes-forest/20 mt-8 sm:mt-12 pt-6 sm:pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
-            <p className="text-trichomes-forest/70 text-[12px] sm:text-[14px] text-center md:text-left font-body font-normal">
+        {/* Bottom Bar */}
+        <div className="border-t border-white/20 mt-12 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-white/70 text-[13px] text-center md:text-left font-body">
               © {new Date().getFullYear()} Trichomes. All rights reserved.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-[12px] sm:text-[14px] text-trichomes-forest/70">
+            <div className="flex flex-wrap justify-center gap-6 text-[13px] text-white/70">
               <Link
                 href="/privacy"
-                className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
+                className="hover:text-white transition-colors duration-150 font-body underline"
               >
                 Privacy Policy
               </Link>
               <Link
                 href="/terms"
-                className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
+                className="hover:text-white transition-colors duration-150 font-body underline"
               >
-                Terms of Service
+                Terms of use
               </Link>
               <Link
                 href="/returns"
-                className="hover:text-trichomes-primary transition-colors duration-150 font-body font-normal"
+                className="hover:text-white transition-colors duration-150 font-body underline"
               >
-                Return Policy
+                Return policy
               </Link>
             </div>
           </div>

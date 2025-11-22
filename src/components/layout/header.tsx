@@ -166,35 +166,36 @@ const Dropdown: React.FC<{
       <div
         className={`absolute top-full z-50 ${getPositionClasses()}`}
         style={{ marginTop: "-1px" }}
+        onMouseEnter={() => {}} // Keep dropdown open when hovering over it
+        onMouseLeave={onClose}
       >
         {/* Inner div handles animation (translateY slide down) */}
         <div
           ref={dropdownRef}
-          className={`w-[600px] bg-[#FAFAF7] shadow-lg border-x border-b border-[#E6E4C6]/50 overflow-hidden ${
+          className={`w-[600px] bg-white shadow-lg border border-gray-200 rounded-sm overflow-hidden ${
             isPositioned
               ? "opacity-100 animate-[dropdownSlideIn_450ms_cubic-bezier(0.16,1,0.3,1)]"
               : "opacity-0"
           }`}
-          onMouseLeave={onClose}
           role="menu"
         >
-          <div className="p-8 pt-6">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-6">
+            <div className="grid grid-cols-2 gap-3">
               {menu.items.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="group p-3 hover:bg-[#E6E4C6]/30 transition-all duration-200 border border-transparent hover:border-[#3A643B]/20"
+                  className="group p-3 rounded-sm hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-300"
                   onClick={onClose}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[#1E3024] font-medium text-sm group-hover:text-[#3A643B] transition-colors">
+                    <span className="text-gray-900 font-medium text-[13px] group-hover:text-black transition-colors">
                       {item.label}
                     </span>
-                    <ChevronRightIcon className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:text-[#3A643B] transition-all" />
+                    <ChevronRightIcon className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:text-gray-900 transition-all" />
                   </div>
                   {item.description && (
-                    <p className="text-xs text-gray-500 mt-1 font-normal">
+                    <p className="text-[11px] text-gray-600 mt-1 font-normal">
                       {item.description}
                     </p>
                   )}
@@ -420,7 +421,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   const handleDropdownLeave = () => {
     dropdownTimeoutRef.current = setTimeout(() => {
       setOpenDropdown(null);
-    }, 150);
+    }, 300);
   };
 
   useEffect(() => {

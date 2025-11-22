@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ComparisonTable } from "@/components/products/ComparisonTable";
+import { ChevronRightIcon } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
 
 export default function CompareClient() {
@@ -39,11 +41,11 @@ export default function CompareClient() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-trichomes-soft">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-7xl">
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-[2200px]">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-trichomes-soft rounded w-1/3"></div>
-            <div className="h-64 bg-trichomes-soft rounded"></div>
+            <div className="h-8 bg-white rounded w-1/3"></div>
+            <div className="h-64 bg-white rounded"></div>
           </div>
         </div>
       </div>
@@ -52,18 +54,18 @@ export default function CompareClient() {
 
   if (!products || products.length === 0) {
     return (
-      <div className="min-h-screen bg-trichomes-soft">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-7xl">
-          <h1 className="text-2xl font-heading font-semibold text-trichomes-forest mb-6">
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-[2200px]">
+          <h1 className="text-2xl font-heading font-semibold text-gray-900 mb-6">
             Compare Products
           </h1>
-          <div className="bg-white p-12 rounded-xl border border-trichomes-forest/10 shadow-sm text-center">
-            <p className="text-trichomes-forest/60 font-body mb-4">
+          <div className="bg-white p-12 rounded-sm border border-gray-200 shadow-sm text-center">
+            <p className="text-gray-900/60 font-body mb-4">
               No products to compare.
             </p>
             <Link
               href="/products"
-              className="inline-block bg-trichomes-primary text-white py-3 px-6 rounded-full hover:bg-trichomes-primary/90 font-semibold transition-all duration-150 ease-out text-sm font-body"
+              className="inline-block bg-[#1E3024] text-white py-3 px-6 rounded-full hover:bg-[#1E3024]/90 font-semibold transition-all duration-150 ease-out text-sm font-body"
             >
               Browse Products
             </Link>
@@ -90,8 +92,8 @@ export default function CompareClient() {
   }));
 
   return (
-    <div className="min-h-screen bg-trichomes-soft">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-7xl">
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-12 sm:pb-16 max-w-[2200px]">
         <ComparisonTable
           products={comparisonProducts}
           maxProducts={4}

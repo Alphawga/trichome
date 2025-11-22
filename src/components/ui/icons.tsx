@@ -888,6 +888,136 @@ export const TiktokIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+export const CategoriesIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Categories</title>
+    <rect x="3" y="3" width="7" height="7"></rect>
+    <rect x="14" y="3" width="7" height="7"></rect>
+    <rect x="14" y="14" width="7" height="7"></rect>
+    <rect x="3" y="14" width="7" height="7"></rect>
+  </svg>
+);
+
+export const BrandsIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Brands</title>
+    <path d="M6 9l6 6 6-6"></path>
+    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
+export const ConsultationsIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Consultations</title>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    <path d="M13 8H7"></path>
+    <path d="M17 12H7"></path>
+  </svg>
+);
+
+export const ReviewsIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Reviews</title>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+  </svg>
+);
+
+export const AnalyticsIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Analytics</title>
+    <line x1="18" y1="20" x2="18" y2="10"></line>
+    <line x1="12" y1="20" x2="12" y2="4"></line>
+    <line x1="6" y1="20" x2="6" y2="14"></line>
+  </svg>
+);
+
+export const SettingsIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Settings</title>
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3"></path>
+  </svg>
+);
+
 export const XIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

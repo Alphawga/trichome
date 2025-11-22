@@ -47,7 +47,7 @@ export function OrderItemList({
         const itemTotal =
           typeof item.total === "string" ? parseFloat(item.total) : item.total;
         const productName = item.product?.name || item.product_name;
-        const productSlug = item.product?.slug || item.product_id;
+        const productId = item.product?.id || item.product_id;
         const productImage =
           item.product?.images?.[0]?.url || "/placeholder-product.png";
 
@@ -64,7 +64,7 @@ export function OrderItemList({
                 className={`relative flex-shrink-0 ${compact ? "w-16 h-16" : "w-20 h-20 sm:w-24 sm:h-24"}`}
               >
                 {showLinks ? (
-                  <Link href={`/products/${productSlug}`}>
+                  <Link href={`/products/${productId}`}>
                     <Image
                       src={productImage}
                       alt={productName}
@@ -87,7 +87,7 @@ export function OrderItemList({
             <div className="flex-grow w-full sm:w-auto text-center sm:text-left">
               {showLinks ? (
                 <Link
-                  href={`/products/${productSlug}`}
+                  href={`/products/${productId}`}
                   className="font-heading text-[15px] sm:text-[16px] hover:text-trichomes-primary transition-colors duration-150 text-trichomes-forest"
                 >
                   {productName}
