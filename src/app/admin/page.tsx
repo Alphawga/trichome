@@ -1,156 +1,359 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import Image from "next/image";
+import type React from "react";
+import { useState } from "react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CustomersIcon,
+  DocumentTextIcon,
+  ExportIcon,
+  FilterIcon,
+  OrdersIcon,
+  ProductsIcon,
+  SearchIcon,
+  ViewAllArrowIcon,
+} from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
 
-interface EmailSubscription {
-  email: string;
-  timestamp: string;
+interface AdminProduct {
   id: string;
+  imageUrl: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: "In stock" | "Out of stock";
+  totalSold: number;
 }
 
-export default function AdminPage() {
-  const [subscriptions, setSubscriptions] = useState<EmailSubscription[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+interface StatCardProps {
+  title: string;
+  value: string;
+  trend: string;
+  trendPositive?: boolean;
+  icon: React.ReactNode;
+}
 
-  useEffect(() => {
-    fetchSubscriptions();
-  }, []);
+interface ViewAllCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+}
 
-  const fetchSubscriptions = async () => {
-    try {
-      const response = await fetch('/api/newsletter');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSubscriptions(data.subscriptions || []);
-      } else {
-        setError('Failed to fetch subscriptions');
-      }
-    } catch (error) {
-      console.error('Error fetching subscriptions:', error);
-      setError('Network error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+interface ProductRowProps {
+  product: AdminProduct;
+}
 
-  const exportCSV = async () => {
-    try {
-      const response = await fetch('/api/newsletter/export');
-      
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `trichomes-newsletter-subscriptions-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        setError('Failed to export CSV');
-      }
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      setError('Export failed');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading subscriptions...</p>
-        </div>
-      </div>
-    );
-  }
+const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
+  const trendValue = Number.parseFloat(trend);
+  const isPositive = trendValue >= 0;
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Newsletter Subscriptions
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Total subscribers: {subscriptions.length}
-                </p>
-              </div>
-              
-              <div className="mt-4 sm:mt-0">
-                <button
-                  onClick={exportCSV}
-                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export CSV
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500">
-              <p className="text-red-700 dark:text-red-300">{error}</p>
-            </div>
+    <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm text-gray-500">{title}</p>
+          <p className="text-3xl font-bold mt-2">{value}</p>
+        </div>
+        <div className="text-gray-400">{icon}</div>
+      </div>
+      <div className="flex items-center text-sm mt-4">
+        <span
+          className={`flex items-center mr-2 ${isPositive ? "text-green-600" : "text-red-600"}`}
+        >
+          {isPositive ? (
+            <ArrowUpIcon className="w-4 h-4" />
+          ) : (
+            <ArrowDownIcon className="w-4 h-4" />
           )}
+          {Math.abs(trendValue)}%
+        </span>
+        <span className="text-gray-500">Since last month</span>
+      </div>
+    </div>
+  );
+};
 
-          <div className="overflow-x-auto">
-            {subscriptions.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <p className="text-lg font-medium">No subscribers yet</p>
-                <p className="mt-1">Newsletter subscriptions will appear here</p>
-              </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Email Address
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Subscription Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      ID
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {subscriptions.map((subscription) => (
-                    <tr key={subscription.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {subscription.email}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(subscription.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
-                        {subscription.id}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon }) => (
+  <div className="bg-white p-6 rounded-lg border border-gray-200">
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-3xl font-bold mt-2">{value}</p>
+      </div>
+      <div className="text-gray-400">{icon}</div>
+    </div>
+    <button
+      type="button"
+      className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800"
+    >
+      View all <ViewAllArrowIcon className="ml-1" />
+    </button>
+  </div>
+);
+
+const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
+  <tr className="border-b last:border-0 hover:bg-gray-50">
+    <td className="p-4 flex items-center">
+      <div className="relative w-10 h-10 mr-4 flex-shrink-0">
+        <Image
+          src={product.imageUrl}
+          alt={product.name}
+          fill
+          className="rounded-md object-cover"
+        />
+      </div>
+      <span className="font-medium">{product.name}</span>
+    </td>
+    <td className="p-4 text-gray-600">{product.category}</td>
+    <td className="p-4 text-gray-600">₦{product.price.toLocaleString()}</td>
+    <td className="p-4 text-gray-600">{product.stock}pcs</td>
+    <td className="p-4">
+      <span
+        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          product.status === "In stock"
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
+        {product.status}
+      </span>
+    </td>
+  </tr>
+);
+
+export default function AdminDashboard() {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch dashboard stats
+  const dashboardStatsQuery = trpc.getDashboardStats.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch top products
+  const topProductsQuery = trpc.getTopProducts.useQuery(
+    { limit: 10 },
+    { refetchOnWindowFocus: false },
+  );
+
+  const stats = dashboardStatsQuery.data;
+  const topProducts = topProductsQuery.data || [];
+
+  const filteredProducts = topProducts.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const handleExportCSV = () => {
+    console.log("Export CSV functionality will be implemented");
+    // TODO: Implement CSV export
+  };
+
+  return (
+    <div>
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Dashboard Overview
+        </h1>
+        <p className="text-gray-600">
+          Welcome back! Here's what's happening with your store today.
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {dashboardStatsQuery.isLoading ? (
+          [1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
+            >
+              <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+            </div>
+          ))
+        ) : stats ? (
+          <>
+            <StatCard
+              title="Products sold"
+              value={stats.productsSold.value.toString()}
+              trend={stats.productsSold.trend}
+              icon={<ProductsIcon />}
+            />
+            <StatCard
+              title="Completed orders"
+              value={stats.completedOrders.value.toString()}
+              trend={stats.completedOrders.trend}
+              icon={<OrdersIcon />}
+            />
+            <ViewAllCard
+              title="Pending orders"
+              value={stats.pendingOrders.toString()}
+              icon={<DocumentTextIcon />}
+            />
+            <ViewAllCard
+              title="Out of stock items"
+              value={stats.outOfStockItems.toString()}
+              icon={<CustomersIcon />}
+            />
+          </>
+        ) : (
+          <div className="col-span-4 text-center py-8 text-gray-500">
+            Failed to load dashboard statistics
           </div>
+        )}
+      </div>
+
+      {/* Top Products Section */}
+      <div>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+          <h2 className="text-xl font-bold">Top performing products</h2>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search products"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+              />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <SearchIcon />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium transition-colors"
+            >
+              <FilterIcon /> Filter (last month)
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg bg-[#38761d] text-white hover:bg-opacity-90 font-medium transition-colors"
+            >
+              <ExportIcon /> Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Products Table */}
+        <div className="bg-white rounded-lg border overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Product
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Category
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Price
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Stock
+                </th>
+                <th className="p-4 font-semibold text-sm text-gray-700">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {topProductsQuery.isLoading ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-600">Loading products...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <ProductRow key={product.id} product={product} />
+                ))
+              ) : topProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                    No products available yet. Start by adding some products!
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                    No products found matching "{searchTerm}"
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredProducts.length > 10 && (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Load more products
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mt-8 bg-white p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="text-green-600 mb-2">
+              <ProductsIcon />
+            </div>
+            <p className="font-medium">Add Product</p>
+            <p className="text-sm text-gray-500">
+              Create a new product listing
+            </p>
+          </button>
+
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="text-blue-600 mb-2">
+              <OrdersIcon />
+            </div>
+            <p className="font-medium">View Orders</p>
+            <p className="text-sm text-gray-500">Manage customer orders</p>
+          </button>
+
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="text-purple-600 mb-2">
+              <CustomersIcon />
+            </div>
+            <p className="font-medium">Customer List</p>
+            <p className="text-sm text-gray-500">View customer details</p>
+          </button>
+
+          <button
+            type="button"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="text-orange-600 mb-2">
+              <DocumentTextIcon />
+            </div>
+            <p className="font-medium">Generate Report</p>
+            <p className="text-sm text-gray-500">Create sales reports</p>
+          </button>
         </div>
       </div>
     </div>
