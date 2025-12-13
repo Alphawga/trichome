@@ -159,7 +159,7 @@ export function CategoryFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-xl p-5 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
             {categoryId ? "Edit Category" : "Add New Category"}
@@ -215,7 +215,7 @@ export function CategoryFormSheet({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 px-1 md:px-6">
             <div>
               <label
                 htmlFor="name"

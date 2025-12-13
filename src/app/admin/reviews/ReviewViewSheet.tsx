@@ -40,7 +40,7 @@ export function ReviewViewSheet({
   if (reviewsQuery.isLoading) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
           </div>
@@ -52,7 +52,7 @@ export function ReviewViewSheet({
   if (!review) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
           <div className="text-center py-8 text-gray-500">
             Review not found
           </div>
@@ -74,7 +74,7 @@ export function ReviewViewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg px-4 md:px-6 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Review Details</SheetTitle>
           <SheetDescription>View complete review information</SheetDescription>
@@ -145,13 +145,12 @@ export function ReviewViewSheet({
           <div>
             <h3 className="text-lg font-semibold mb-4">Status</h3>
             <span
-              className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
-                review.status === "APPROVED"
+              className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${review.status === "APPROVED"
                   ? "bg-green-100 text-green-800"
                   : review.status === "PENDING"
                     ? "bg-yellow-100 text-yellow-800"
                     : "bg-red-100 text-red-800"
-              }`}
+                }`}
             >
               {review.status === "APPROVED"
                 ? "Approved"

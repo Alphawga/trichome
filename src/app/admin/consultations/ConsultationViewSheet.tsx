@@ -47,7 +47,7 @@ export function ConsultationViewSheet({
   if (consultationQuery.isLoading) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
           </div>
@@ -59,7 +59,7 @@ export function ConsultationViewSheet({
   if (!consultation) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
           <div className="text-center py-8 text-gray-500">
             Consultation not found
           </div>
@@ -70,7 +70,7 @@ export function ConsultationViewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg px-4 md:px-6 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Consultation Details</SheetTitle>
           <SheetDescription>
@@ -132,8 +132,7 @@ export function ConsultationViewSheet({
               <div>
                 <p className="text-sm text-gray-500">Status</p>
                 <span
-                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                    consultation.status === "COMPLETED"
+                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${consultation.status === "COMPLETED"
                       ? "bg-green-100 text-green-800"
                       : consultation.status === "CONFIRMED"
                         ? "bg-blue-100 text-blue-800"
@@ -142,7 +141,7 @@ export function ConsultationViewSheet({
                           : consultation.status === "CANCELLED"
                             ? "bg-red-100 text-red-800"
                             : "bg-gray-100 text-gray-800"
-                  }`}
+                    }`}
                 >
                   {consultationStatusLabels[consultation.status] ||
                     consultation.status}

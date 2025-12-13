@@ -1,18 +1,11 @@
 "use client";
 
 interface OrderCreationStatusProps {
-  /** Status of order creation */
   status: "idle" | "processing" | "success" | "error";
-  /** Error message if status is error */
   error?: string;
-  /** Retry callback for error state */
   onRetry?: () => void;
 }
 
-/**
- * Reusable OrderCreationStatus component
- * Displays loading, success, and error states during order creation
- */
 export function OrderCreationStatus({
   status,
   error,
@@ -102,5 +95,5 @@ export function OrderCreationStatus({
     );
   }
 
-  return null; // idle state - don't render anything
+  return null;
 }

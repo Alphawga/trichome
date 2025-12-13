@@ -7,11 +7,8 @@ import type { AddressFormData } from "@/components/forms/AddressForm";
 import { useGuestCheckout } from "@/hooks/useGuestCheckout";
 
 interface GuestPaymentHandlerProps {
-  /** Address information for shipping */
   address: AddressFormData;
-  /** Order items from cart */
   items: Array<{ product_id: string; quantity: number }>;
-  /** Calculated order totals */
   totals: {
     subtotal: number;
     shipping: number;
@@ -19,20 +16,12 @@ interface GuestPaymentHandlerProps {
     discount?: number;
     total: number;
   };
-  /** Payment method (defaults to WALLET for Monnify) */
   paymentMethod?: PaymentMethod;
-  /** Currency (defaults to NGN) */
   currency?: Currency;
-  /** Optional order notes */
   notes?: string;
-  /** Optional promo code */
   promoCode?: string;
 }
 
-/**
- * Custom hook to handle Monnify payment initialization for guest checkout
- * Manages payment state, errors, and integrates with guest order creation
- */
 export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "success" | "error"
@@ -45,7 +34,6 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
     isError: isOrderError,
     error: orderError,
   } = useGuestCheckout();
-  // const _router = useRouter();
 
   const initializePayment = useCallback(async () => {
     if (typeof window === "undefined") {
@@ -57,7 +45,6 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
     setPaymentError(null);
 
     try {
-      // Dynamically import Monnify only on client side
       const Monnify = (await import("monnify-js")).default;
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
@@ -103,7 +90,6 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
           if (response.paymentStatus === "PAID") {
             setPaymentStatus("success");
 
-            // Trigger guest order creation after successful payment
             createGuestOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,
@@ -132,7 +118,6 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
         },
         onClose: () => {
           console.log("Monnify payment modal closed");
-          // If payment was processing and modal closed, consider it cancelled
           if (paymentStatus === "processing") {
             setPaymentStatus("idle");
             setPaymentError("Payment was cancelled");
@@ -150,10 +135,8 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
     }
   }, [props, paymentStatus, createGuestOrder]);
 
-  // Handle order creation success/error after payment
   useEffect(() => {
     if (isOrderCreated) {
-      // Redirection is handled by useGuestCheckout hook
       setPaymentStatus("success");
     }
     if (isOrderError) {
