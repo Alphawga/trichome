@@ -109,7 +109,7 @@ export function ReviewModerationSheet({
   if (reviewsQuery.isLoading || !review) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
           </div>
@@ -131,7 +131,7 @@ export function ReviewModerationSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg px-4 md:px-6 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Moderate Review</SheetTitle>
           <SheetDescription>
@@ -179,13 +179,12 @@ export function ReviewModerationSheet({
           <div>
             <p className="text-sm text-gray-500 mb-2">Current Status</p>
             <span
-              className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
-                review.status === "APPROVED"
+              className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${review.status === "APPROVED"
                   ? "bg-green-100 text-green-800"
                   : review.status === "PENDING"
                     ? "bg-yellow-100 text-yellow-800"
                     : "bg-red-100 text-red-800"
-              }`}
+                }`}
             >
               {review.status === "APPROVED"
                 ? "Approved"
@@ -219,22 +218,20 @@ export function ReviewModerationSheet({
           {/* Status Change Info */}
           {selectedStatus !== review.status && (
             <div
-              className={`p-3 rounded-lg ${
-                selectedStatus === "APPROVED"
+              className={`p-3 rounded-lg ${selectedStatus === "APPROVED"
                   ? "bg-green-50 border border-green-200"
                   : selectedStatus === "REJECTED"
                     ? "bg-red-50 border border-red-200"
                     : "bg-yellow-50 border border-yellow-200"
-              }`}
+                }`}
             >
               <p
-                className={`text-sm ${
-                  selectedStatus === "APPROVED"
+                className={`text-sm ${selectedStatus === "APPROVED"
                     ? "text-green-800"
                     : selectedStatus === "REJECTED"
                       ? "text-red-800"
                       : "text-yellow-800"
-                }`}
+                  }`}
               >
                 {selectedStatus === "APPROVED" && (
                   <>✓ This review will be visible to customers.</>

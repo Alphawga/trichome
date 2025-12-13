@@ -200,8 +200,8 @@ function CheckoutPageContent() {
 
     return shippingMethod === "express"
       ? require("@/lib/shipping/calculate-shipping").calculateExpressShipping(
-          input,
-        )
+        input,
+      )
       : calculateShipping(input);
   }, [
     subtotal,
@@ -422,11 +422,10 @@ function CheckoutPageContent() {
                       {...register("first_name")}
                       disabled={isAuthenticated && !isGuestMode}
                       readOnly={isAuthenticated && !isGuestMode}
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.first_name
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.first_name
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                     />
                     {errors.first_name && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -449,11 +448,10 @@ function CheckoutPageContent() {
                       {...register("last_name")}
                       disabled={isAuthenticated && !isGuestMode}
                       readOnly={isAuthenticated && !isGuestMode}
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.last_name
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.last_name
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                     />
                     {errors.last_name && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -476,11 +474,10 @@ function CheckoutPageContent() {
                       {...register("email")}
                       disabled={isAuthenticated && !isGuestMode}
                       readOnly={isAuthenticated && !isGuestMode}
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.email
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.email
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        } ${isAuthenticated && !isGuestMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                     />
                     {errors.email && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -502,11 +499,10 @@ function CheckoutPageContent() {
                       id="phone"
                       {...register("phone")}
                       placeholder="+234 XXX XXX XXXX"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.phone
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      }`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.phone
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        }`}
                     />
                     {errors.phone && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -528,11 +524,10 @@ function CheckoutPageContent() {
                       id="address_1"
                       {...register("address_1")}
                       placeholder="Street address"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.address_1
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      }`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.address_1
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        }`}
                     />
                     {errors.address_1 && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -571,11 +566,10 @@ function CheckoutPageContent() {
                       id="city"
                       {...register("city")}
                       placeholder="City"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.city
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      }`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.city
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        }`}
                     />
                     {errors.city && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -631,11 +625,10 @@ function CheckoutPageContent() {
                       id="country"
                       {...register("country")}
                       placeholder="Country"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
-                        errors.country
-                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                          : "border-trichomes-forest/20"
-                      }`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${errors.country
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-trichomes-forest/20"
+                        }`}
                     />
                     {errors.country && (
                       <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
@@ -653,7 +646,7 @@ function CheckoutPageContent() {
                         type="checkbox"
                         checked={saveAddress}
                         onChange={(e) => setSaveAddress(e.target.checked)}
-                        className="w-4 h-4 text-black border-black rounded focus:ring-trichomes-primary focus:ring-1"
+                        className="w-4 h-4 text-black border-black rounded focus:ring-trichomes-primary focus:ring-1 checked:bg-trichomes-primary bg-trichomes-primar c "
                       />
                       <span className="text-sm text-gray-900/80 font-body">
                         Save this address for future orders
@@ -691,11 +684,10 @@ function CheckoutPageContent() {
                       }).map((method) => (
                         <label
                           key={method.method}
-                          className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-all duration-150 ${
-                            shippingMethod === method.method
-                              ? "border-black bg-gray-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
+                          className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-all duration-150 ${shippingMethod === method.method
+                            ? "border-black bg-gray-50"
+                            : "border-gray-200 hover:border-gray-300"
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input

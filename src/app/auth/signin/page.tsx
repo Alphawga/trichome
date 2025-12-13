@@ -31,6 +31,7 @@ export default function SignInPage() {
   const [shouldRedirectToCheckout, setShouldRedirectToCheckout] =
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
   const isLoading = authLoading || isSubmitting;
 
@@ -40,7 +41,7 @@ export default function SignInPage() {
     const checkoutRedirect = localStorage.getItem(
       "trichomes_checkout_redirect",
     );
-    
+
     if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
       setRedirectUrl("/checkout");
@@ -96,13 +97,18 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    setIsGoogleSigningIn(true);
+    setError("");
     try {
       // Pass the redirect URL to Google sign-in
       await signInWithGoogle(redirectUrl);
+      // Note: signInWithGoogle redirects the page, so loading state will persist
+      // until the redirect happens
     } catch (error) {
       // Following CODING_RULES.md - proper error handling
       console.error("Google sign-in failed:", error);
       setError("Google sign-in failed. Please try again.");
+      setIsGoogleSigningIn(false);
     }
   };
 
@@ -226,7 +232,7 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={
-                isLoading || !form.email.trim() || !form.password.trim()
+                isLoading || isGoogleSigningIn || !form.email.trim() || !form.password.trim()
               }
               className="w-full bg-[#38761d] text-white py-3 px-4 rounded-lg hover:bg-opacity-90 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
@@ -252,16 +258,26 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+            disabled={isLoading || isGoogleSigningIn}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Image
-              src="/google-icon.png"
-              alt="Google"
-              width={20}
-              height={20}
-              className="object-contain"
-            />
-            Continue with Google
+            {isGoogleSigningIn ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-gray-600" />
+                Connecting to Google...
+              </>
+            ) : (
+              <>
+                <Image
+                  src="/google-icon.png"
+                  alt="Google"
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+                Continue with Google
+              </>
+            )}
           </button>
 
           {/* Sign Up Link */}

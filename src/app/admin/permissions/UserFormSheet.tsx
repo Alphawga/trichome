@@ -117,7 +117,7 @@ export function UserFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg px-4 md:px-6 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEditing ? "Edit User" : "Create New User"}</SheetTitle>
         </SheetHeader>

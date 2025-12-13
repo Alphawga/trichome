@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   EditIcon,
   ExportIcon,
@@ -57,6 +58,11 @@ export default function AdminProductsPage() {
   const [viewingProductId, setViewingProductId] = useState<string | undefined>(
     undefined,
   );
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const productsQuery = trpc.getProducts.useQuery(
     {
@@ -124,18 +130,25 @@ export default function AdminProductsPage() {
   }, []);
 
   const handleDeleteProduct = useCallback(
-    async (id: string) => {
-      if (!confirm("Are you sure you want to delete this product?")) {
-        return;
-      }
-
-      setDeletingProductId(id);
-      try {
-        await deleteProductMutation.mutateAsync({ id });
-      } catch (_error) {}
+    (product: { id: string; name: string }) => {
+      setProductToDelete(product);
+      setDeleteConfirmOpen(true);
     },
-    [deleteProductMutation],
+    [],
   );
+
+  const confirmDeleteProduct = useCallback(async () => {
+    if (!productToDelete) return;
+
+    setDeletingProductId(productToDelete.id);
+    try {
+      await deleteProductMutation.mutateAsync({ id: productToDelete.id });
+      setDeleteConfirmOpen(false);
+      setProductToDelete(null);
+    } catch (_error) {
+      // Error is handled by mutation onError
+    }
+  }, [productToDelete, deleteProductMutation]);
 
   const handleViewProduct = useCallback((id: string) => {
     setViewingProductId(id);
@@ -224,13 +237,12 @@ export default function AdminProductsPage() {
         header: "Status",
         cell: (product) => (
           <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              product.statusDisplay === "Active"
-                ? "bg-green-100 text-green-800"
-                : product.statusDisplay === "Draft"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-            }`}
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${product.statusDisplay === "Active"
+              ? "bg-green-100 text-green-800"
+              : product.statusDisplay === "Draft"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
+              }`}
           >
             {product.statusDisplay}
           </span>
@@ -283,21 +295,14 @@ export default function AdminProductsPage() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => handleDeleteProduct(product.id)}
+                onClick={() =>
+                  handleDeleteProduct({ id: product.id, name: product.name })
+                }
                 disabled={deletingProductId === product.id}
                 className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
               >
-                {deletingProductId === product.id ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <TrashIcon className="w-4 h-4 mr-2" />
-                    Delete Product
-                  </>
-                )}
+                <TrashIcon className="w-4 h-4 mr-2" />
+                Delete Product
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -474,6 +479,21 @@ export default function AdminProductsPage() {
         productId={viewingProductId}
         open={viewSheetOpen}
         onOpenChange={setViewSheetOpen}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open);
+          if (!open) setProductToDelete(null);
+        }}
+        title="Delete Product"
+        description={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteProduct}
+        isLoading={deleteProductMutation.isPending}
+        variant="danger"
       />
     </div>
   );

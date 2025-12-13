@@ -2,22 +2,12 @@
 import { useRouter } from "next/navigation";
 
 interface AccountCreationPromptProps {
-  /** Order email for account creation */
   email: string;
-  /** Order number */
   orderNumber: string;
-  /** Callback when user chooses to create account */
   onCreateAccount?: () => void;
-  /** Callback when user chooses to skip */
   onSkip?: () => void;
 }
 
-/**
- * Reusable AccountCreationPrompt component
- *
- * Shown after guest checkout to encourage account creation
- * Allows users to create an account using their order email
- */
 export function AccountCreationPrompt({
   email,
   orderNumber,
@@ -30,7 +20,6 @@ export function AccountCreationPrompt({
     if (onCreateAccount) {
       onCreateAccount();
     } else {
-      // Redirect to signup with email pre-filled
       router.push(
         `/auth/signup?email=${encodeURIComponent(email)}&order=${orderNumber}`,
       );

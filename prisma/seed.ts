@@ -23,7 +23,7 @@ const doFullSeed = !isProd || allowFullSeed;
 
 async function seedMinimalProd() {
   console.log("Running minimal production seed...");
-  // Create admin: Nonso Chillington (idempotent upsert)
+
   const adminEmail = process.env.ADMIN_EMAIL || "nonso@trichomes.com";
   const adminPassword = process.env.ADMIN_PASSWORD || "demo123";
   const hashedPassword = await bcrypt.hash(adminPassword, 12);

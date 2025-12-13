@@ -10,18 +10,7 @@ interface SavedAddressesSelectorProps {
   selectedAddressId?: string;
 }
 
-/**
- * SavedAddressesSelector Component
- *
- * Displays a dropdown of saved addresses for authenticated users.
- * Allows selecting an existing address to populate the checkout form.
- *
- * Follows Trichomes Design Guide principles:
- * - Reusable component
- * - Type-safe
- * - Proper error handling
- * - Loading states
- */
+
 export function SavedAddressesSelector({
   onSelectAddress,
   selectedAddressId,

@@ -135,7 +135,7 @@ export const Footer: React.FC = () => {
             </h4>
             <div className="flex space-x-4 mb-6">
               <a
-                href="https://instagram.com/trichome"
+                href="https://www.instagram.com/trichomes_ng?igsh=MTQ3ajZ0NjFlb3JzbA=="
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-70 transition-opacity duration-150"
@@ -180,7 +180,7 @@ export const Footer: React.FC = () => {
                 />
               </a>
               <a
-                href="https://tiktok.com/@trichome"
+                href="https://www.tiktok.com/@trichomes_ng?_r=1&_t=ZS-92BTyW6SYR3"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-70 transition-opacity duration-150"
@@ -195,7 +195,7 @@ export const Footer: React.FC = () => {
                 />
               </a>
               <a
-                href="https://wa.me/your-number"
+                href="https://wa.me/2348087098720?text=Hi%20Trichomes%20Ltd%2C%20I%20would%20like%20to%20know%20more%20about%20your%20products%20%26%20services%3F"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-70 transition-opacity duration-150"

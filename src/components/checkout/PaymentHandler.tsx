@@ -32,36 +32,20 @@ interface OrderTotals {
 }
 
 interface PaymentHandlerProps {
-  /** Address information for shipping */
   address: AddressData;
-  /** Order items from cart */
   items: OrderItem[];
-  /** Calculated order totals */
   totals: OrderTotals;
-  /** Payment method (defaults to WALLET for Monnify) */
   paymentMethod?: PaymentMethod;
-  /** Currency (defaults to NGN) */
   currency?: Currency;
-  /** Optional order notes */
   notes?: string;
-  /** Customer name for payment */
   customerName: string;
-  /** Customer email for payment */
   customerEmail: string;
-  /** Optional promo code */
   promoCode?: string;
-  /** Callback when payment modal is opened */
   onPaymentOpen?: () => void;
-  /** Callback when payment is closed without completing */
   onPaymentClose?: () => void;
-  /** Show status component */
   showStatus?: boolean;
 }
 
-/**
- * Reusable PaymentHandler component
- * Handles Monnify payment initialization and order creation after payment success
- */
 export function PaymentHandler({
   address,
   items,
@@ -81,9 +65,6 @@ export function PaymentHandler({
   >("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  /**
-   * Initialize Monnify payment
-   */
   const initializePayment = useCallback(async () => {
     if (typeof window === "undefined") {
       setPaymentError("Payment can only be initialized on the client side");
@@ -95,7 +76,6 @@ export function PaymentHandler({
     onPaymentOpen?.();
 
     try {
-      // Dynamically import Monnify only on client side
       const Monnify = (await import("monnify-js")).default;
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
@@ -140,8 +120,6 @@ export function PaymentHandler({
             setPaymentStatus("success");
             console.log("Payment successful, creating order...", response);
 
-            // Always use original email/name from checkout form
-            // Monnify may return masked email (e.g., "al***ga@gmail.com")
             createOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,
@@ -201,12 +179,10 @@ export function PaymentHandler({
     onPaymentClose,
   ]);
 
-  // Expose initializePayment via children render prop pattern
   if (!showStatus) {
     return null;
   }
 
-  // Show error status component if there's an error
   if (isError || (paymentStatus === "error" && paymentError)) {
     return (
       <OrderCreationStatus
@@ -290,9 +266,7 @@ export function usePaymentHandler(
 
           if (response.paymentStatus === "PAID") {
             setPaymentStatus("success");
-
-            // Always use original email/name from checkout form
-            // Monnify may return masked email (e.g., "al***ga@gmail.com")
+            
             createOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,

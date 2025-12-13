@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditIcon, EyeIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
 import { CategoryFormSheet } from "./CategoryFormSheet";
@@ -32,6 +33,11 @@ export default function AdminCategoriesPage() {
     null,
   );
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const categoriesQuery = trpc.getCategories.useQuery(
     {},
@@ -64,18 +70,26 @@ export default function AdminCategoriesPage() {
   }, []);
 
   const handleDeleteCategory = useCallback(
-    async (id: string) => {
-      if (!confirm("Are you sure you want to delete this category?")) {
-        return;
-      }
-
-      setDeletingCategoryId(id);
-      try {
-        await deleteCategoryMutation.mutateAsync({ id });
-      } catch (_error) {}
+    (category: { id: string; name: string }) => {
+      setCategoryToDelete(category);
+      setDeleteConfirmOpen(true);
+      setOpenDropdownId(null);
     },
-    [deleteCategoryMutation],
+    [],
   );
+
+  const confirmDeleteCategory = useCallback(async () => {
+    if (!categoryToDelete) return;
+
+    setDeletingCategoryId(categoryToDelete.id);
+    try {
+      await deleteCategoryMutation.mutateAsync({ id: categoryToDelete.id });
+      setDeleteConfirmOpen(false);
+      setCategoryToDelete(null);
+    } catch (_error) {
+      // Error is handled by mutation onError
+    }
+  }, [categoryToDelete, deleteCategoryMutation]);
 
   const handleViewCategory = useCallback((slug: string) => {
     setViewingCategoryId(slug);
@@ -120,13 +134,12 @@ export default function AdminCategoriesPage() {
         header: "Status",
         cell: (category) => (
           <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              category.status === "ACTIVE"
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${category.status === "ACTIVE"
                 ? "bg-green-100 text-green-800"
                 : category.status === "DRAFT"
                   ? "bg-yellow-100 text-yellow-800"
                   : "bg-red-100 text-red-800"
-            }`}
+              }`}
           >
             {category.status}
           </span>
@@ -192,24 +205,17 @@ export default function AdminCategoriesPage() {
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     type="button"
-                    onClick={() => {
-                      handleDeleteCategory(category.id);
-                      setOpenDropdownId(null);
-                    }}
+                    onClick={() =>
+                      handleDeleteCategory({
+                        id: category.id,
+                        name: category.name,
+                      })
+                    }
                     disabled={deletingCategoryId === category.id}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
-                    {deletingCategoryId === category.id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <TrashIcon className="w-4 h-4" />
-                        Delete Category
-                      </>
-                    )}
+                    <TrashIcon className="w-4 h-4" />
+                    Delete Category
                   </button>
                 </div>
               </>
@@ -276,7 +282,7 @@ export default function AdminCategoriesPage() {
                 {categoriesQuery.isLoading
                   ? "..."
                   : categoriesQuery.data?.filter((c) => c.status === "ACTIVE")
-                      .length || 0}
+                    .length || 0}
               </p>
             </div>
           </div>
@@ -293,7 +299,7 @@ export default function AdminCategoriesPage() {
                 {categoriesQuery.isLoading
                   ? "..."
                   : categoriesQuery.data?.filter((c) => !c.parent_id).length ||
-                    0}
+                  0}
               </p>
             </div>
           </div>
@@ -310,7 +316,7 @@ export default function AdminCategoriesPage() {
                 {categoriesQuery.isLoading
                   ? "..."
                   : categoriesQuery.data?.filter((c) => c.parent_id).length ||
-                    0}
+                  0}
               </p>
             </div>
           </div>
@@ -338,6 +344,21 @@ export default function AdminCategoriesPage() {
         categoryId={viewingCategoryId}
         open={viewSheetOpen}
         onOpenChange={setViewSheetOpen}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open);
+          if (!open) setCategoryToDelete(null);
+        }}
+        title="Delete Category"
+        description={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteCategory}
+        isLoading={deleteCategoryMutation.isPending}
+        variant="danger"
       />
     </div>
   );

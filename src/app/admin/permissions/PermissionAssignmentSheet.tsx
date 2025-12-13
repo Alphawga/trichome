@@ -154,7 +154,7 @@ export function PermissionAssignmentSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl px-4 md:px-6 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Manage Permissions</SheetTitle>
         </SheetHeader>

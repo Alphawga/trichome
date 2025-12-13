@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/app/contexts/auth-context";
 import { SearchBar } from "../search/SearchBar";
 import {
   BagIcon,
@@ -51,45 +52,44 @@ const NavLink: React.FC<{
   dropdownMenu,
   onCloseDropdown,
 }) => (
-  <div className="relative">
-    <Link
-      href={href}
-      className={`relative flex items-center text-[15px] font-semibold transition-colors group uppercase tracking-wider ${
-        isActive ? "text-[#3A643B]" : "text-[#1E3024] hover:text-[#3A643B]"
-      }`}
+    <div
+      className="relative"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onFocus={onMouseEnter}
-      onBlur={onMouseLeave}
-      aria-haspopup={hasDropdown ? "menu" : undefined}
-      aria-expanded={isOpen ? "true" : "false"}
     >
-      <span className="relative">
-        {children}
-        {/* Animated underline */}
-        <span
-          className={`absolute bottom-0 left-0 h-0.5 bg-[#3A643B] transition-all duration-300 ease-out ${
-            isActive || isOpen ? "w-full" : "w-0 group-hover:w-full"
+      <Link
+        href={href}
+        className={`relative flex items-center text-[15px] font-semibold transition-colors group uppercase tracking-wider ${isActive ? "text-[#3A643B]" : "text-[#1E3024] hover:text-[#3A643B]"
           }`}
-        />
-      </span>
-      {hasDropdown && (
-        <span
-          className={`ml-1 font-light text-lg transition-transform duration-200 mb-1.5 ${
-            isActive
+        onFocus={onMouseEnter}
+        onBlur={onMouseLeave}
+        aria-haspopup={hasDropdown ? "menu" : undefined}
+        aria-expanded={isOpen ? "true" : "false"}
+      >
+        <span className="relative">
+          {children}
+          {/* Animated underline */}
+          <span
+            className={`absolute bottom-0 left-0 h-0.5 bg-[#3A643B] transition-all duration-300 ease-out ${isActive || isOpen ? "w-full" : "w-0 group-hover:w-full"
+              }`}
+          />
+        </span>
+        {hasDropdown && (
+          <span
+            className={`ml-1 font-light text-lg transition-transform duration-200 mb-1.5 ${isActive
               ? "text-[#3A643B]"
               : "text-gray-500 group-hover:text-[#3A643B]"
-          } ${isOpen ? "rotate-45" : ""}`}
-        >
-          +
-        </span>
+              } ${isOpen ? "rotate-45" : ""}`}
+          >
+            +
+          </span>
+        )}
+      </Link>
+      {hasDropdown && isOpen && dropdownMenu && onCloseDropdown && (
+        <Dropdown isOpen={true} menu={dropdownMenu} onClose={onCloseDropdown} />
       )}
-    </Link>
-    {hasDropdown && isOpen && dropdownMenu && onCloseDropdown && (
-      <Dropdown isOpen={true} menu={dropdownMenu} onClose={onCloseDropdown} />
-    )}
-  </div>
-);
+    </div>
+  );
 
 const Dropdown: React.FC<{
   isOpen: boolean;
@@ -105,33 +105,27 @@ const Dropdown: React.FC<{
 
   useEffect(() => {
     if (isOpen && parentRef.current) {
-      // Reset positioned state
       setIsPositioned(false);
 
-      // Calculate position before showing dropdown
       requestAnimationFrame(() => {
         if (!parentRef.current) return;
 
         const parentRect = parentRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
-        const dropdownWidth = 600; // Fixed width of dropdown
+        const dropdownWidth = 600;
         const dropdownHalfWidth = dropdownWidth / 2;
 
-        // Calculate center position
         const centerX = parentRect.left + parentRect.width / 2;
 
-        // Check if dropdown would overflow right
         if (centerX + dropdownHalfWidth > viewportWidth) {
           setPosition("right");
         }
-        // Check if dropdown would overflow left
         else if (centerX - dropdownHalfWidth < 0) {
           setPosition("left");
         } else {
           setPosition("center");
         }
 
-        // Mark as positioned after calculation
         setIsPositioned(true);
       });
     } else {
@@ -139,7 +133,6 @@ const Dropdown: React.FC<{
     }
   }, [isOpen]);
 
-  // Reset position when closing
   useEffect(() => {
     if (!isOpen) {
       setPosition("center");
@@ -162,21 +155,15 @@ const Dropdown: React.FC<{
 
   return (
     <div ref={parentRef} className="relative">
-      {/* Wrapper div handles positioning (translateX for centering) */}
       <div
-        className={`absolute top-full z-50 ${getPositionClasses()}`}
-        style={{ marginTop: "-1px" }}
-        onMouseEnter={() => {}} // Keep dropdown open when hovering over it
-        onMouseLeave={onClose}
+        className={`absolute top-full z-50 pt-2 ${getPositionClasses()}`}
       >
-        {/* Inner div handles animation (translateY slide down) */}
         <div
           ref={dropdownRef}
-          className={`w-[600px] bg-white shadow-lg border border-gray-200 rounded-sm overflow-hidden ${
-            isPositioned
-              ? "opacity-100 animate-[dropdownSlideIn_450ms_cubic-bezier(0.16,1,0.3,1)]"
-              : "opacity-0"
-          }`}
+          className={`w-[600px] bg-white shadow-lg border border-gray-200 rounded-sm overflow-hidden ${isPositioned
+            ? "opacity-100 animate-[dropdownSlideIn_450ms_cubic-bezier(0.16,1,0.3,1)]"
+            : "opacity-0"
+            }`}
           role="menu"
         >
           <div className="p-6">
@@ -251,11 +238,16 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   );
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Auth state
+  const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
 
   // Handle search from SearchBar component
   const handleSearchFromBar = (query: string) => {
@@ -654,11 +646,10 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 <form onSubmit={handleSearch} className="w-full">
                   <div className="relative w-full group">
                     <div
-                      className={`absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 transition-all duration-400 ease-out ${
-                        isSearchFocused || isSearching
-                          ? "scale-110 text-[#3A643B]"
-                          : "group-hover:text-[#3A643B]"
-                      }`}
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 transition-all duration-400 ease-out ${isSearchFocused || isSearching
+                        ? "scale-110 text-[#3A643B]"
+                        : "group-hover:text-[#3A643B]"
+                        }`}
                     >
                       <SearchIcon className="w-5 h-5" />
                     </div>
@@ -672,25 +663,22 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                         onKeyDown={handleSearchKeyDown}
                         onFocus={handleSearchFocus}
                         onBlur={handleSearchBlur}
-                        className={`w-full pl-9 pr-20 bg-transparent outline-none py-2 text-base text-[#1E3024] placeholder:text-gray-400 transition-all duration-400 ease-out ${
-                          isSearchFocused || isSearching
-                            ? "scale-[1.01] bg-[#FAFAF7]/50"
-                            : ""
-                        }`}
+                        className={`w-full pl-9 pr-20 bg-transparent outline-none py-2 text-base text-[#1E3024] placeholder:text-gray-400 transition-all duration-400 ease-out ${isSearchFocused || isSearching
+                          ? "scale-[1.01] bg-[#FAFAF7]/50"
+                          : ""
+                          }`}
                       />
                       {/* Animated bottom border line */}
                       <div
-                        className={`absolute bottom-0 left-0 h-0.5 bg-[#3A643B] transition-all duration-400 ease-out ${
-                          isSearchFocused || isSearching ? "w-full" : "w-0"
-                        }`}
+                        className={`absolute bottom-0 left-0 h-0.5 bg-[#3A643B] transition-all duration-400 ease-out ${isSearchFocused || isSearching ? "w-full" : "w-0"
+                          }`}
                       />
                     </div>
                     {searchQuery && (
                       <button
                         type="submit"
-                        className={`absolute right-0 top-1/2 -translate-y-1/2 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-[#3A643B] hover:text-[#1E3024] transition-all duration-400 ease-out animate-[fadeIn_400ms_cubic-bezier(0.16,1,0.3,1)] ${
-                          isSearching ? "scale-105" : "hover:scale-105"
-                        }`}
+                        className={`absolute right-0 top-1/2 -translate-y-1/2 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-[#3A643B] hover:text-[#1E3024] transition-all duration-400 ease-out animate-[fadeIn_400ms_cubic-bezier(0.16,1,0.3,1)] ${isSearching ? "scale-105" : "hover:scale-105"
+                          }`}
                         aria-label="Search"
                       >
                         Search
@@ -735,19 +723,108 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 )}
               </Link>
 
-              {/* User Profile */}
-              <Link
-                href="/profile"
-                className={`transition-all duration-200 hover:scale-110 p-2 sm:p-1.5 flex-shrink-0 ${
-                  isActive("/profile")
-                    ? "text-[#3A643B]"
-                    : "text-[#1E3024] hover:text-[#3A643B]"
-                }`}
-                title="Profile"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <UserIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5" />
-              </Link>
+              {/* User Profile / Auth */}
+              <div className="relative" ref={userMenuRef}>
+                {isAuthLoading ? (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+                ) : isAuthenticated && user ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      className="flex items-center gap-2 transition-all duration-200 hover:scale-105 p-1"
+                      title={`${user.first_name || ''} ${user.last_name || ''}`}
+                    >
+                      {/* Avatar */}
+                      <div className="w-8 h-8 rounded-full bg-[#3A643B] flex items-center justify-center text-white text-sm font-semibold uppercase overflow-hidden">
+                        {user.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      </div>
+                    </button>
+
+                    {/* User Dropdown Menu */}
+                    {userMenuOpen && (
+                      <>
+                        <button
+                          type="button"
+                          className="fixed inset-0 z-40"
+                          onClick={() => setUserMenuOpen(false)}
+                          aria-label="Close user menu"
+                        />
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-[fadeInUp_200ms_ease-out]">
+                          {/* User Info */}
+                          <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+
+                          {/* Menu Items */}
+                          <div className="py-1">
+                            <Link
+                              href="/profile"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              <UserIcon className="w-4 h-4" />
+                              My Profile
+                            </Link>
+                            <Link
+                              href="/order-history"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <title>Orders</title>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                              My Orders
+                            </Link>
+                            <Link
+                              href="/wishlist"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              <HeartIcon className="w-4 h-4" />
+                              Wishlist
+                            </Link>
+                          </div>
+
+                          {/* Sign Out */}
+                          <div className="border-t border-gray-100 pt-1">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setUserMenuOpen(false);
+                                await logout();
+                                router.push('/');
+                              }}
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <title>Sign Out</title>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                              </svg>
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    href="/auth/signin"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-[#3A643B] hover:text-[#1E3024] border border-[#3A643B] rounded-full hover:bg-[#3A643B]/5 transition-all duration-200"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
+                  </Link>
+                )}
+              </div>
 
               {/* Cart */}
               <Link
@@ -776,9 +853,8 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
           {/* Overlay with fade animation */}
           <button
             type="button"
-            className={`fixed inset-0 bg-[#1E3024]/50 z-40 lg:hidden transition-opacity duration-300 ease-out ${
-              mobileMenuClosing ? "opacity-0" : "opacity-100"
-            }`}
+            className={`fixed inset-0 bg-[#1E3024]/50 z-40 lg:hidden transition-opacity duration-300 ease-out ${mobileMenuClosing ? "opacity-0" : "opacity-100"
+              }`}
             onClick={toggleMobileMenu}
             style={{
               animation: mobileMenuClosing
@@ -790,9 +866,8 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
 
           {/* Mobile Menu with slide-in/out animation */}
           <div
-            className={`fixed top-0 left-0 h-full w-full max-w-sm bg-[#FAFAF7] shadow-2xl z-50 lg:hidden overflow-y-auto transition-transform duration-300 ease-out ${
-              mobileMenuClosing ? "-translate-x-full" : "translate-x-0"
-            }`}
+            className={`fixed top-0 left-0 h-full w-full max-w-sm bg-[#FAFAF7] shadow-2xl z-50 lg:hidden overflow-y-auto transition-transform duration-300 ease-out ${mobileMenuClosing ? "-translate-x-full" : "translate-x-0"
+              }`}
             style={{
               animation: !mobileMenuClosing
                 ? "slideInFromLeft 300ms cubic-bezier(0.16, 1, 0.3, 1)"
@@ -839,27 +914,24 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   <button
                     type="button"
                     onClick={() => toggleMobileSubmenu("about")}
-                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                      isActive("/about")
-                        ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                        : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
+                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/about")
+                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                      }`}
                   >
                     <span>About Us</span>
                     <ChevronRightIcon
-                      className={`w-4 h-4 transition-transform duration-300 ease-out ${
-                        mobileExpandedMenu === "about"
-                          ? "rotate-90"
-                          : "rotate-0"
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-300 ease-out ${mobileExpandedMenu === "about"
+                        ? "rotate-90"
+                        : "rotate-0"
+                        }`}
                     />
                   </button>
                   <div
-                    className={`overflow-hidden transition-all duration-400 ease-out ${
-                      mobileExpandedMenu === "about"
-                        ? "max-h-96 opacity-100"
-                        : "max-h-0 opacity-0"
-                    }`}
+                    className={`overflow-hidden transition-all duration-400 ease-out ${mobileExpandedMenu === "about"
+                      ? "max-h-96 opacity-100"
+                      : "max-h-0 opacity-0"
+                      }`}
                   >
                     {mobileExpandedMenu === "about" && dropdownMenus.about && (
                       <div className="pl-4 space-y-1 border-l-2 border-[#3A643B]/20 pt-2 pb-1">
@@ -891,27 +963,24 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   <button
                     type="button"
                     onClick={() => toggleMobileSubmenu("brands")}
-                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                      isActive("/brands")
-                        ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                        : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
+                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/brands")
+                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                      }`}
                   >
                     <span>Brands</span>
                     <ChevronRightIcon
-                      className={`w-4 h-4 transition-transform duration-300 ease-out ${
-                        mobileExpandedMenu === "brands"
-                          ? "rotate-90"
-                          : "rotate-0"
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-300 ease-out ${mobileExpandedMenu === "brands"
+                        ? "rotate-90"
+                        : "rotate-0"
+                        }`}
                     />
                   </button>
                   <div
-                    className={`overflow-hidden transition-all duration-400 ease-out ${
-                      mobileExpandedMenu === "brands"
-                        ? "max-h-96 opacity-100"
-                        : "max-h-0 opacity-0"
-                    }`}
+                    className={`overflow-hidden transition-all duration-400 ease-out ${mobileExpandedMenu === "brands"
+                      ? "max-h-96 opacity-100"
+                      : "max-h-0 opacity-0"
+                      }`}
                   >
                     {mobileExpandedMenu === "brands" &&
                       dropdownMenus.brands && (
@@ -944,25 +1013,22 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   <button
                     type="button"
                     onClick={() => toggleMobileSubmenu("face")}
-                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                      pathname.includes("face-care")
-                        ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                        : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
+                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${pathname.includes("face-care")
+                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                      }`}
                   >
                     <span>Face</span>
                     <ChevronRightIcon
-                      className={`w-4 h-4 transition-transform duration-300 ease-out ${
-                        mobileExpandedMenu === "face" ? "rotate-90" : "rotate-0"
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-300 ease-out ${mobileExpandedMenu === "face" ? "rotate-90" : "rotate-0"
+                        }`}
                     />
                   </button>
                   <div
-                    className={`overflow-hidden transition-all duration-400 ease-out ${
-                      mobileExpandedMenu === "face"
-                        ? "max-h-96 opacity-100"
-                        : "max-h-0 opacity-0"
-                    }`}
+                    className={`overflow-hidden transition-all duration-400 ease-out ${mobileExpandedMenu === "face"
+                      ? "max-h-96 opacity-100"
+                      : "max-h-0 opacity-0"
+                      }`}
                   >
                     {mobileExpandedMenu === "face" && dropdownMenus.face && (
                       <div className="pl-4 space-y-1 border-l-2 border-[#3A643B]/20 pt-2 pb-1">
@@ -994,25 +1060,22 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   <button
                     type="button"
                     onClick={() => toggleMobileSubmenu("body")}
-                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                      pathname.includes("body-care")
-                        ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                        : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
+                    className={`w-full flex items-center justify-between py-3 px-4 text-left text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${pathname.includes("body-care")
+                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                      }`}
                   >
                     <span>Bath & Body</span>
                     <ChevronRightIcon
-                      className={`w-4 h-4 transition-transform duration-300 ease-out ${
-                        mobileExpandedMenu === "body" ? "rotate-90" : "rotate-0"
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-300 ease-out ${mobileExpandedMenu === "body" ? "rotate-90" : "rotate-0"
+                        }`}
                     />
                   </button>
                   <div
-                    className={`overflow-hidden transition-all duration-400 ease-out ${
-                      mobileExpandedMenu === "body"
-                        ? "max-h-96 opacity-100"
-                        : "max-h-0 opacity-0"
-                    }`}
+                    className={`overflow-hidden transition-all duration-400 ease-out ${mobileExpandedMenu === "body"
+                      ? "max-h-96 opacity-100"
+                      : "max-h-0 opacity-0"
+                      }`}
                   >
                     {mobileExpandedMenu === "body" && dropdownMenus.body && (
                       <div className="pl-4 space-y-1 border-l-2 border-[#3A643B]/20 pt-2 pb-1">
@@ -1042,11 +1105,10 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 {/* All Products */}
                 <Link
                   href="/products"
-                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                    isActive("/products")
-                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                  }`}
+                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/products")
+                    ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                    : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                    }`}
                   onClick={toggleMobileMenu}
                 >
                   All Products
@@ -1055,11 +1117,10 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 {/* Book a Consultation */}
                 <Link
                   href="/consultation"
-                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                    isActive("/consultation")
-                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                  }`}
+                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/consultation")
+                    ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                    : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                    }`}
                   onClick={toggleMobileMenu}
                 >
                   Book a Consultation
@@ -1068,15 +1129,100 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 {/* Rewards */}
                 <Link
                   href="/rewards"
-                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${
-                    isActive("/rewards")
-                      ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                      : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                  }`}
+                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/rewards")
+                    ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                    : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                    }`}
                   onClick={toggleMobileMenu}
                 >
                   Rewards
                 </Link>
+
+                {/* Auth Section */}
+                <div className="border-t border-[#1E3024]/10 mt-4 pt-4">
+                  {isAuthenticated && user ? (
+                    <>
+                      {/* User Info */}
+                      <div className="px-4 py-3 mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#3A643B] flex items-center justify-center text-white text-lg font-semibold uppercase">
+                            {user.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#1E3024]">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-xs text-[#1E3024]/60 truncate max-w-[180px]">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Account Links */}
+                      <Link
+                        href="/profile"
+                        className={`flex items-center gap-3 py-3 px-4 text-sm font-medium transition-colors duration-150 ease-out ${isActive("/profile")
+                          ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                          : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                          }`}
+                        onClick={toggleMobileMenu}
+                      >
+                        <UserIcon className="w-5 h-5" />
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/order-history"
+                        className={`flex items-center gap-3 py-3 px-4 text-sm font-medium transition-colors duration-150 ease-out ${isActive("/order-history")
+                          ? "text-[#3A643B] bg-[#E6E4C6]/30"
+                          : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
+                          }`}
+                        onClick={toggleMobileMenu}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <title>Orders</title>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        My Orders
+                      </Link>
+
+                      {/* Sign Out */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          toggleMobileMenu();
+                          await logout();
+                          router.push('/');
+                        }}
+                        className="flex items-center gap-3 w-full py-3 px-4 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-150 ease-out"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <title>Sign Out</title>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <div className="px-4 py-2 space-y-2">
+                      <Link
+                        href="/auth/signin"
+                        className="flex items-center justify-center gap-2 w-full py-3 px-4 text-sm font-semibold text-white bg-[#3A643B] rounded-lg hover:bg-[#2d4e2e] transition-colors duration-150 ease-out"
+                        onClick={toggleMobileMenu}
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/auth/signup"
+                        className="flex items-center justify-center gap-2 w-full py-3 px-4 text-sm font-semibold text-[#3A643B] border border-[#3A643B] rounded-lg hover:bg-[#3A643B]/5 transition-colors duration-150 ease-out"
+                        onClick={toggleMobileMenu}
+                      >
+                        Create Account
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

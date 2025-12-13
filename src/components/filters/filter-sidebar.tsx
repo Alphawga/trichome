@@ -34,6 +34,8 @@ interface SidebarProps {
     value: string,
   ) => void;
   onApplyFilters: () => void;
+  isFiltering?: boolean;
+  onCategorySelect?: (categoryName: string) => void;
   searchResults?: Product[];
   categories: Category[];
   filterOptions: {
@@ -73,29 +75,45 @@ const FilterPill: React.FC<{
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 text-[12px] font-body border transition-all duration-150 ease-out ${
-        isSelected
-          ? "bg-[#1E3024] text-white border-[#1E3024]"
-          : "bg-[#FAFAF7] text-[#1E3024] border-[#1E3024]/20 hover:bg-[#E6E4C6]/50 hover:border-[#1E3024]/40"
-      }`}
+      className={`px-3 py-1 text-[12px] font-body border transition-all duration-150 ease-out ${isSelected
+        ? "bg-[#1E3024] text-white border-[#1E3024]"
+        : "bg-[#FAFAF7] text-[#1E3024] border-[#1E3024]/20 hover:bg-[#E6E4C6]/50 hover:border-[#1E3024]/40"
+        }`}
     >
       {label}
     </button>
   );
 };
 
-const CategoryAccordion: React.FC<{ category: Category }> = ({ category }) => {
+const CategoryAccordion: React.FC<{
+  category: Category;
+  onCategorySelect?: (categoryName: string) => void;
+}> = ({ category, onCategorySelect }) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleCategoryClick = (name: string) => {
+    if (onCategorySelect) {
+      onCategorySelect(name);
+    }
+  };
 
   return (
     <div className="py-2">
       <button
         type="button"
-        className="w-full flex justify-between items-center text-left text-xs font-body text-black hover:text-black/50 transition-colors duration-150 ease-out border-b border-black/10 pb-2"
+        className="w-full flex justify-between items-center text-left text-xs font-body text-black hover:text-black/50 transition-colors duration-150 ease-out border-b border-black/10 pb-2 cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
       >
-        <span>{category.name}</span>
+        <span
+          className="hover:underline"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCategoryClick(category.name);
+          }}
+        >
+          {category.name}
+        </span>
         <span
           className={`transform transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`}
         >
@@ -103,9 +121,8 @@ const CategoryAccordion: React.FC<{ category: Category }> = ({ category }) => {
         </span>
       </button>
       <div
-        className={`overflow-hidden transition-all duration-300 ease-out ${
-          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-all duration-300 ease-out ${isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         {category.subcategories && category.subcategories.length > 0 && (
           <div className="pt-3 pl-4">
@@ -113,18 +130,18 @@ const CategoryAccordion: React.FC<{ category: Category }> = ({ category }) => {
               {category.subcategories.map((subcategory, index) => (
                 <li
                   key={subcategory}
-                  className={`transform transition-all duration-300 ease-out ${
-                    isOpen
-                      ? "translate-y-0 opacity-100"
-                      : "-translate-y-2 opacity-0"
-                  }`}
+                  className={`transform transition-all duration-300 ease-out ${isOpen
+                    ? "translate-y-0 opacity-100"
+                    : "-translate-y-2 opacity-0"
+                    }`}
                   style={{
                     transitionDelay: isOpen ? `${index * 30}ms` : "0ms",
                   }}
                 >
                   <button
                     type="button"
-                    className="text-[9px] font-body text-black/70 hover:text-black/80 transition-colors duration-150 ease-out"
+                    onClick={() => handleCategoryClick(subcategory)}
+                    className="text-[12px] font-body text-black/70 hover:text-black/80 hover:underline cursor-pointer transition-colors duration-150 ease-out"
                   >
                     {subcategory}
                   </button>
@@ -150,6 +167,8 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
   selectedIngredients,
   onToggleFilter,
   onApplyFilters,
+  isFiltering = false,
+  onCategorySelect,
   searchResults = [],
   categories,
   filterOptions,
@@ -249,9 +268,39 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
                 onPriceChange(tempMaxPrice);
                 onApplyFilters();
               }}
-              className="bg-black text-white px-4 py-2 sm:py-2.5 text-[12px] font-body font-medium uppercase hover:bg-black/80 transition-colors duration-150 ease-out w-full sm:w-auto rounded-sm"
+              disabled={isFiltering}
+              className={`bg-black text-white px-4 py-2 sm:py-2.5 text-[12px] font-body font-medium uppercase transition-all duration-150 ease-out w-full sm:w-auto rounded-sm flex items-center justify-center gap-2 ${isFiltering
+                ? "opacity-70 cursor-not-allowed"
+                : "hover:bg-black/80"
+                }`}
             >
-              FILTER
+              {isFiltering ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  FILTERING...
+                </>
+              ) : (
+                "FILTER"
+              )}
             </button>
             <div className="text-[12px] sm:text-[13px] font-body text-[#1E3024] text-center sm:text-right ">
               Price: ₦{tempMinPrice.toLocaleString()} — ₦
@@ -322,7 +371,11 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
       ) : (
         <div className="space-y-1">
           {categories.map((cat) => (
-            <CategoryAccordion key={cat.name} category={cat} />
+            <CategoryAccordion
+              key={cat.name}
+              category={cat}
+              onCategorySelect={onCategorySelect}
+            />
           ))}
         </div>
       )}

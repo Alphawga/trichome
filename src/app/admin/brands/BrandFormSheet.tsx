@@ -136,7 +136,7 @@ export function BrandFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="p-5 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{brandId ? "Edit Brand" : "Create New Brand"}</SheetTitle>
           <SheetDescription>

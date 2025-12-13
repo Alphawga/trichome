@@ -31,7 +31,7 @@ export function PaymentViewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-3xl px-4 md:px-6 max-h-[90vh] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Payment Details</SheetTitle>
         </SheetHeader>
@@ -79,18 +79,17 @@ export function PaymentViewSheet({
                 <div>
                   <p className="text-sm text-gray-500">Status</p>
                   <span
-                    className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                      payment.status === "COMPLETED"
+                    className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${payment.status === "COMPLETED"
                         ? "bg-green-100 text-green-800"
                         : payment.status === "PENDING"
                           ? "bg-yellow-100 text-yellow-800"
                           : payment.status === "FAILED"
                             ? "bg-red-100 text-red-800"
                             : payment.status === "REFUNDED" ||
-                                payment.status === "PARTIALLY_REFUNDED"
+                              payment.status === "PARTIALLY_REFUNDED"
                               ? "bg-orange-100 text-orange-800"
                               : "bg-gray-100 text-gray-800"
-                    }`}
+                      }`}
                   >
                     {payment.status}
                   </span>

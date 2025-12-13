@@ -46,6 +46,8 @@ interface ProductFilterGridProps {
     value: string,
   ) => void;
   onApplyFilters: () => void;
+  isFiltering?: boolean;
+  onCategorySelect?: (categoryName: string) => void;
   categories: Category[];
   filterOptions: FilterOptions;
 
@@ -79,8 +81,10 @@ export const ProductFilterGrid: React.FC<ProductFilterGridProps> = ({
   selectedBrands = [],
   selectedConcerns = [],
   selectedIngredients = [],
-  onToggleFilter = () => {},
+  onToggleFilter = () => { },
   onApplyFilters,
+  isFiltering = false,
+  onCategorySelect,
   categories,
   filterOptions,
   onProductClick,
@@ -114,6 +118,8 @@ export const ProductFilterGrid: React.FC<ProductFilterGridProps> = ({
           selectedIngredients={selectedIngredients}
           onToggleFilter={onToggleFilter}
           onApplyFilters={onApplyFilters}
+          isFiltering={isFiltering}
+          onCategorySelect={onCategorySelect}
           categories={categories}
           filterOptions={filterOptions}
         />
@@ -212,11 +218,10 @@ export const ProductFilterGrid: React.FC<ProductFilterGridProps> = ({
                             type="button"
                             key={pageNum}
                             onClick={() => onPageChange(pageNum)}
-                            className={`px-3 py-1.5 min-w-[2.25rem] rounded-lg text-[13px] font-body transition-all duration-150 ease-out ${
-                              currentPage === pageNum
-                                ? "bg-[#3A643B] text-white"
-                                : "border border-[#1E3024]/20 text-[#1E3024] hover:bg-[#E6E4C6]/50"
-                            }`}
+                            className={`px-3 py-1.5 min-w-[2.25rem] rounded-lg text-[13px] font-body transition-all duration-150 ease-out ${currentPage === pageNum
+                              ? "bg-[#3A643B] text-white"
+                              : "border border-[#1E3024]/20 text-[#1E3024] hover:bg-[#E6E4C6]/50"
+                              }`}
                             aria-label={`Go to page ${pageNum}`}
                             aria-current={
                               currentPage === pageNum ? "page" : undefined

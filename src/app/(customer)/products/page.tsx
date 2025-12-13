@@ -65,8 +65,8 @@ function ProductsPageContent() {
   const [activeFilters, setActiveFilters] = useState<FilterState | null>(
     categoryParam
       ? {
-          category_slug: categoryParam,
-        }
+        category_slug: categoryParam,
+      }
       : null,
   );
 
@@ -242,6 +242,26 @@ function ProductsPageContent() {
     }
   };
 
+  // Convert category name to slug and navigate
+  const handleCategorySelect = useCallback((categoryName: string) => {
+    // Find the category slug from the category tree
+    if (!categoriesQuery.data) return;
+
+    // Flatten all categories to find the slug
+    const allCategories = categoriesQuery.data.flatMap((cat) => [
+      { name: cat.name, slug: cat.slug },
+      ...(cat.children || []).map((child) => ({ name: child.name, slug: child.slug })),
+      ...(cat.children?.flatMap((child) =>
+        (child.children || []).map((grandchild) => ({ name: grandchild.name, slug: grandchild.slug }))
+      ) || []),
+    ]);
+
+    const found = allCategories.find((c) => c.name === categoryName);
+    if (found?.slug) {
+      router.push(`/products?category=${found.slug}`);
+    }
+  }, [categoriesQuery.data, router]);
+
   const toggleMobileFilter = () => {
     if (mobileFilterOpen) {
       setMobileFilterClosing(true);
@@ -283,12 +303,12 @@ function ProductsPageContent() {
       <div className="relative w-full h-[300px] sm:h-[350px] lg:h-[400px] animate-[sectionEntrance_600ms_ease-out] ">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <div 
+          <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: "url('/banners/product-banner.jpg')" }}
           />
           {/* Gradient Overlay */}
-          <div 
+          <div
             className="absolute inset-0"
             style={{
               background: 'linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)'
@@ -490,8 +510,10 @@ function ProductsPageContent() {
             selectedBrands={[]}
             selectedConcerns={[]}
             selectedIngredients={[]}
-            onToggleFilter={() => {}}
+            onToggleFilter={() => { }}
             onApplyFilters={handleApplyFilters}
+            isFiltering={productsQuery.isFetching}
+            onCategorySelect={handleCategorySelect}
             categories={transformedCategories}
             filterOptions={{
               brands: [],
@@ -513,9 +535,8 @@ function ProductsPageContent() {
           <>
             {/* Overlay */}
             <button
-              className={`fixed inset-0 bg-[#1E3024]/50 z-40 lg:hidden transition-opacity duration-300 ease-out ${
-                mobileFilterClosing ? "opacity-0" : "opacity-100"
-              }`}
+              className={`fixed inset-0 bg-[#1E3024]/50 z-40 lg:hidden transition-opacity duration-300 ease-out ${mobileFilterClosing ? "opacity-0" : "opacity-100"
+                }`}
               onClick={toggleMobileFilter}
               type="button"
               style={{
@@ -527,9 +548,8 @@ function ProductsPageContent() {
 
             {/* Filter Slider */}
             <div
-              className={`fixed top-0 right-0 h-full w-full max-w-sm bg-[#FAFAF7] shadow-2xl z-50 lg:hidden overflow-y-auto transition-transform duration-300 ease-out ${
-                mobileFilterClosing ? "translate-x-full" : "translate-x-0"
-              }`}
+              className={`fixed top-0 right-0 h-full w-full max-w-sm bg-[#FAFAF7] shadow-2xl z-50 lg:hidden overflow-y-auto transition-transform duration-300 ease-out ${mobileFilterClosing ? "translate-x-full" : "translate-x-0"
+                }`}
               style={{
                 animation: !mobileFilterClosing
                   ? "slideInFromRight 300ms cubic-bezier(0.16, 1, 0.3, 1)"
@@ -564,9 +584,14 @@ function ProductsPageContent() {
                     selectedBrands={[]}
                     selectedConcerns={[]}
                     selectedIngredients={[]}
-                    onToggleFilter={() => {}}
+                    onToggleFilter={() => { }}
                     onApplyFilters={() => {
                       handleApplyFilters();
+                      toggleMobileFilter();
+                    }}
+                    isFiltering={productsQuery.isFetching}
+                    onCategorySelect={(categoryName) => {
+                      handleCategorySelect(categoryName);
                       toggleMobileFilter();
                     }}
                     categories={transformedCategories}
