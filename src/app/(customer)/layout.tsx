@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/app/contexts/auth-context";
 import { Header } from "@/components/layout/header";
 import { WhatsAppWidget } from "@/components/whatsapp/WhatsAppWidget";
 import { CartSyncHandler } from "@/components/cart/CartSyncHandler";
+import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import { trpc } from "@/utils/trpc";
 import { Footer } from "@/components/admin/footer";
 import { getLocalCartCount } from "@/utils/local-cart";
@@ -32,11 +33,11 @@ function CustomerLayoutContent({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) {
       setLocalCartCount(getLocalCartCount());
-      
+
       const handleLocalCartUpdate = () => {
         setLocalCartCount(getLocalCartCount());
       };
-      
+
       window.addEventListener("localCartUpdated", handleLocalCartUpdate);
       return () => window.removeEventListener("localCartUpdated", handleLocalCartUpdate);
     }
@@ -53,7 +54,10 @@ function CustomerLayoutContent({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col">
       {/* Cart Sync Handler - syncs local cart with DB after sign-in */}
       <CartSyncHandler />
-      
+
+      {/* Google One Tap - shows quick sign-in popup for unauthenticated users */}
+      <GoogleOneTap enabled={!isAuthenticated} />
+
       <Header cartCount={cartCount} wishlistCount={wishlistCount} />
       <main className="flex-1">{children}</main>
       {/* WhatsApp Widget */}
