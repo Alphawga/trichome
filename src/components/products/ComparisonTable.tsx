@@ -278,7 +278,7 @@ export function ComparisonTable({
                     );
                   }
                 }}
-                className="w-4 h-4 text-trichomes-primary border-trichomes-forest/15 rounded focus:ring-trichomes-primary focus:ring-1"
+                className="w-4 h-4 text-trichomes-primary border-trichomes-forest/15 rounded focus:ring-trichomes-primary/20 focus:ring-1 accent-trichomes-primary"
               />
               {attr.label}
             </label>

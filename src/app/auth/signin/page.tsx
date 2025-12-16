@@ -212,7 +212,7 @@ export default function SignInPage() {
                   name="rememberMe"
                   checked={form.rememberMe}
                   onChange={handleInputChange}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
                 />
                 <label
                   htmlFor="rememberMe"

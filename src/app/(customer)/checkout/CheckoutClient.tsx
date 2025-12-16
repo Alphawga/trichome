@@ -646,7 +646,7 @@ function CheckoutPageContent() {
                         type="checkbox"
                         checked={saveAddress}
                         onChange={(e) => setSaveAddress(e.target.checked)}
-                        className="w-4 h-4 text-black border-black rounded focus:ring-trichomes-primary focus:ring-1 checked:bg-trichomes-primary bg-trichomes-primar c "
+                        className="w-4 h-4 text-trichomes-primary border-gray-300 rounded focus:ring-trichomes-primary/20 focus:ring-2 accent-trichomes-primary"
                       />
                       <span className="text-sm text-gray-900/80 font-body">
                         Save this address for future orders

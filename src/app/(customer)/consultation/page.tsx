@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import  React from "react";
+import React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChevronRightIcon } from "@/components/ui/icons";
@@ -59,7 +59,7 @@ export default function ConsultationPage() {
     onSuccess: (data) => {
       toast.success(
         data.message ||
-          "Consultation booked successfully! We will send you a confirmation email.",
+        "Consultation booked successfully! We will send you a confirmation email.",
       );
 
       // Reset form
@@ -155,12 +155,12 @@ export default function ConsultationPage() {
       <div className="relative w-full h-[300px] sm:h-[350px] lg:h-[400px] animate-[sectionEntrance_600ms_ease-out]">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <div 
+          <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: "url('/book-a-session.jpg')" }}
           />
           {/* Gradient Overlay - Soft pink/rose tone */}
-          <div 
+          <div
             className="absolute inset-0"
             style={{
               background: 'linear-gradient(to right, rgba(166, 147, 142, 0.85), rgba(166, 147, 142, 0.65), rgba(166, 147, 142, 0.3))'
@@ -177,7 +177,7 @@ export default function ConsultationPage() {
             </h1>
 
             {/* Breadcrumbs */}
-            <nav 
+            <nav
               className="flex items-center space-x-2 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
               style={{ animationDelay: "100ms", animationFillMode: "both" }}
             >
@@ -388,11 +388,10 @@ export default function ConsultationPage() {
                   {consultationTypes.map((type) => (
                     <label
                       key={type.value}
-                      className={`border-2 rounded-sm p-4 cursor-pointer transition-all duration-150 ${
-                        formData.consultationType === type.value
+                      className={`border-2 rounded-sm p-4 cursor-pointer transition-all duration-150 ${formData.consultationType === type.value
                           ? "border-black bg-gray-50"
                           : "border-gray-200 hover:border-gray-300 bg-white"
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -479,7 +478,7 @@ export default function ConsultationPage() {
                         type="checkbox"
                         checked={formData.skinConcerns.includes(concern)}
                         onChange={() => handleConcernToggle(concern)}
-                        className="w-4 h-4 rounded-sm border-gray-300 text-black focus:ring-black/10 focus:ring-1 transition-all duration-150"
+                        className="w-4 h-4 rounded-sm border-gray-300 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-2 accent-trichomes-primary transition-all duration-150"
                       />
                       <span className="text-[13px] sm:text-[14px] text-gray-900 font-body group-hover:text-black transition-colors duration-150">
                         {concern}

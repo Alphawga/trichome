@@ -42,7 +42,7 @@ export default function SignUpPage() {
     const checkoutRedirect = localStorage.getItem(
       "trichomes_checkout_redirect",
     );
-    
+
     if (checkoutRedirect === "true") {
       setShouldRedirectToCheckout(true);
       setRedirectUrl("/checkout");
@@ -230,9 +230,8 @@ export default function SignUpPage() {
                   name="first_name"
                   value={form.first_name}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                    errors.first_name ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${errors.first_name ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="First name"
                 />
                 {errors.first_name && (
@@ -255,9 +254,8 @@ export default function SignUpPage() {
                   name="last_name"
                   value={form.last_name}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                    errors.last_name ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${errors.last_name ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Last name"
                 />
                 {errors.last_name && (
@@ -282,9 +280,8 @@ export default function SignUpPage() {
                 name="email"
                 value={form.email}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                  errors.email ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${errors.email ? "border-red-500" : "border-gray-300"
+                  }`}
                 placeholder="Enter your email"
               />
               {errors.email && (
@@ -306,9 +303,8 @@ export default function SignUpPage() {
                 name="phone"
                 value={form.phone}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${
-                  errors.phone ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors text-gray-900 ${errors.phone ? "border-red-500" : "border-gray-300"
+                  }`}
                 placeholder="+234 801 234 5678"
               />
               {errors.phone && (
@@ -331,9 +327,8 @@ export default function SignUpPage() {
                   name="password"
                   value={form.password}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${errors.password ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Create a password"
                 />
                 <button
@@ -351,11 +346,10 @@ export default function SignUpPage() {
                     {["a", "b", "c", "d", "e"].map((key, i) => (
                       <div
                         key={key}
-                        className={`h-1 flex-1 rounded-full ${
-                          i < passwordStrength.score
+                        className={`h-1 flex-1 rounded-full ${i < passwordStrength.score
                             ? strengthColors[passwordStrength.score - 1]
                             : "bg-gray-200"
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>
@@ -392,11 +386,10 @@ export default function SignUpPage() {
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${
-                    errors.confirmPassword
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors pr-12 text-gray-900 ${errors.confirmPassword
                       ? "border-red-500"
                       : "border-gray-300"
-                  }`}
+                    }`}
                   placeholder="Confirm your password"
                 />
                 <button
@@ -423,9 +416,8 @@ export default function SignUpPage() {
                   name="acceptTerms"
                   checked={form.acceptTerms}
                   onChange={handleInputChange}
-                  className={`mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded ${
-                    errors.acceptTerms ? "border-red-500" : ""
-                  }`}
+                  className={`mt-1 h-4 w-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded ${errors.acceptTerms ? "border-red-500" : ""
+                    }`}
                 />
                 <label
                   htmlFor="acceptTerms"
@@ -458,7 +450,7 @@ export default function SignUpPage() {
                   name="newsletterOptIn"
                   checked={form.newsletterOptIn}
                   onChange={handleInputChange}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
                 />
                 <label
                   htmlFor="newsletterOptIn"
