@@ -97,7 +97,7 @@ export default function FilterSidebar({
                     type="checkbox"
                     checked={filters.categories.includes(category.id)}
                     onChange={() => handleCategoryToggle(category.id)}
-                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    className="w-4 h-4 rounded border-gray-300 text-trichomes-primary shadow-sm focus:border-trichomes-primary focus:ring focus:ring-trichomes-primary/20 focus:ring-opacity-50 accent-trichomes-primary"
                   />
                   <span className="ml-3 text-sm text-gray-600">
                     {category.name} ({category.productCount})

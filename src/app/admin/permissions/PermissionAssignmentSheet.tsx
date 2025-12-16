@@ -220,7 +220,7 @@ export function PermissionAssignmentSheet({
                               revokeMutation.isPending ||
                               grantMultipleMutation.isPending
                             }
-                            className="w-4 h-4 text-[#38761d] border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                            className="w-4 h-4 text-trichomes-primary border-gray-300 rounded focus:ring-trichomes-primary/20 focus:ring-2 accent-trichomes-primary"
                           />
                           <ShieldIcon className="w-4 h-4 text-gray-400" />
                           <span className="flex-1 text-sm text-gray-700">

@@ -540,7 +540,7 @@ export function ProductFormSheet({
                   <input
                     {...register("is_featured")}
                     type="checkbox"
-                    className="mr-2"
+                    className="mr-2 w-4 h-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700">
                     Featured Product
@@ -551,7 +551,7 @@ export function ProductFormSheet({
                   <input
                     {...register("taxable")}
                     type="checkbox"
-                    className="mr-2"
+                    className="mr-2 w-4 h-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700">Taxable</span>
                 </label>
@@ -560,7 +560,7 @@ export function ProductFormSheet({
                   <input
                     {...register("requires_shipping")}
                     type="checkbox"
-                    className="mr-2"
+                    className="mr-2 w-4 h-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700">
                     Requires Shipping

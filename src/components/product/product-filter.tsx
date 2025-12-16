@@ -127,11 +127,10 @@ export const ProductFilter: React.FC<ProductFilterProps> = ({
                     <button
                       type="button"
                       onClick={() => onToggleFilter("brands", category.name)}
-                      className={`w-full text-left px-3 py-2 text-[13px] font-body transition-colors duration-150 ${
-                        selectedCategory === category.name
+                      className={`w-full text-left px-3 py-2 text-[13px] font-body transition-colors duration-150 ${selectedCategory === category.name
                           ? "bg-trichomes-sage text-trichomes-forest font-medium"
                           : "hover:bg-trichomes-soft text-trichomes-forest/70"
-                      }`}
+                        }`}
                     >
                       {category.name}
                     </button>
@@ -159,7 +158,7 @@ export const ProductFilter: React.FC<ProductFilterProps> = ({
                       type="checkbox"
                       checked={selectedBrands.includes(brand)}
                       onChange={() => onToggleFilter("brands", brand)}
-                      className="border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1"
+                      className="w-4 h-4 border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1 accent-trichomes-primary"
                     />
                     <span className="text-[13px] font-body text-trichomes-forest/70 group-hover:text-trichomes-forest transition-colors duration-150">
                       {brand}
@@ -188,7 +187,7 @@ export const ProductFilter: React.FC<ProductFilterProps> = ({
                       type="checkbox"
                       checked={selectedConcerns.includes(concern)}
                       onChange={() => onToggleFilter("concerns", concern)}
-                      className="border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1"
+                      className="w-4 h-4 border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1 accent-trichomes-primary"
                     />
                     <span className="text-[13px] font-body text-trichomes-forest/70 group-hover:text-trichomes-forest transition-colors duration-150">
                       {concern}
@@ -217,7 +216,7 @@ export const ProductFilter: React.FC<ProductFilterProps> = ({
                       type="checkbox"
                       checked={selectedIngredients.includes(ingredient)}
                       onChange={() => onToggleFilter("ingredients", ingredient)}
-                      className="border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1"
+                      className="w-4 h-4 border-trichomes-forest/20 text-trichomes-primary focus:ring-trichomes-primary/20 focus:ring-1 accent-trichomes-primary"
                     />
                     <span className="text-[13px] font-body text-trichomes-forest/70 group-hover:text-trichomes-forest transition-colors duration-150">
                       {ingredient}
