@@ -304,7 +304,7 @@ export default function AdminPermissionsPage() {
     ADMIN: users.filter((u) => u.role === "ADMIN").length,
     STAFF: users.filter((u) => u.role === "STAFF").length,
     CUSTOMER: users.filter((u) => u.role === "CUSTOMER").length,
-  };
+  }
 
   const handleAddRole = () => {
     toast.info("Role creation feature coming soon");
@@ -683,7 +683,7 @@ export default function AdminPermissionsPage() {
         }}
       />
 
-      {/* Delete Confirmation Dialog */}
+
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {

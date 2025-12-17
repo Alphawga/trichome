@@ -26,37 +26,60 @@ const sortOptions = [
 
 interface FilterState {
   price: number;
-  brands: string[];
+  brands: string[]; // slugs
   concerns: string[];
   ingredients: string[];
 }
 
-type ExtendedProduct = ProductWithRelations & {
-  brand: string;
-  concerns: string[];
-  ingredients: string[];
-  inStock: boolean;
-};
-
 function BrandsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const brandParam = searchParams?.get("brand");
+  const brandSlugParam = searchParams?.get("brand");
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
 
+  // Fetch all active brands
+  const brandsQuery = trpc.getBrands.useQuery({
+    status: ProductStatus.ACTIVE,
+  }, {
+    staleTime: 300000, // 5 mins
+    refetchOnWindowFocus: false
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [price, setPrice] = useState(100000);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>(
-    brandParam ? [brandParam] : [],
-  );
+
+  // Helper to find initial brand name if slug is in param
+  const initialBrandSlug = brandSlugParam;
+  const initialBrandName = useMemo(() => {
+    if (!initialBrandSlug || !brandsQuery.data) return initialBrandSlug;
+    return brandsQuery.data.find(b => b.slug === initialBrandSlug)?.name || initialBrandSlug;
+  }, [initialBrandSlug, brandsQuery.data]);
+
+  // Store brand NAMES in selectedBrands (to match ProductFilter behavior)
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+
+  // Update selected brands when query data loads if param exists
+  useEffect(() => {
+    if (initialBrandName && brandsQuery.data) {
+      const name = brandsQuery.data.find(b => b.slug === initialBrandSlug)?.name;
+      if (name) setSelectedBrands([name]);
+    }
+  }, [initialBrandName, brandsQuery.data, initialBrandSlug]);
+
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("featured");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState<FilterState | null>(null);
-  const [showProducts, setShowProducts] = useState(!!brandParam);
+  const [showProducts, setShowProducts] = useState(!!brandSlugParam);
 
+  // Helper to get slug from name
+  const getSlugByName = (name: string) => {
+    return brandsQuery.data?.find(b => b.name === name)?.slug;
+  };
+
+  // Fetch products based on filters
   const productsQuery = trpc.getProducts.useQuery(
     {
       page: currentPage,
@@ -64,6 +87,8 @@ function BrandsPageContent() {
       search: searchTerm.trim() || undefined,
       max_price: activeFilters?.price || undefined,
       status: ProductStatus.ACTIVE,
+      // Map selected brand name to slug
+      brand_slug: activeFilters?.brands[0] ? getSlugByName(activeFilters.brands[0]) : undefined,
     },
     {
       staleTime: 30000,
@@ -112,68 +137,6 @@ function BrandsPageContent() {
     enabled: isAuthenticated,
     refetchOnWindowFocus: false,
   });
-
-  const transformedProducts = useMemo((): ExtendedProduct[] => {
-    if (!productsQuery.data?.products) return [];
-
-    return productsQuery.data.products.map((product) => ({
-      ...product,
-      brand: product.category?.name || "Uncategorized",
-      concerns: ["General Care"],
-      ingredients: ["Natural Ingredients"],
-      inStock:
-        product.status === "ACTIVE" &&
-        (!product.track_quantity || product.quantity > 0),
-    }));
-  }, [productsQuery.data]);
-
-  const filteredAndSortedProducts = useMemo((): ExtendedProduct[] => {
-    let products = [...transformedProducts];
-
-    if (activeFilters) {
-      if (activeFilters.brands.length > 0) {
-        products = products.filter(
-          (p) => p.brand && activeFilters.brands.includes(p.brand),
-        );
-      }
-      if (activeFilters.concerns.length > 0) {
-        products = products.filter((p) =>
-          p.concerns?.some((c) => activeFilters.concerns.includes(c)),
-        );
-      }
-      if (activeFilters.ingredients.length > 0) {
-        products = products.filter((p) =>
-          p.ingredients?.some((i) => activeFilters.ingredients.includes(i)),
-        );
-      }
-    }
-
-    switch (sortBy) {
-      case "price-asc":
-        products.sort((a, b) => Number(a.price) - Number(b.price));
-        break;
-      case "price-desc":
-        products.sort((a, b) => Number(b.price) - Number(a.price));
-        break;
-      case "name-asc":
-        products.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name-desc":
-        products.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      default:
-        products.sort(
-          (a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0),
-        );
-        break;
-    }
-
-    return products;
-  }, [transformedProducts, activeFilters, sortBy]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, []);
 
   const wishlistProductIds = useMemo(() => {
     if (!wishlistQuery.data?.items) return [];
@@ -226,11 +189,15 @@ function BrandsPageContent() {
   ) => {
     switch (category) {
       case "brands":
-        setSelectedBrands((prev) =>
-          prev.includes(value)
-            ? prev.filter((b) => b !== value)
-            : [...prev, value],
-        );
+        // For now, enforce single selection for brands compatible with getProducts query
+        // Or toggle logic if we want to support multi-select later (requires backend update)
+        // Let's implement single select behavior or toggle.
+        // Given current backend limitation, let's just REPLACE the selection.
+        if (selectedBrands.includes(value)) {
+          setSelectedBrands([]);
+        } else {
+          setSelectedBrands([value]);
+        }
         break;
       case "concerns":
         setSelectedConcerns((prev) =>
@@ -267,30 +234,23 @@ function BrandsPageContent() {
     ? currentPage < productsQuery.data.pagination.pages
     : false;
 
-  // Extract unique brands from products
-  const availableBrands = useMemo(() => {
-    const brands = new Set<string>();
-    transformedProducts.forEach((p) => {
-      if (p.brand) brands.add(p.brand);
-    });
-    return Array.from(brands).sort();
-  }, [transformedProducts]);
-
   // Group brands alphabetically
   const groupedBrands = useMemo(() => {
-    const groups: Record<string, string[]> = {};
-    availableBrands.forEach((brand) => {
-      const firstLetter = brand.charAt(0).toUpperCase();
+    const groups: Record<string, typeof brandsQuery.data> = {};
+    if (!brandsQuery.data) return groups;
+
+    brandsQuery.data.forEach((brand) => {
+      const firstLetter = brand.name.charAt(0).toUpperCase();
       if (!groups[firstLetter]) {
         groups[firstLetter] = [];
       }
-      groups[firstLetter].push(brand);
+      groups[firstLetter]?.push(brand);
     });
     return groups;
-  }, [availableBrands]);
+  }, [brandsQuery.data]);
 
   const filterOptions: FilterOptions = {
-    brands: availableBrands,
+    brands: brandsQuery.data ? brandsQuery.data.map(b => b.name) : [],
     concerns: [
       "Acne",
       "Dry Skin",
@@ -308,18 +268,23 @@ function BrandsPageContent() {
     ],
   };
 
+  // Helper to get brand name from slug
+  const getBrandName = (slug: string) => {
+    return brandsQuery.data?.find(b => b.slug === slug)?.name || slug;
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Header Section */}
       <div className="relative w-full h-[300px] sm:h-[350px] lg:h-[400px] animate-[sectionEntrance_600ms_ease-out]">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <div 
+          <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: "url('/bg-image.png')" }}
           />
           {/* Gradient Overlay - Elegant gray/charcoal tone */}
-          <div 
+          <div
             className="absolute inset-0"
             style={{
               background: 'linear-gradient(to right, rgba(75, 75, 75, 0.88), rgba(75, 75, 75, 0.70), rgba(75, 75, 75, 0.35))'
@@ -333,12 +298,12 @@ function BrandsPageContent() {
             {/* Main Title */}
             <h1 className="text-[40px] sm:text-[48px] lg:text-[56px] font-heading text-white leading-tight mb-4 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]">
               {showProducts && selectedBrands.length > 0
-                ? selectedBrands.join(", ")
+                ? selectedBrands[0]
                 : "Shop by Brand"}
             </h1>
 
             {/* Breadcrumbs */}
-            <nav 
+            <nav
               className="flex items-center space-x-2 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
               style={{ animationDelay: "100ms", animationFillMode: "both" }}
             >
@@ -362,42 +327,59 @@ function BrandsPageContent() {
         {!showProducts ? (
           /* Brand List View */
           <div className="w-full">
-            {/* Alphabetical Brand List */}
-            <div className="bg-white border border-gray-200 p-6 sm:p-8 rounded-sm shadow-sm">
-              {Object.keys(groupedBrands)
-                .sort()
-                .map((letter) => (
-                  <div key={letter} className="mb-8 last:mb-0">
-                    <h2 className="text-[24px] font-heading text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                      {letter}
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {groupedBrands[letter].map((brand) => (
-                        <button
-                          key={brand}
-                          type="button"
-                          onClick={() => {
-                            setSelectedBrands([brand]);
-                            handleApplyFilters();
-                            setShowProducts(true);
-                          }}
-                          className="text-left px-4 py-3 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 ease-out font-body text-[14px] sm:text-[15px] text-gray-900 shadow-sm hover:shadow-md"
-                        >
-                          {brand}
-                        </button>
-                      ))}
+            {brandsQuery.isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-8 h-8 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : brandsQuery.error ? (
+              <div className="text-center py-12">
+                <p className="text-red-500">Failed to load brands</p>
+              </div>
+            ) : (
+              /* Alphabetical Brand List */
+              <div className="bg-white border border-gray-200 p-6 sm:p-8 rounded-sm shadow-sm">
+                {Object.keys(groupedBrands)
+                  .sort()
+                  .map((letter) => (
+                    <div key={letter} className="mb-8 last:mb-0">
+                      <h2 className="text-[24px] font-heading text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                        {letter}
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {groupedBrands[letter]?.map((brand) => (
+                          <button
+                            key={brand.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedBrands([brand.name]);
+                              // Directly set active filters here since we are navigating
+                              setActiveFilters({
+                                price,
+                                brands: [brand.name], // Use name here
+                                concerns: selectedConcerns,
+                                ingredients: selectedIngredients
+                              });
+                              setShowProducts(true);
+                            }}
+                            className="text-left px-4 py-3 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 ease-out font-body text-[14px] sm:text-[15px] text-gray-900 shadow-sm hover:shadow-md flex justify-between items-center"
+                          >
+                            <span>{brand.name}</span>
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{brand._count.products}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-              {Object.keys(groupedBrands).length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 font-body text-[15px] sm:text-[16px]">
-                    No brands available at the moment.
-                  </p>
-                </div>
-              )}
-            </div>
+                {(!brandsQuery.data || brandsQuery.data.length === 0) && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600 font-body text-[15px] sm:text-[16px]">
+                      No brands available at the moment.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* Filtered Products View */
@@ -407,6 +389,9 @@ function BrandsPageContent() {
               onSearchTermChange={setSearchTerm}
               price={price}
               onPriceChange={setPrice}
+              // Map slugs back to names for display if needed, but the Filter component might expect just strings
+              // We need to check ProductFilter implementation later if it expects specific values.
+              // For now, passing slugs.
               selectedBrands={selectedBrands}
               selectedConcerns={selectedConcerns}
               selectedIngredients={selectedIngredients}
@@ -423,7 +408,7 @@ function BrandsPageContent() {
                   {/* Results count */}
                   {!productsQuery.isLoading && !productsQuery.error && (
                     <p className="text-[13px] text-gray-600 font-body">
-                      {filteredAndSortedProducts.length} of{" "}
+                      {productsQuery.data?.products.length || 0} of{" "}
                       {productsQuery.data?.pagination.total || 0} products
                     </p>
                   )}
@@ -431,7 +416,11 @@ function BrandsPageContent() {
                   {/* Back to brands link */}
                   <button
                     type="button"
-                    onClick={() => setShowProducts(false)}
+                    onClick={() => {
+                      setShowProducts(false);
+                      setSelectedBrands([]);
+                      setActiveFilters(null);
+                    }}
                     className="text-[13px] text-[#40702A] hover:text-gray-900 underline font-body transition-colors duration-150 ease-out"
                   >
                     ← Back to brands
@@ -510,7 +499,7 @@ function BrandsPageContent() {
                 <>
                   <ProductGrid
                     products={
-                      filteredAndSortedProducts as ProductWithRelations[]
+                      (productsQuery.data?.products || []) as ProductWithRelations[]
                     }
                     onProductClick={handleProductClick}
                     onAddToCart={handleAddToCart}
@@ -518,14 +507,18 @@ function BrandsPageContent() {
                     onToggleWishlist={handleToggleWishlist}
                   />
 
-                  {filteredAndSortedProducts.length === 0 && (
+                  {(!productsQuery.data?.products || productsQuery.data.products.length === 0) && (
                     <div className="text-center py-12 sm:py-20 bg-white border border-gray-200 rounded-sm shadow-sm">
                       <p className="text-[18px] sm:text-[20px] text-gray-600 font-body mb-4">
                         No products found for this brand.
                       </p>
                       <button
                         type="button"
-                        onClick={() => setShowProducts(false)}
+                        onClick={() => {
+                          setShowProducts(false);
+                          setActiveFilters(null);
+                          setSelectedBrands([]);
+                        }}
                         className="px-6 py-3 bg-[#1E3024] text-white rounded-full hover:bg-[#1E3024]/90 font-medium transition-all duration-150 ease-out hover:shadow-md text-[14px] sm:text-[15px] font-body"
                       >
                         Browse all brands
