@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 interface BrandViewSheetProps {
@@ -33,9 +34,9 @@ export function BrandViewSheet({
   if (brandQuery.isLoading) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+        <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
+          <div className="flex items-center justify-center py-12">
+            <LogoLoader size="md" text="Loading brand..." />
           </div>
         </SheetContent>
       </Sheet>
@@ -101,13 +102,12 @@ export function BrandViewSheet({
               <div>
                 <p className="text-sm text-gray-500">Status</p>
                 <span
-                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                    brand.status === "ACTIVE"
+                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${brand.status === "ACTIVE"
                       ? "bg-green-100 text-green-800"
                       : brand.status === "DRAFT"
                         ? "bg-yellow-100 text-yellow-800"
                         : "bg-red-100 text-red-800"
-                  }`}
+                    }`}
                 >
                   {brand.status === "ACTIVE"
                     ? "Active"

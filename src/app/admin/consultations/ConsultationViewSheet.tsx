@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 const consultationTypeLabels: Record<string, string> = {
@@ -48,8 +49,8 @@ export function ConsultationViewSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center py-12">
+            <LogoLoader size="md" text="Loading consultation..." />
           </div>
         </SheetContent>
       </Sheet>
@@ -133,14 +134,14 @@ export function ConsultationViewSheet({
                 <p className="text-sm text-gray-500">Status</p>
                 <span
                   className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${consultation.status === "COMPLETED"
-                      ? "bg-green-100 text-green-800"
-                      : consultation.status === "CONFIRMED"
-                        ? "bg-blue-100 text-blue-800"
-                        : consultation.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : consultation.status === "CANCELLED"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
+                    ? "bg-green-100 text-green-800"
+                    : consultation.status === "CONFIRMED"
+                      ? "bg-blue-100 text-blue-800"
+                      : consultation.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : consultation.status === "CANCELLED"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
                     }`}
                 >
                   {consultationStatusLabels[consultation.status] ||

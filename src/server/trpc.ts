@@ -23,8 +23,6 @@ export const publicProcedure = t.procedure;
 
 // Protected procedure - requires authentication
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-  console.log("Checking authentication for user:", ctx.session?.user);
-
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
   }

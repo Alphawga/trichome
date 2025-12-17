@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { type CreateProductInput, createProductSchema } from "@/lib/dto";
 import { trpc } from "@/utils/trpc";
 
@@ -223,10 +224,7 @@ export function ProductFormSheet({
 
         {isLoadingProduct ? (
           <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-12 h-12 border-4 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600">Loading product data...</p>
-            </div>
+            <LogoLoader size="lg" text="Loading product data..." />
           </div>
         ) : hasError ? (
           <div className="flex items-center justify-center py-12">

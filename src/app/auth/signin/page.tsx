@@ -19,6 +19,8 @@ export default function SignInPage() {
     signInWithCredentials,
     signInWithGoogle,
     isLoading: authLoading,
+    user,
+    isStaff,
   } = useAuth();
   const [form, setForm] = useState<SignInForm>({
     email: "",
@@ -36,7 +38,7 @@ export default function SignInPage() {
   const isLoading = authLoading || isSubmitting;
 
   useEffect(() => {
-    // Check for stored redirect URL
+
     const storedRedirectUrl = localStorage.getItem("trichomes_redirect_url");
     const checkoutRedirect = localStorage.getItem(
       "trichomes_checkout_redirect",
@@ -63,7 +65,7 @@ export default function SignInPage() {
     e.preventDefault();
     setError("");
 
-    // Basic form validation
+
     if (!form.email.trim() || !form.password.trim()) {
       setError("Please fill in all fields.");
       return;
@@ -71,21 +73,30 @@ export default function SignInPage() {
 
     setIsSubmitting(true);
     try {
-      // Use NextAuth credentials sign-in
+
       await signInWithCredentials(form.email, form.password);
 
       // Clear redirect flags
       localStorage.removeItem("trichomes_checkout_redirect");
       localStorage.removeItem("trichomes_redirect_url");
 
-      // Redirect based on user type and context
-      if (form.email.includes("admin")) {
-        router.push("/admin");
-      } else {
-        router.push(redirectUrl);
-      }
+
+      setTimeout(() => {
+
+        const checkAndRedirect = async () => {
+
+          const response = await fetch('/api/auth/session');
+          const session = await response.json();
+          if (session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF') {
+            router.push("/admin");
+          } else {
+            router.push(redirectUrl);
+          }
+        };
+        checkAndRedirect();
+      }, 100);
     } catch (err: unknown) {
-      // Following CODING_RULES.md - proper error handling
+
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -100,12 +111,8 @@ export default function SignInPage() {
     setIsGoogleSigningIn(true);
     setError("");
     try {
-      // Pass the redirect URL to Google sign-in
       await signInWithGoogle(redirectUrl);
-      // Note: signInWithGoogle redirects the page, so loading state will persist
-      // until the redirect happens
     } catch (error) {
-      // Following CODING_RULES.md - proper error handling
       console.error("Google sign-in failed:", error);
       setError("Google sign-in failed. Please try again.");
       setIsGoogleSigningIn(false);
@@ -115,7 +122,6 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Link href="/" className="flex items-center h-full">
@@ -134,7 +140,6 @@ export default function SignInPage() {
           <p className="text-gray-600">Sign in to your account to continue</p>
         </div>
 
-        {/* Sign In Form */}
         <div className="bg-white rounded-xl shadow-lg p-8">
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
@@ -280,7 +285,6 @@ export default function SignInPage() {
             )}
           </button>
 
-          {/* Sign Up Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
             Don't have an account?{" "}
             <Link

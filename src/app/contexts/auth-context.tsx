@@ -4,9 +4,10 @@ import type { UserRole } from "@prisma/client";
 import type { Session } from "next-auth";
 import { signIn, signOut, useSession } from "next-auth/react";
 import type React from "react";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useCallback } from "react";
+import { type Permission, hasRolePermission, isAdminRole, isStaffOrAdmin } from "@/lib/permissions";
 
-// Following CODING_RULES.md - use Prisma-generated types
+
 interface AuthUser {
   id: string;
   email: string;
@@ -20,6 +21,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   session: Session | null;
+  isAdmin: boolean;
+  isStaff: boolean;
+  hasPermission: (permission: Permission) => boolean;
   signInWithGoogle: (callbackUrl?: string) => Promise<void>;
   signInWithCredentials: (email: string, password: string) => Promise<void>;
   signUpWithCredentials: (data: {
@@ -37,37 +41,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
 
-  // Following CODING_RULES.md - use Prisma-generated types and proper type safety
   const user: AuthUser | null = session?.user
     ? {
-        id: session.user.id,
-        email: session.user.email ?? "",
-        first_name: session.user.first_name,
-        last_name: session.user.last_name,
-        role: session.user.role,
-      }
+      id: session.user.id,
+      email: session.user.email ?? "",
+      first_name: session.user.first_name,
+      last_name: session.user.last_name,
+      role: session.user.role,
+    }
     : null;
 
-  // Google OAuth sign-in using NextAuth
   const signInWithGoogle = async (callbackUrl?: string): Promise<void> => {
     try {
-      // Use stored redirect URL or provided callbackUrl or default to home
-      const redirectUrl = callbackUrl || 
-                         (typeof window !== 'undefined' ? localStorage.getItem("trichomes_redirect_url") : null) || 
-                         "/";
-      
+      const redirectUrl = callbackUrl ||
+        (typeof window !== 'undefined' ? localStorage.getItem("trichomes_redirect_url") : null) ||
+        "/";
+
       await signIn("google", {
         callbackUrl: redirectUrl,
         redirect: true,
       });
     } catch (error) {
-      // Following CODING_RULES.md - proper error handling
+     
       console.error("Google sign in failed:", error);
       throw error;
     }
   };
 
-  // Traditional email/password login using NextAuth credentials provider
+ 
   const signInWithCredentials = async (
     email: string,
     password: string,
@@ -112,10 +113,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorData.message || "Registration failed");
       }
 
-      // After successful registration, sign in the user
+     
       await signInWithCredentials(data.email, data.password);
     } catch (error) {
-      // Following CODING_RULES.md - proper error handling
+
       console.error("Registration failed:", error);
       throw error;
     }
@@ -126,20 +127,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut({ redirect: false });
     } catch (error) {
-      // Following CODING_RULES.md - proper error handling
+      
       console.error("Logout failed:", error);
       throw error;
     }
   };
 
-  // Following CODING_RULES.md - proper loading state management
+ 
   const isLoading = status === "loading";
+
+   // Role-based permission helpers using centralized permissions utility
+  const isAdmin = isAdminRole(user?.role);
+  const isStaff = isStaffOrAdmin(user?.role);
+
+  // Debug logging for permissions
+  if (user?.role) {
+    const { ROLE_PERMISSIONS } = require("@/lib/permissions");
+    console.log("AUTH CONTEXT - User:", user?.email, "Role:", user?.role);
+    console.log("AUTH CONTEXT - Permissions for role:", ROLE_PERMISSIONS[user.role]);
+    console.log("AUTH CONTEXT - isAdmin:", isAdmin, "isStaff:", isStaff);
+  }
+
+  const hasPermission = useCallback(
+    (permission: Permission) => hasRolePermission(user?.role, permission),
+    [user?.role]
+  );
 
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     session,
+    isAdmin,
+    isStaff,
+    hasPermission,
     signInWithGoogle,
     signInWithCredentials,
     signUpWithCredentials,
