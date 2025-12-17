@@ -46,10 +46,7 @@ export default function ProductDetailsPage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
   // Wishlist TRPC integration
-  const isInWishlistQuery = trpc.isInWishlist.useQuery(
-    { product_id: product?.id || "" },
-    { enabled: !!product?.id && isAuthenticated }
-  );
+
 
   const addToWishlistMutation = trpc.addToWishlist.useMutation({
     onSuccess: () => {
@@ -73,76 +70,7 @@ export default function ProductDetailsPage() {
     },
   });
 
-  // Calculate if in wishlist based on query data
-  // optimistically assume false if loading or not auth
-  const isInWishlist = isInWishlistQuery.data?.inWishlist ?? false;
-  const isWishlistLoading = isInWishlistQuery.isLoading || addToWishlistMutation.isPending || removeFromWishlistMutation.isPending;
 
-  const handleToggleWishlist = async () => {
-    if (!product) return;
-
-    if (!isAuthenticated) {
-      toast.error("Please sign in to add items to wishlist");
-      // Store current page for redirect after sign-in
-      if (typeof window !== 'undefined') {
-        localStorage.setItem("trichomes_redirect_url", window.location.pathname);
-      }
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (isInWishlist) {
-      // We need the wishlist item ID to remove it. 
-      // Optimization: The API currently requires ID for removal, but we only have product ID here.
-      // We might need to fetch the wishlist item ID or update the API to allow removing by Product ID.
-      // Waiting to see if I need to fetch the wishlist item ID first.
-      // Looking at `server/modules/wishlist.ts`, `removeFromWishlist` takes `id` (wishlist item ID).
-      // `isInWishlist` only returns boolean. 
-      // I need to either update `removeFromWishlist` to accept `product_id` OR fetch the item ID.
-      // Better approach for now: Use `isInWishlist` to JUST return boolean is insufficient if we need ID.
-      // However, `getWishlist` returns items.
-      // Let's check `isInWishlist` implementation again. It finds unique by `user_id_product_id`.
-      // I should modify `removeFromWishlist` or create `removeFromWishlistByProductId`? 
-      // OR I can search the wishlist items in the cache for this product ID?
-
-      // Let's try to find the item in the full wishlist query if we don't have it.
-      // But we don't have the full wishlist here necessarily.
-
-      // ALTERNATIVE: As a quick fix without changing backend, I can't easily get the ID.
-      // I WILL CHECK BACKEND FIRST.
-      // Actually `wishlist.ts` has `removeFromWishlist` taking `id`.
-      // The `isInWishlist` query locally only returns `{ inWishlist: boolean }`.
-
-      // NOTE: I will pause this edit to fix the backend first if needed, 
-      // OR I can use `getWishlist` here instead of `isInWishlist`.
-      // `getWishlist` returns all items.
-      // A better UX is to have `removeFromWishlist` accept `product_id` too? 
-      // Or make `isInWishlist` return the ID if it exists.
-
-      // LET'S ASSUME I SHOULD UPDATE THE BACKEND TO RETURN THE ID. 
-      // That is the cleanest way.
-      // I'll execute a backend change first in another step, or handle it here if I can.
-      // Wait, I am in `replace_file_content`. I cannot change another file now.
-      // I will assume for now I will use `getWishlist` to find the ID. 
-      // NO, that's inefficient.
-
-      // I will abort this specific tool call mentally? No I can't. 
-      // I will implement "Add" normally. 
-      // For "Remove", I will fetch the Wishlist Item ID from the `getWishlist` query cache?
-      // No, let's look at `server/modules/wishlist.ts` again.
-      // The `addToWishlist` returns `wishlistItem`.
-      // The `isInWishlist` returns `inWishlist: !!item`.
-
-      // I will modify this component to `getWishlist` and `find` the item. 
-      // It is already used in Cart.
-      // But `wishlist` might be large? unlikely for normal user.
-      // Cart uses `getCart` not `getWishlist`.
-
-      // PLAN ADJUSTMENT:
-      // I'll update the component to use `trpc.getWishlist.useQuery` instead of `isInWishlist`.
-      // This gives me the ID needed for removal.
-    }
-  };
 
   // Re-writing the replacement to use getWishlist instead
   const wishlistQuery = trpc.getWishlist.useQuery(undefined, {
