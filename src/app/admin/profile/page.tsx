@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
   EditIcon,
   EyeIcon,
@@ -10,38 +12,18 @@ import {
   ShieldIcon,
   UserIcon,
 } from "@/components/ui/icons";
+import { trpc } from "@/utils/trpc";
 
-// Temporary interfaces for migration
-interface AdminProfile {
-  id: number;
-  name: string;
-  email: string;
+interface ProfileFormData {
+  first_name: string;
+  last_name: string;
   phone: string;
-  avatar: string;
-  role: string;
-  department: string;
-  joinDate: string;
-  lastLogin: string;
-  permissions: string[];
-  status: "Active" | "Inactive";
-  bio: string;
-  location: string;
-  timezone: string;
-  language: string;
-  notifications: {
-    email: boolean;
-    push: boolean;
-    sms: boolean;
-  };
-  twoFactorEnabled: boolean;
 }
 
-interface ActivityLog {
-  id: number;
-  action: string;
-  module: string;
-  timestamp: string;
-  details: string;
+interface PasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export default function AdminProfilePage() {
@@ -49,97 +31,148 @@ export default function AdminProfilePage() {
     "overview" | "security" | "activity" | "settings"
   >("overview");
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  // Mock data - will be replaced with tRPC calls
-  const mockProfile: AdminProfile = {
-    id: 1,
-    name: "Admin User",
-    email: "admin@trichomes.com",
-    phone: "+234 801 234 5678",
-    avatar: "https://picsum.photos/seed/admin/200/200",
-    role: "Super Admin",
-    department: "System Administration",
-    joinDate: "2023-01-15",
-    lastLogin: "2023-10-25 14:30",
-    permissions: [
-      "users.manage",
-      "products.manage",
-      "orders.manage",
-      "system.admin",
-    ],
-    status: "Active",
-    bio: "Experienced system administrator with expertise in e-commerce platforms and team management.",
-    location: "Lagos, Nigeria",
-    timezone: "WAT (UTC+1)",
-    language: "English",
-    notifications: {
-      email: true,
-      push: true,
-      sms: false,
-    },
-    twoFactorEnabled: true,
-  };
+  // Fetch profile data
+  const profileQuery = trpc.getProfile.useQuery(undefined, {
+    staleTime: 60000,
+  });
 
-  const mockActivityLog: ActivityLog[] = [
-    {
-      id: 1,
-      action: "Updated product",
-      module: "Products",
-      timestamp: "2023-10-25 14:15",
-      details: 'Modified product "La Roche-Posay Cleanser" pricing',
-    },
-    {
-      id: 2,
-      action: "Created user",
-      module: "Users",
-      timestamp: "2023-10-25 13:45",
-      details: "Added new customer service representative",
-    },
-    {
-      id: 3,
-      action: "Processed order",
-      module: "Orders",
-      timestamp: "2023-10-25 12:30",
-      details: "Updated order ORD-0123 status to shipped",
-    },
-    {
-      id: 4,
-      action: "Generated report",
-      module: "Analytics",
-      timestamp: "2023-10-25 11:20",
-      details: "Exported monthly sales report",
-    },
-    {
-      id: 5,
-      action: "Updated permissions",
-      module: "Users",
-      timestamp: "2023-10-24 16:45",
-      details: "Modified role permissions for Content Manager",
-    },
-  ];
+  const profile = profileQuery.data;
 
-  const handleSaveProfile = () => {
-    console.log("Save profile changes");
-    setIsEditing(false);
-    // TODO: Implement profile update API call
+  // Profile update mutation
+  const updateProfileMutation = trpc.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Profile updated successfully");
+      profileQuery.refetch();
+      setIsEditing(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update profile");
+    },
+  });
+
+  // Password change mutation
+  const changePasswordMutation = trpc.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+      setShowPasswordForm(false);
+      passwordForm.reset();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to change password");
+    },
+  });
+
+  // Profile form
+  const profileForm = useForm<ProfileFormData>({
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      phone: "",
+    },
+  });
+
+  // Password form
+  const passwordForm = useForm<PasswordFormData>({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  // Update form when profile loads
+  useEffect(() => {
+    if (profile) {
+      profileForm.reset({
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone: profile.phone || "",
+      });
+    }
+  }, [profile, profileForm]);
+
+  const handleSaveProfile = (data: ProfileFormData) => {
+    updateProfileMutation.mutate({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      phone: data.phone,
+    });
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    // TODO: Reset form to original values
+    if (profile) {
+      profileForm.reset({
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone: profile.phone || "",
+      });
+    }
   };
 
-  const handleToggle2FA = () => {
-    console.log("Toggle 2FA");
-    // TODO: Implement 2FA toggle
+  const handleChangePassword = (data: PasswordFormData) => {
+    if (data.newPassword !== data.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (data.newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+    });
   };
 
-  const handleNotificationChange = (
-    type: keyof AdminProfile["notifications"],
-  ) => {
-    console.log("Toggle notification:", type);
-    // TODO: Update notification preferences
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
+
+  const formatDateTime = (date: Date | string | null | undefined) => {
+    if (!date) return "Never";
+    return new Date(date).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (profileQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (profileQuery.error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">Failed to load profile</p>
+        <button
+          type="button"
+          onClick={() => profileQuery.refetch()}
+          className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-[#1E3024]"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const displayName = profile?.name || `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || "Admin User";
 
   return (
     <div>
@@ -158,57 +191,52 @@ export default function AdminProfilePage() {
             <div className="text-center">
               <div className="relative w-24 h-24 mx-auto mb-4">
                 <Image
-                  src={mockProfile.avatar}
-                  alt={mockProfile.name}
+                  src={profile?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=38761d&color=fff`}
+                  alt={displayName}
                   fill
                   className="rounded-full object-cover"
                 />
-                <button
-                  type="button"
-                  className="absolute bottom-0 right-0 p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
-                >
-                  <EditIcon />
-                </button>
               </div>
 
               <h2 className="text-xl font-bold text-gray-900">
-                {mockProfile.name}
+                {displayName}
               </h2>
-              <p className="text-gray-600">{mockProfile.role}</p>
+              <p className="text-gray-600 capitalize">{profile?.role?.toLowerCase() || "Admin"}</p>
               <p className="text-sm text-gray-500 mb-4">
-                {mockProfile.department}
+                {profile?.email}
               </p>
 
               <div
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  mockProfile.status === "Active"
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${profile?.status === "ACTIVE"
                     ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
+                    : "bg-yellow-100 text-yellow-800"
+                  }`}
               >
-                {mockProfile.status}
+                {profile?.status === "ACTIVE" ? "Active" : profile?.status || "Unknown"}
               </div>
             </div>
 
             <div className="mt-6 space-y-4">
               <div className="flex items-center text-sm">
                 <MailIcon className="w-4 h-4 text-gray-400 mr-3" />
-                <span className="text-gray-600">{mockProfile.email}</span>
+                <span className="text-gray-600">{profile?.email}</span>
               </div>
-              <div className="flex items-center text-sm">
-                <PhoneIcon className="w-4 h-4 text-gray-400 mr-3" />
-                <span className="text-gray-600">{mockProfile.phone}</span>
-              </div>
+              {profile?.phone && (
+                <div className="flex items-center text-sm">
+                  <PhoneIcon className="w-4 h-4 text-gray-400 mr-3" />
+                  <span className="text-gray-600">{profile.phone}</span>
+                </div>
+              )}
               <div className="flex items-center text-sm">
                 <UserIcon className="w-4 h-4 text-gray-400 mr-3" />
                 <span className="text-gray-600">
-                  Joined {mockProfile.joinDate}
+                  Joined {formatDate(profile?.created_at)}
                 </span>
               </div>
               <div className="flex items-center text-sm">
                 <EyeIcon className="w-4 h-4 text-gray-400 mr-3" />
                 <span className="text-gray-600">
-                  Last login: {mockProfile.lastLogin}
+                  Last login: {formatDateTime(profile?.last_login_at)}
                 </span>
               </div>
             </div>
@@ -224,19 +252,16 @@ export default function AdminProfilePage() {
                 [
                   { key: "overview", label: "Overview" },
                   { key: "security", label: "Security" },
-                  { key: "activity", label: "Activity Log" },
-                  { key: "settings", label: "Settings" },
                 ] as const
               ).map((tab) => (
                 <button
                   type="button"
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.key
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
                       ? "border-green-500 text-green-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -250,131 +275,116 @@ export default function AdminProfilePage() {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-semibold">Profile Information</h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    <EditIcon />
-                    {isEditing ? "Cancel" : "Edit Profile"}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="full-name"
-                      className="block text-sm font-medium text-gray-700 mb-2"
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
                     >
-                      Full Name
-                    </label>
-                    {isEditing ? (
-                      <input
-                        id="full-name"
-                        type="text"
-                        defaultValue={mockProfile.name}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{mockProfile.name}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Email
-                    </label>
-                    {isEditing ? (
-                      <input
-                        id="email"
-                        type="email"
-                        defaultValue={mockProfile.email}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{mockProfile.email}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Phone
-                    </label>
-                    {isEditing ? (
-                      <input
-                        id="phone"
-                        type="tel"
-                        defaultValue={mockProfile.phone}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{mockProfile.phone}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="location"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Location
-                    </label>
-                    {isEditing ? (
-                      <input
-                        id="location"
-                        type="text"
-                        defaultValue={mockProfile.location}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{mockProfile.location}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label
-                    htmlFor="bio"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Bio
-                  </label>
-                  {isEditing ? (
-                    <textarea
-                      id="bio"
-                      rows={4}
-                      defaultValue={mockProfile.bio}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{mockProfile.bio}</p>
+                      <EditIcon />
+                      Edit Profile
+                    </button>
                   )}
                 </div>
 
-                {isEditing && (
-                  <div className="mt-6 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleSaveProfile}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
+                <form onSubmit={profileForm.handleSubmit(handleSaveProfile)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label
+                        htmlFor="first_name"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        First Name
+                      </label>
+                      {isEditing ? (
+                        <input
+                          id="first_name"
+                          type="text"
+                          {...profileForm.register("first_name")}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                        />
+                      ) : (
+                        <p className="text-gray-900">{profile?.first_name || "Not set"}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="last_name"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Last Name
+                      </label>
+                      {isEditing ? (
+                        <input
+                          id="last_name"
+                          type="text"
+                          {...profileForm.register("last_name")}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                        />
+                      ) : (
+                        <p className="text-gray-900">{profile?.last_name || "Not set"}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Email
+                      </label>
+                      <p className="text-gray-900">{profile?.email}</p>
+                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="phone"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Phone
+                      </label>
+                      {isEditing ? (
+                        <input
+                          id="phone"
+                          type="tel"
+                          {...profileForm.register("phone")}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                        />
+                      ) : (
+                        <p className="text-gray-900">{profile?.phone || "Not set"}</p>
+                      )}
+                    </div>
                   </div>
-                )}
+
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Role
+                    </label>
+                    <p className="text-gray-900 capitalize">{profile?.role?.toLowerCase()}</p>
+                    <p className="text-xs text-gray-500 mt-1">Role can only be changed by a super admin</p>
+                  </div>
+
+                  {isEditing && (
+                    <div className="mt-6 flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={updateProfileMutation.isPending}
+                        className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-[#1E3024] disabled:opacity-50"
+                      >
+                        {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </form>
               </div>
             )}
 
@@ -385,163 +395,107 @@ export default function AdminProfilePage() {
                 </h3>
 
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Two-Factor Authentication</h4>
-                      <p className="text-sm text-gray-600">
-                        Add an extra layer of security to your account
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleToggle2FA}
-                      className={`px-4 py-2 rounded-lg font-medium ${
-                        mockProfile.twoFactorEnabled
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {mockProfile.twoFactorEnabled ? "Enabled" : "Disabled"}
-                    </button>
-                  </div>
-
+                  {/* Account Status */}
                   <div className="p-4 border rounded-lg">
-                    <h4 className="font-medium mb-4">Permissions</h4>
-                    <div className="space-y-2">
-                      {mockProfile.permissions.map((permission) => (
-                        <div key={permission} className="flex items-center">
-                          <ShieldIcon className="w-4 h-4 text-green-600 mr-2" />
-                          <span className="text-sm">{permission}</span>
-                        </div>
-                      ))}
+                    <h4 className="font-medium mb-2">Account Status</h4>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${profile?.status === "ACTIVE" ? "bg-green-500" : "bg-yellow-500"}`} />
+                      <span className="text-sm">{profile?.status === "ACTIVE" ? "Active" : profile?.status}</span>
                     </div>
                   </div>
 
+                  {/* Email Verification */}
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-2">Email Verification</h4>
+                    <div className="flex items-center gap-2">
+                      {profile?.email_verified_at ? (
+                        <>
+                          <ShieldIcon className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-green-700">
+                            Verified on {formatDate(profile.email_verified_at)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldIcon className="w-4 h-4 text-yellow-600" />
+                          <span className="text-sm text-yellow-700">Not verified</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Change Password */}
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-2">Change Password</h4>
                     <p className="text-sm text-gray-600 mb-4">
                       Keep your account secure with a strong password
                     </p>
-                    <button
-                      type="button"
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                    >
-                      Update Password
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {activeTab === "activity" && (
-              <div>
-                <h3 className="text-lg font-semibold mb-6">Recent Activity</h3>
-
-                <div className="space-y-4">
-                  {mockActivityLog.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg"
-                    >
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-gray-900">
-                            {activity.action}
-                          </p>
-                          <span className="text-xs text-gray-500">
-                            {activity.timestamp}
-                          </span>
+                    {!showPasswordForm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordForm(true)}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                      >
+                        Update Password
+                      </button>
+                    ) : (
+                      <form onSubmit={passwordForm.handleSubmit(handleChangePassword)} className="space-y-4">
+                        <div>
+                          <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                            Current Password
+                          </label>
+                          <input
+                            id="currentPassword"
+                            type="password"
+                            {...passwordForm.register("currentPassword", { required: true })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                          />
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {activity.details}
-                        </p>
-                        <span className="inline-block mt-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                          {activity.module}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "settings" && (
-              <div>
-                <h3 className="text-lg font-semibold mb-6">Preferences</h3>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="font-medium mb-4">Notifications</h4>
-                    <div className="space-y-3">
-                      {Object.entries(mockProfile.notifications).map(
-                        ([type, enabled]) => (
-                          <div
-                            key={type}
-                            className="flex items-center justify-between"
+                        <div>
+                          <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                            New Password
+                          </label>
+                          <input
+                            id="newPassword"
+                            type="password"
+                            {...passwordForm.register("newPassword", { required: true, minLength: 8 })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                        </div>
+                        <div>
+                          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            id="confirmPassword"
+                            type="password"
+                            {...passwordForm.register("confirmPassword", { required: true })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            type="submit"
+                            disabled={changePasswordMutation.isPending}
+                            className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-[#1E3024] disabled:opacity-50"
                           >
-                            <span className="text-sm capitalize">
-                              {type} notifications
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleNotificationChange(
-                                  type as keyof AdminProfile["notifications"],
-                                )
-                              }
-                              className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                                enabled ? "bg-green-600" : "bg-gray-300"
-                              }`}
-                            >
-                              <div
-                                className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${
-                                  enabled ? "translate-x-6" : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label
-                        htmlFor="timezone"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Timezone
-                      </label>
-                      <select
-                        id="timezone"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      >
-                        <option value="WAT">WAT (UTC+1)</option>
-                        <option value="GMT">GMT (UTC+0)</option>
-                        <option value="EST">EST (UTC-5)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="language"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Language
-                      </label>
-                      <select
-                        id="language"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                      >
-                        <option value="en">English</option>
-                        <option value="fr">French</option>
-                        <option value="es">Spanish</option>
-                      </select>
-                    </div>
+                            {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowPasswordForm(false);
+                              passwordForm.reset();
+                            }}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 </div>
               </div>
