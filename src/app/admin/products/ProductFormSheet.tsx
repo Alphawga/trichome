@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { type CreateProductInput, createProductSchema } from "@/lib/dto";
 import { trpc } from "@/utils/trpc";
 
@@ -56,6 +57,7 @@ export function ProductFormSheet({
       is_digital: false,
       requires_shipping: true,
       taxable: true,
+      brand_id: undefined,
     },
   });
 
@@ -65,6 +67,7 @@ export function ProductFormSheet({
   );
 
   const categoriesQuery = trpc.getCategories.useQuery({});
+  const brandsQuery = trpc.getBrands.useQuery({});
 
   const createMutation = trpc.createProduct.useMutation({
     onSuccess: () => {
@@ -127,6 +130,7 @@ export function ProductFormSheet({
         seo_title: product.seo_title || "",
         seo_description: product.seo_description || "",
         category_id: product.category_id,
+        brand_id: product.brand_id || undefined,
       });
       // Load product images
       if (product.images && product.images.length > 0) {
@@ -163,6 +167,7 @@ export function ProductFormSheet({
         weight: 0,
         seo_title: "",
         seo_description: "",
+        brand_id: undefined,
       });
     }
   }, [open, productId, productQuery.data, reset]);
@@ -223,10 +228,7 @@ export function ProductFormSheet({
 
         {isLoadingProduct ? (
           <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-12 h-12 border-4 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600">Loading product data...</p>
-            </div>
+            <LogoLoader size="lg" text="Loading product data..." />
           </div>
         ) : hasError ? (
           <div className="flex items-center justify-center py-12">
@@ -500,6 +502,27 @@ export function ProductFormSheet({
                   <option value={ProductStatus.ACTIVE}>Active</option>
                   <option value={ProductStatus.INACTIVE}>Inactive</option>
                   <option value={ProductStatus.ARCHIVED}>Archived</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="product-brand"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Brand
+                </label>
+                <select
+                  id="product-brand"
+                  {...register("brand_id")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">No brand</option>
+                  {brandsQuery.data?.map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

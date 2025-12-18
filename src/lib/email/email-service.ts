@@ -84,38 +84,76 @@ class DevelopmentEmailService implements EmailService {
 }
 
 /**
- * Production email service (to be implemented with actual provider)
+ * Production email service using Nodemailer SMTP
  */
 class ProductionEmailService implements EmailService {
   async send(options: EmailOptions): Promise<EmailResult> {
-    // TODO: Implement actual email service integration
-    // Example with Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // const result = await resend.emails.send({
-    //   from: options.from || process.env.EMAIL_FROM,
-    //   to: options.to,
-    //   subject: options.subject,
-    //   html: options.html,
-    //   text: options.text,
-    // });
-    // return { success: true, messageId: result.id };
+    // Check for SMTP credentials (support multiple naming conventions)
+    const smtpHost = process.env.SMTP_SERVER || process.env.SMTP_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
+    const smtpUser = process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASSWORD;
 
-    // Example with SendGrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // const msg = {
-    //   to: options.to,
-    //   from: options.from || process.env.EMAIL_FROM,
-    //   subject: options.subject,
-    //   html: options.html,
-    //   text: options.text,
-    // };
-    // const result = await sgMail.send(msg);
-    // return { success: true, messageId: result[0].headers['x-message-id'] };
 
-    // For now, fallback to development mode
-    const devService = new DevelopmentEmailService();
-    return devService.send(options);
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      const missingVars = [];
+      if (!smtpHost) missingVars.push("SMTP_HOST/SMTP_SERVER");
+      if (!smtpUser) missingVars.push("SMTP_USER/LOGIN");
+      if (!smtpPass) missingVars.push("SMTP_PASSWORD");
+
+      console.warn(
+        `⚠️ SMTP credentials not fully configured. Missing: ${missingVars.join(", ")}. Falling back to development mode (console log).`
+      );
+      const devService = new DevelopmentEmailService();
+      return devService.send(options);
+    }
+
+    try {
+      // Dynamic import nodemailer to avoid bundling issues
+      const nodemailer = await import("nodemailer");
+
+      const transporter = nodemailer.default.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465, // true for 465, false for other ports
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const mailOptions = {
+        from: options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
+        to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        replyTo: options.replyTo,
+        cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(", ") : options.cc) : undefined,
+        bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(", ") : options.bcc) : undefined,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+
+      console.log("📧 Email Details:", {
+        to: mailOptions.to,
+        from: mailOptions.from,
+        subject: mailOptions.subject,
+      });
+      console.log("✅ Email sent successfully:", result.messageId);
+
+      return {
+        success: true,
+        messageId: result.messageId,
+      };
+    } catch (error) {
+      console.error("❌ Email sending failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to send email",
+      };
+    }
   }
 }
 
@@ -128,10 +166,18 @@ function getEmailService(): EmailService {
     process.env.RESEND_API_KEY ||
     process.env.SENDGRID_API_KEY ||
     process.env.AWS_SES_REGION ||
-    process.env.SMTP_HOST
+    process.env.SMTP_HOST ||
+    process.env.SMTP_SERVER // Brevo uses SMTP_SERVER
   );
 
-  if (isProduction && hasEmailProvider) {
+  // Use production service if SMTP is configured (even in dev for testing)
+  const hasSmtpConfig = !!(
+    (process.env.SMTP_SERVER || process.env.SMTP_HOST) &&
+    (process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER) &&
+    process.env.SMTP_PASSWORD
+  );
+
+  if (hasSmtpConfig || (isProduction && hasEmailProvider)) {
     return new ProductionEmailService();
   }
 

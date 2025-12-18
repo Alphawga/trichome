@@ -67,6 +67,25 @@ export const register = publicProcedure
       },
     });
 
+    // Send welcome email if enabled
+    try {
+      const welcomeEmailSetting = await ctx.prisma.systemSetting.findUnique({
+        where: { key: "email_welcome_enabled" },
+      });
+
+      if (welcomeEmailSetting?.value !== "false") {
+        const { sendWelcomeEmail } = await import("@/lib/email");
+        await sendWelcomeEmail({
+          recipientName: input.first_name || undefined,
+          recipientEmail: input.email,
+          loginUrl: process.env.NEXT_PUBLIC_APP_URL || "https://trichomes.com",
+        });
+      }
+    } catch (error) {
+      // Don't fail registration if email fails
+      console.error("Failed to send welcome email:", error);
+    }
+
     return { user, message: "User registered successfully" };
   });
 
@@ -194,7 +213,7 @@ export const changePassword = protectedProcedure
     return { message: "Password changed successfully" };
   });
 
-// Request password reset
+
 export const requestPasswordReset = publicProcedure
   .input(
     z.object({
@@ -202,46 +221,58 @@ export const requestPasswordReset = publicProcedure
     }),
   )
   .mutation(async ({ input, ctx }) => {
-    // Find user by email
     const user = await ctx.prisma.user.findUnique({
       where: { email: input.email },
-      select: { id: true, email: true, password_hash: true },
+      select: {
+        id: true,
+        email: true,
+        password_hash: true,
+        // Check if user has OAuth accounts
+        accounts: {
+          select: { provider: true },
+          take: 1,
+        },
+      },
     });
 
-    // Always return success to prevent email enumeration
-    // Don't reveal whether the email exists or not
+    // User not found - return generic message (security: don't reveal if email exists)
     if (!user) {
-      // Return success even if user doesn't exist (security best practice)
       return {
-        message:
-          "If an account with that email exists, we have sent a password reset link.",
+        success: true,
+        message: "If an account with that email exists, we have sent a password reset link.",
+        isOAuthOnly: false,
       };
     }
 
-    // Check if user has a password (not OAuth-only account)
+    // User exists but has no password (OAuth-only account like Google)
     if (!user.password_hash) {
-      // Return success even if user doesn't have a password
+      // Get the OAuth provider name for a helpful message
+      const oauthProvider = user.accounts[0]?.provider || "social login";
+      const providerName = oauthProvider.charAt(0).toUpperCase() + oauthProvider.slice(1);
+
       return {
-        message:
-          "If an account with that email exists, we have sent a password reset link.",
+        success: true,
+        message: `This account uses ${providerName} sign-in. Please sign in with ${providerName} instead.`,
+        isOAuthOnly: true,
+        provider: providerName,
       };
     }
 
-    // Generate reset token
+
     const { createPasswordResetToken, getTokenExpirationHours } = await import(
       "@/lib/auth/password-reset-token"
     );
 
     const token = await createPasswordResetToken(input.email);
 
-    // Generate reset URL
+
     const baseUrl =
       process.env.NEXTAUTH_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}&email=${encodeURIComponent(input.email)}`;
 
-    // Send reset email
+
     const { sendPasswordResetEmail } = await import(
       "@/lib/email/password-reset"
     );
@@ -254,8 +285,9 @@ export const requestPasswordReset = publicProcedure
     });
 
     return {
-      message:
-        "If an account with that email exists, we have sent a password reset link.",
+      success: true,
+      message: "If an account with that email exists, we have sent a password reset link.",
+      isOAuthOnly: false,
     };
   });
 
@@ -267,7 +299,7 @@ export const validatePasswordResetToken = publicProcedure
       token: z.string(),
     }),
   )
-  .query(async ({ input: _input, ctx: _ctx }) => {
+  .query(async ({ input }) => {
     const { validatePasswordResetToken } = await import(
       "@/lib/auth/password-reset-token"
     );
@@ -286,7 +318,7 @@ export const resetPassword = publicProcedure
       newPassword: z.string().min(8),
     }),
   )
-  .mutation(async ({ input: _input, ctx: _ctx }) => {
+  .mutation(async ({ input, ctx }) => {
     // Validate token
     const { validatePasswordResetToken, deletePasswordResetToken } =
       await import("@/lib/auth/password-reset-token");

@@ -6,6 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { useState } from "react";
 import superjson from "superjson";
 import { AuthProvider } from "@/app/contexts/auth-context";
+import { CompareProvider } from "@/app/contexts/compare-context";
 import { Toaster } from "@/components/ui/sonner";
 import { getBaseUrl } from "@/lib/helper-function";
 import { trpc } from "@/utils/trpc";
@@ -42,7 +43,9 @@ export default function Providers({ children }: ProvidersProps) {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            {children}
+            <CompareProvider>
+              {children}
+            </CompareProvider>
             <Toaster />
           </AuthProvider>
         </QueryClientProvider>

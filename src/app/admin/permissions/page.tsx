@@ -1,10 +1,21 @@
 "use client";
 
 import type { User, UserRole, UserStatus } from "@prisma/client";
+import { MoreVertical } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/app/contexts/auth-context";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   EditIcon,
   EyeIcon,
@@ -14,6 +25,12 @@ import {
   TrashIcon,
   UserIcon,
 } from "@/components/ui/icons";
+import {
+  ROLE_CONFIGS,
+  PERMISSION_DEFINITIONS,
+  getRoleConfig,
+  type RoleConfig,
+} from "@/lib/permissions";
 import { trpc } from "@/utils/trpc";
 import { UserFormSheet } from "./UserFormSheet";
 import { PermissionAssignmentSheet } from "./PermissionAssignmentSheet";
@@ -33,253 +50,17 @@ type AdminUser = Pick<
   | "created_at"
 >;
 
-// Permission definitions (can be moved to a config file)
-interface PermissionDefinition {
-  id: string;
-  name: string;
-  description: string;
-  module: string;
-  actions: string[];
-}
-
-// Role configurations
-interface RoleConfig {
-  id: UserRole;
-  name: string;
-  description: string;
-  color: string;
-  permissions: string[];
-}
-
-const ROLE_CONFIGS: RoleConfig[] = [
-  {
-    id: "ADMIN",
-    name: "Administrator",
-    description: "Full system access and control",
-    color: "#ef4444",
-    permissions: [
-      "users.create",
-      "users.read",
-      "users.update",
-      "users.delete",
-      "products.create",
-      "products.read",
-      "products.update",
-      "products.delete",
-      "orders.create",
-      "orders.read",
-      "orders.update",
-      "orders.delete",
-      "promotions.create",
-      "promotions.read",
-      "promotions.update",
-      "promotions.delete",
-      "system.admin",
-    ],
-  },
-  {
-    id: "STAFF",
-    name: "Staff",
-    description: "Manage products, orders, and customers",
-    color: "#3b82f6",
-    permissions: [
-      "products.read",
-      "products.update",
-      "orders.read",
-      "orders.update",
-      "customers.read",
-      "customers.update",
-      "promotions.read",
-    ],
-  },
-  {
-    id: "CUSTOMER",
-    name: "Customer",
-    description: "Standard customer access",
-    color: "#10b981",
-    permissions: [
-      "orders.read",
-      "profile.update",
-      "wishlist.manage",
-      "cart.manage",
-    ],
-  },
-];
-
-const PERMISSIONS: PermissionDefinition[] = [
-  // User permissions
-  {
-    id: "users.create",
-    name: "Create Users",
-    description: "Can create new users",
-    module: "Users",
-    actions: ["create"],
-  },
-  {
-    id: "users.read",
-    name: "View Users",
-    description: "Can view user data",
-    module: "Users",
-    actions: ["read"],
-  },
-  {
-    id: "users.update",
-    name: "Update Users",
-    description: "Can modify users",
-    module: "Users",
-    actions: ["update"],
-  },
-  {
-    id: "users.delete",
-    name: "Delete Users",
-    description: "Can remove users",
-    module: "Users",
-    actions: ["delete"],
-  },
-
-  // Product permissions
-  {
-    id: "products.create",
-    name: "Create Products",
-    description: "Can create products",
-    module: "Products",
-    actions: ["create"],
-  },
-  {
-    id: "products.read",
-    name: "View Products",
-    description: "Can view products",
-    module: "Products",
-    actions: ["read"],
-  },
-  {
-    id: "products.update",
-    name: "Update Products",
-    description: "Can modify products",
-    module: "Products",
-    actions: ["update"],
-  },
-  {
-    id: "products.delete",
-    name: "Delete Products",
-    description: "Can delete products",
-    module: "Products",
-    actions: ["delete"],
-  },
-
-  // Order permissions
-  {
-    id: "orders.create",
-    name: "Create Orders",
-    description: "Can create orders",
-    module: "Orders",
-    actions: ["create"],
-  },
-  {
-    id: "orders.read",
-    name: "View Orders",
-    description: "Can view orders",
-    module: "Orders",
-    actions: ["read"],
-  },
-  {
-    id: "orders.update",
-    name: "Update Orders",
-    description: "Can modify orders",
-    module: "Orders",
-    actions: ["update"],
-  },
-  {
-    id: "orders.delete",
-    name: "Delete Orders",
-    description: "Can delete orders",
-    module: "Orders",
-    actions: ["delete"],
-  },
-
-  // Customer permissions
-  {
-    id: "customers.read",
-    name: "View Customers",
-    description: "Can view customer data",
-    module: "Customers",
-    actions: ["read"],
-  },
-  {
-    id: "customers.update",
-    name: "Update Customers",
-    description: "Can modify customers",
-    module: "Customers",
-    actions: ["update"],
-  },
-
-  // Promotion permissions
-  {
-    id: "promotions.create",
-    name: "Create Promotions",
-    description: "Can create promotions",
-    module: "Promotions",
-    actions: ["create"],
-  },
-  {
-    id: "promotions.read",
-    name: "View Promotions",
-    description: "Can view promotions",
-    module: "Promotions",
-    actions: ["read"],
-  },
-  {
-    id: "promotions.update",
-    name: "Update Promotions",
-    description: "Can modify promotions",
-    module: "Promotions",
-    actions: ["update"],
-  },
-  {
-    id: "promotions.delete",
-    name: "Delete Promotions",
-    description: "Can delete promotions",
-    module: "Promotions",
-    actions: ["delete"],
-  },
-
-  // System permissions
-  {
-    id: "system.admin",
-    name: "System Administration",
-    description: "System settings access",
-    module: "System",
-    actions: ["admin"],
-  },
-  {
-    id: "profile.update",
-    name: "Update Profile",
-    description: "Can update own profile",
-    module: "Profile",
-    actions: ["update"],
-  },
-  {
-    id: "wishlist.manage",
-    name: "Manage Wishlist",
-    description: "Can manage wishlist",
-    module: "Wishlist",
-    actions: ["create", "read", "delete"],
-  },
-  {
-    id: "cart.manage",
-    name: "Manage Cart",
-    description: "Can manage shopping cart",
-    module: "Cart",
-    actions: ["create", "read", "update", "delete"],
-  },
-];
 
 interface UserRowProps {
   user: AdminUser;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onManagePermissions: (id: string) => void;
+  onManagePermissions: (id: string, role: UserRole) => void;
+  // Permission flags for conditional rendering
+  canEdit: boolean;
+  canDelete: boolean;
+  canManagePermissions: boolean;
 }
 
 interface RoleCardProps {
@@ -295,9 +76,12 @@ const UserRow: React.FC<UserRowProps> = ({
   onEdit,
   onDelete,
   onManagePermissions,
+  canEdit,
+  canDelete,
+  canManagePermissions,
 }) => {
   const roleConfig = ROLE_CONFIGS.find((r) => r.id === user.role);
-  const statusColors = {
+  const statusColors: Record<UserStatus, string> = {
     ACTIVE: "bg-green-100 text-green-800",
     INACTIVE: "bg-gray-100 text-gray-800",
     SUSPENDED: "bg-red-100 text-red-800",
@@ -305,7 +89,7 @@ const UserRow: React.FC<UserRowProps> = ({
   };
 
   return (
-    <tr className="border-b last:border-0 hover:bg-gray-50">
+    <tr className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => onView(user.id)}>
       <td className="p-4 flex items-center">
         <div className="relative w-10 h-10 mr-4 flex-shrink-0">
           {user.image ? (
@@ -354,10 +138,10 @@ const UserRow: React.FC<UserRowProps> = ({
       <td className="p-4 text-gray-600">
         {user.last_login_at
           ? new Date(user.last_login_at).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
           : "Never"}
       </td>
       <td className="p-4 text-gray-600">
@@ -367,41 +151,47 @@ const UserRow: React.FC<UserRowProps> = ({
           day: "numeric",
         })}
       </td>
-      <td className="p-4">
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => onView(user.id)}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-            title="View user details"
-          >
-            <EyeIcon className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onEdit(user.id)}
-            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-            title="Edit user"
-          >
-            <EditIcon className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onManagePermissions(user.id)}
-            className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-            title="Manage permissions"
-          >
-            <ShieldIcon className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(user.id)}
-            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-            title="Delete user"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </button>
-        </div>
+      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <MoreVertical className="w-4 h-4 text-gray-500" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => onView(user.id)}>
+              <EyeIcon className="w-4 h-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
+            {canEdit && (
+              <DropdownMenuItem onClick={() => onEdit(user.id)}>
+                <EditIcon className="w-4 h-4 mr-2" />
+                Edit User
+              </DropdownMenuItem>
+            )}
+            {canManagePermissions && (
+              <DropdownMenuItem onClick={() => onManagePermissions(user.id, user.role)}>
+                <ShieldIcon className="w-4 h-4 mr-2" />
+                Manage Permissions
+              </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onDelete(user.id)}
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                >
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  Delete User
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </td>
     </tr>
   );
@@ -413,7 +203,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
   onEdit,
   onViewUsers,
 }) => {
-  const rolePermissions = PERMISSIONS.filter((p) =>
+  const rolePermissions = PERMISSION_DEFINITIONS.filter((p) =>
     role.permissions.includes(p.id),
   );
 
@@ -479,12 +269,19 @@ const RoleCard: React.FC<RoleCardProps> = ({
 };
 
 export default function AdminPermissionsPage() {
+  const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<"roles" | "users" | "permissions">(
     "roles",
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "All">("All");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "All">("All");
+
+  // Role-based permission checks
+  const canCreateUsers = hasPermission("users.create");
+  const canEditUsers = hasPermission("users.update");
+  const canDeleteUsers = hasPermission("users.delete");
+  const canManageUserPermissions = hasPermission("users.manage_permissions");
 
   // Fetch users from database
   const usersQuery = trpc.getUsers.useQuery(
@@ -503,11 +300,11 @@ export default function AdminPermissionsPage() {
   const users = usersQuery.data?.users || [];
 
   // Count users by role
-  const userCountByRole = {
+  const userCountByRole: Record<UserRole, number> = {
     ADMIN: users.filter((u) => u.role === "ADMIN").length,
     STAFF: users.filter((u) => u.role === "STAFF").length,
     CUSTOMER: users.filter((u) => u.role === "CUSTOMER").length,
-  };
+  }
 
   const handleAddRole = () => {
     toast.info("Role creation feature coming soon");
@@ -517,6 +314,10 @@ export default function AdminPermissionsPage() {
   const [editingUserId, setEditingUserId] = useState<string | undefined>();
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
   const [permissionUserId, setPermissionUserId] = useState<string | undefined>();
+  const [permissionUserRole, setPermissionUserRole] = useState<UserRole | undefined>();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleAddUser = () => {
     setEditingUserId(undefined);
@@ -532,8 +333,8 @@ export default function AdminPermissionsPage() {
     setRoleFilter(roleId);
   };
 
-  const handleViewUser = (_id: string) => {
-    toast.info("User details view coming soon");
+  const handleViewUser = (id: string) => {
+    router.push(`/admin/permissions/user-detail/${id}`);
   };
 
   const handleEditUser = (id: string) => {
@@ -545,6 +346,8 @@ export default function AdminPermissionsPage() {
     onSuccess: () => {
       toast.success("User deleted successfully");
       usersQuery.refetch();
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     },
     onError: (error) => {
       toast.error(`Failed to delete user: ${error.message}`);
@@ -552,17 +355,19 @@ export default function AdminPermissionsPage() {
   });
 
   const handleDeleteUser = (id: string) => {
-    if (
-      confirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-      )
-    ) {
-      deleteUserMutation.mutate({ id });
+    setUserToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate({ id: userToDelete });
     }
   };
 
-  const handleManagePermissions = (id: string) => {
+  const handleManagePermissions = (id: string, role: UserRole) => {
     setPermissionUserId(id);
+    setPermissionUserRole(role);
     setPermissionSheetOpen(true);
   };
 
@@ -609,14 +414,16 @@ export default function AdminPermissionsPage() {
             <PlusIcon className="w-4 h-4" />
             Add Role
           </button>
-          <button
-            type="button"
-            onClick={handleAddUser}
-            className="flex items-center gap-2 px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium transition-colors"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Add User
-          </button>
+          {canCreateUsers && (
+            <button
+              type="button"
+              onClick={handleAddUser}
+              className="flex items-center gap-2 px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add User
+            </button>
+          )}
         </div>
       </div>
 
@@ -634,7 +441,7 @@ export default function AdminPermissionsPage() {
               {
                 key: "permissions",
                 label: "All Permissions",
-                count: PERMISSIONS.length,
+                count: PERMISSION_DEFINITIONS.length,
               },
             ] as const
           ).map((tab) => (
@@ -642,11 +449,10 @@ export default function AdminPermissionsPage() {
               type="button"
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.key
-                  ? "border-green-500 text-green-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
             >
               {tab.label} ({tab.count})
             </button>
@@ -760,6 +566,9 @@ export default function AdminPermissionsPage() {
                       onEdit={handleEditUser}
                       onDelete={handleDeleteUser}
                       onManagePermissions={handleManagePermissions}
+                      canEdit={canEditUsers}
+                      canDelete={canDeleteUsers}
+                      canManagePermissions={canManageUserPermissions}
                     />
                   ))
                 ) : (
@@ -792,7 +601,7 @@ export default function AdminPermissionsPage() {
                   "Wishlist",
                   "Cart",
                 ].map((module) => {
-                  const modulePermissions = PERMISSIONS.filter(
+                  const modulePermissions = PERMISSION_DEFINITIONS.filter(
                     (p) => p.module === module,
                   );
                   if (modulePermissions.length === 0) return null;
@@ -860,16 +669,36 @@ export default function AdminPermissionsPage() {
       {/* Permission Assignment Sheet */}
       <PermissionAssignmentSheet
         userId={permissionUserId}
+        userRole={permissionUserRole}
         open={permissionSheetOpen}
         onOpenChange={(open) => {
           setPermissionSheetOpen(open);
           if (!open) {
             setPermissionUserId(undefined);
+            setPermissionUserRole(undefined);
           }
         }}
         onSuccess={() => {
           usersQuery.refetch();
         }}
+      />
+
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) {
+            setUserToDelete(null);
+          }
+        }}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This action cannot be undone and will remove all associated data."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        isLoading={deleteUserMutation.isPending}
+        variant="danger"
       />
     </div>
   );

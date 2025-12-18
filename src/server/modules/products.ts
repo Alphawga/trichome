@@ -10,6 +10,8 @@ export const getProducts = publicProcedure
       limit: z.number().min(1).max(100).default(12),
       category_id: z.string().optional(),
       category_slug: z.string().optional(),
+      brand_id: z.string().optional(),
+      brand_slug: z.string().optional(),
       status: z.nativeEnum(ProductStatus).optional(),
       search: z.string().optional(),
       min_price: z.number().optional(),
@@ -33,6 +35,8 @@ export const getProducts = publicProcedure
       limit,
       category_id,
       category_slug,
+      brand_id,
+      brand_slug,
       status,
       search,
       min_price,
@@ -54,9 +58,22 @@ export const getProducts = publicProcedure
       }
     }
 
+    // Resolve brand_id from slug if provided
+    let resolvedBrandId = brand_id;
+    if (brand_slug && !brand_id) {
+      const brand = await ctx.prisma.brand.findUnique({
+        where: { slug: brand_slug },
+        select: { id: true },
+      });
+      if (brand) {
+        resolvedBrandId = brand.id;
+      }
+    }
+
     const where = {
       ...(status && { status }),
       ...(resolvedCategoryId && { category_id: resolvedCategoryId }),
+      ...(resolvedBrandId && { brand_id: resolvedBrandId }),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
         OR: [
@@ -67,11 +84,11 @@ export const getProducts = publicProcedure
       }),
       ...(min_price !== undefined || max_price !== undefined
         ? {
-            price: {
-              ...(min_price !== undefined && { gte: min_price }),
-              ...(max_price !== undefined && { lte: max_price }),
-            },
-          }
+          price: {
+            ...(min_price !== undefined && { gte: min_price }),
+            ...(max_price !== undefined && { lte: max_price }),
+          },
+        }
         : {}),
     };
 
@@ -237,6 +254,7 @@ export const createProduct = staffProcedure
       seo_title: z.string().optional(),
       seo_description: z.string().optional(),
       category_id: z.string(),
+      brand_id: z.string().optional(),
       images: z
         .array(
           z.object({
@@ -257,8 +275,8 @@ export const createProduct = staffProcedure
         ...productData,
         images: images
           ? {
-              create: images,
-            }
+            create: images,
+          }
           : undefined,
       },
       include: {
@@ -296,6 +314,7 @@ export const updateProduct = staffProcedure
       seo_title: z.string().optional(),
       seo_description: z.string().optional(),
       category_id: z.string().optional(),
+      brand_id: z.string().optional().nullable(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -448,3 +467,52 @@ export const getProductStats = staffProcedure.query(async ({ ctx }) => {
     lowStockProducts,
   };
 });
+
+// Bulk delete products (staff)
+export const bulkDeleteProducts = staffProcedure
+  .input(z.object({ ids: z.array(z.string()).min(1) }))
+  .mutation(async ({ input, ctx }) => {
+    const { ids } = input;
+
+    // First delete related images
+    await ctx.prisma.productImage.deleteMany({
+      where: { product_id: { in: ids } },
+    });
+
+    // Delete product variants
+    await ctx.prisma.productVariant.deleteMany({
+      where: { product_id: { in: ids } },
+    });
+
+    // Delete the products
+    const result = await ctx.prisma.product.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully deleted ${result.count} product(s)`,
+    };
+  });
+
+// Bulk update product status (staff)
+export const bulkUpdateProductStatus = staffProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(ProductStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const result = await ctx.prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully updated ${result.count} product(s) to ${status}`,
+    };
+  });

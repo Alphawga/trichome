@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditIcon, EyeIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
@@ -32,7 +39,6 @@ export default function AdminCategoriesPage() {
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
     null,
   );
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{
     id: string;
@@ -73,7 +79,6 @@ export default function AdminCategoriesPage() {
     (category: { id: string; name: string }) => {
       setCategoryToDelete(category);
       setDeleteConfirmOpen(true);
-      setOpenDropdownId(null);
     },
     [],
   );
@@ -94,7 +99,6 @@ export default function AdminCategoriesPage() {
   const handleViewCategory = useCallback((slug: string) => {
     setViewingCategoryId(slug);
     setViewSheetOpen(true);
-    setOpenDropdownId(null);
   }, []);
 
   const handleFormSuccess = () => {
@@ -135,10 +139,10 @@ export default function AdminCategoriesPage() {
         cell: (category) => (
           <span
             className={`px-2 py-1 text-xs font-semibold rounded-full ${category.status === "ACTIVE"
-                ? "bg-green-100 text-green-800"
-                : category.status === "DRAFT"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
+              ? "bg-green-100 text-green-800"
+              : category.status === "DRAFT"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
               }`}
           >
             {category.status}
@@ -154,79 +158,55 @@ export default function AdminCategoriesPage() {
       {
         header: "Actions",
         cell: (category) => (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setOpenDropdownId(
-                  openDropdownId === category.id ? null : category.id,
-                )
-              }
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Actions"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <title>Open actions</title>
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-            </button>
-
-            {openDropdownId === category.id && (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-10"
-                  onClick={() => setOpenDropdownId(null)}
-                  aria-label="Close actions menu"
-                />
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleViewCategory(category.slug);
-                      setOpenDropdownId(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <EyeIcon className="w-4 h-4" />
-                    View Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleEditCategory(category.id);
-                      setOpenDropdownId(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <EditIcon className="w-4 h-4" />
-                    Edit Category
-                  </button>
-                  <div className="border-t border-gray-100 my-1" />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleDeleteCategory({
-                        id: category.id,
-                        name: category.name,
-                      })
-                    }
-                    disabled={deletingCategoryId === category.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                    Delete Category
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Actions"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <title>Open actions</title>
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleViewCategory(category.slug)}
+                className="cursor-pointer"
+              >
+                <EyeIcon className="w-4 h-4 mr-2" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleEditCategory(category.id)}
+                className="cursor-pointer"
+              >
+                <EditIcon className="w-4 h-4 mr-2" />
+                Edit Category
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() =>
+                  handleDeleteCategory({
+                    id: category.id,
+                    name: category.name,
+                  })
+                }
+                disabled={deletingCategoryId === category.id}
+                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <TrashIcon className="w-4 h-4 mr-2" />
+                Delete Category
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ),
       },
     ],
     [
       deletingCategoryId,
-      openDropdownId,
       handleViewCategory,
       handleEditCategory,
       handleDeleteCategory,

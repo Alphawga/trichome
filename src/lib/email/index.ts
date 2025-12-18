@@ -22,6 +22,12 @@ export { generatePaymentConfirmationEmail } from "./templates/payment-confirmati
 export type { ShippingUpdateEmailData } from "./templates/shipping-update";
 // Shipping update email
 export { generateShippingUpdateEmail } from "./templates/shipping-update";
+export type { WelcomeEmailData } from "./templates/welcome-email";
+// Welcome email
+export { generateWelcomeEmail } from "./templates/welcome-email";
+export type { NewsletterWelcomeEmailData } from "./templates/newsletter-welcome";
+// Newsletter welcome email
+export { generateNewsletterWelcomeEmail } from "./templates/newsletter-welcome";
 
 /**
  * Helper function to send order confirmation email
@@ -85,3 +91,44 @@ export async function sendShippingUpdateEmail(
     text: emailContent.text,
   });
 }
+
+/**
+ * Helper function to send welcome email
+ */
+export async function sendWelcomeEmail(
+  data: import("./templates/welcome-email").WelcomeEmailData,
+): Promise<import("./email-service").EmailResult> {
+  const { generateWelcomeEmail } = await import("./templates/welcome-email");
+  const { sendEmail } = await import("./email-service");
+
+  const emailContent = generateWelcomeEmail(data);
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    text: emailContent.text,
+  });
+}
+
+/**
+ * Helper function to send newsletter welcome email
+ */
+export async function sendNewsletterWelcomeEmail(
+  data: import("./templates/newsletter-welcome").NewsletterWelcomeEmailData,
+): Promise<import("./email-service").EmailResult> {
+  const { generateNewsletterWelcomeEmail } = await import(
+    "./templates/newsletter-welcome"
+  );
+  const { sendEmail } = await import("./email-service");
+
+  const emailContent = generateNewsletterWelcomeEmail(data);
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    text: emailContent.text,
+  });
+}
+

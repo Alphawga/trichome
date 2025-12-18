@@ -469,10 +469,10 @@ export const getCustomers = staffProcedure
       const lastOrder =
         customer.orders.length > 0
           ? customer.orders.sort(
-              (a, b) =>
-                new Date(b.created_at).getTime() -
-                new Date(a.created_at).getTime(),
-            )[0]
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )[0]
           : null;
 
       return {
@@ -492,5 +492,27 @@ export const getCustomers = staffProcedure
         total,
         pages: Math.ceil(total / limit),
       },
+    };
+  });
+
+// Bulk update user status (admin only)
+export const bulkUpdateUserStatus = adminProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(UserStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const result = await ctx.prisma.user.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully updated ${result.count} customer(s) to ${status}`,
     };
   });

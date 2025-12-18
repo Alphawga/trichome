@@ -363,3 +363,35 @@ export const cancelConsultation = protectedProcedure
       message: "Consultation cancelled successfully",
     };
   });
+
+// Bulk update consultation status (staff/admin)
+export const bulkUpdateConsultationStatus = staffProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(ConsultationStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const updateData: Record<string, unknown> = { status };
+
+    if (status === "CONFIRMED") {
+      updateData.confirmed_at = new Date();
+    } else if (status === "COMPLETED") {
+      updateData.completed_at = new Date();
+    } else if (status === "CANCELLED") {
+      updateData.cancelled_at = new Date();
+    }
+
+    const result = await ctx.prisma.consultation.updateMany({
+      where: { id: { in: ids } },
+      data: updateData,
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully updated ${result.count} consultation(s) to ${status}`,
+    };
+  });

@@ -15,7 +15,9 @@ type AttributeKey =
   | "inStock"
   | "weight";
 
-type ProductForComparison = (Product & {
+type ProductForComparison = (Partial<Product> & {
+  id: string;
+  name: string;
   images?: ProductImage[];
   category?: Pick<Category, "name"> | null;
 }) & {

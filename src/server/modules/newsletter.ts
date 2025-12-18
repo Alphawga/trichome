@@ -23,6 +23,24 @@ export const subscribe = publicProcedure
       data: input,
     });
 
+    // Send newsletter welcome email if enabled
+    try {
+      const newsletterEmailSetting = await ctx.prisma.systemSetting.findUnique({
+        where: { key: "email_newsletter_welcome_enabled" },
+      });
+
+      if (newsletterEmailSetting?.value !== "false") {
+        const { sendNewsletterWelcomeEmail } = await import("@/lib/email");
+        await sendNewsletterWelcomeEmail({
+          recipientEmail: input.email,
+          unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://trichomes.com"}/unsubscribe?email=${encodeURIComponent(input.email)}`,
+        });
+      }
+    } catch (error) {
+      // Don't fail subscription if email fails
+      console.error("Failed to send newsletter welcome email:", error);
+    }
+
     return { message: "Successfully subscribed to newsletter" };
   });
 
@@ -63,8 +81,8 @@ export const getSubscribers = staffProcedure
 
     const where = search
       ? {
-          email: { contains: search, mode: "insensitive" as const },
-        }
+        email: { contains: search, mode: "insensitive" as const },
+      }
       : {};
 
     const [subscribers, total] = await Promise.all([

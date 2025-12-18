@@ -45,7 +45,9 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
     setPaymentError(null);
 
     try {
+      // @ts-ignore - Monnify JS SDK does not have types
       const Monnify = (await import("monnify-js")).default;
+      // @ts-ignore - Monnify JS SDK does not have types
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
         process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
@@ -108,6 +110,7 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
               payment_method: props.paymentMethod || "WALLET",
               currency: props.currency || "NGN",
               notes: props.notes,
+              promo_code: props.promoCode,
             });
           } else {
             setPaymentStatus("error");

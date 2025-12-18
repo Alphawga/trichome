@@ -6,6 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 import { format } from "date-fns";
 
@@ -38,7 +39,7 @@ export function PaymentViewSheet({
 
         {paymentQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+            <LogoLoader size="md" text="Loading payment..." />
           </div>
         ) : paymentQuery.error ? (
           <div className="text-center py-12 text-red-600">
@@ -80,15 +81,15 @@ export function PaymentViewSheet({
                   <p className="text-sm text-gray-500">Status</p>
                   <span
                     className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${payment.status === "COMPLETED"
-                        ? "bg-green-100 text-green-800"
-                        : payment.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : payment.status === "FAILED"
-                            ? "bg-red-100 text-red-800"
-                            : payment.status === "REFUNDED" ||
-                              payment.status === "PARTIALLY_REFUNDED"
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-gray-100 text-gray-800"
+                      ? "bg-green-100 text-green-800"
+                      : payment.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : payment.status === "FAILED"
+                          ? "bg-red-100 text-red-800"
+                          : payment.status === "REFUNDED" ||
+                            payment.status === "PARTIALLY_REFUNDED"
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-gray-100 text-gray-800"
                       }`}
                   >
                     {payment.status}

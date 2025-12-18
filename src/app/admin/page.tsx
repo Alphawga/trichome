@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -16,6 +18,7 @@ import {
   ViewAllArrowIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 
 interface AdminProduct {
   id: string;
@@ -40,10 +43,20 @@ interface ViewAllCardProps {
   title: string;
   value: string;
   icon: React.ReactNode;
+  href: string;
 }
 
 interface ProductRowProps {
   product: AdminProduct;
+}
+
+interface RecentOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  total: number;
+  status: string;
+  date: string;
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
@@ -76,7 +89,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
   );
 };
 
-const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon }) => (
+const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon, href }) => (
   <div className="bg-white p-6 rounded-lg border border-gray-200">
     <div className="flex justify-between items-start">
       <div>
@@ -85,12 +98,12 @@ const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon }) => (
       </div>
       <div className="text-gray-400">{icon}</div>
     </div>
-    <button
-      type="button"
-      className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800"
+    <Link
+      href={href}
+      className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800 transition-colors"
     >
       View all <ViewAllArrowIcon className="ml-1" />
-    </button>
+    </Link>
   </div>
 );
 
@@ -112,17 +125,33 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
     <td className="p-4 text-gray-600">{product.stock}pcs</td>
     <td className="p-4">
       <span
-        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          product.status === "In stock"
+        className={`px-2 py-1 text-xs font-semibold rounded-full ${product.status === "In stock"
             ? "bg-green-100 text-green-800"
             : "bg-red-100 text-red-800"
-        }`}
+          }`}
       >
         {product.status}
       </span>
     </td>
   </tr>
 );
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-800";
+    case "PROCESSING":
+      return "bg-blue-100 text-blue-800";
+    case "SHIPPED":
+      return "bg-purple-100 text-purple-800";
+    case "DELIVERED":
+      return "bg-green-100 text-green-800";
+    case "CANCELLED":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -138,16 +167,51 @@ export default function AdminDashboard() {
     { refetchOnWindowFocus: false },
   );
 
+  // Fetch recent orders
+  const recentOrdersQuery = trpc.getOrders.useQuery(
+    { page: 1, limit: 5 },
+    { refetchOnWindowFocus: false },
+  );
+
   const stats = dashboardStatsQuery.data;
   const topProducts = topProductsQuery.data || [];
+
+  // Transform recent orders for display
+  const recentOrders: RecentOrder[] = (recentOrdersQuery.data?.orders || []).map((order) => ({
+    id: order.id,
+    orderNumber: order.order_number,
+    customerName: order.user
+      ? `${order.user.first_name} ${order.user.last_name}`.trim()
+      : `${order.first_name} ${order.last_name}`.trim(),
+    total: Number(order.total),
+    status: order.status,
+    date: new Date(order.created_at).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  }));
 
   const filteredProducts = topProducts.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleExportCSV = () => {
-    console.log("Export CSV functionality will be implemented");
-    // TODO: Implement CSV export
+    if (topProducts.length === 0) {
+      toast.error("No products to export");
+      return;
+    }
+
+    const columns: CSVColumn<AdminProduct>[] = [
+      { key: "name", label: "Product Name" },
+      { key: "category", label: "Category" },
+      { key: (p) => `₦${p.price.toLocaleString()}`, label: "Price" },
+      { key: "stock", label: "Stock" },
+      { key: "status", label: "Status" },
+      { key: "totalSold", label: "Total Sold" },
+    ];
+
+    exportToCSV(topProducts, columns, `top-products-${new Date().toISOString().split("T")[0]}`);
   };
 
   return (
@@ -193,11 +257,13 @@ export default function AdminDashboard() {
               title="Pending orders"
               value={stats.pendingOrders.toString()}
               icon={<DocumentTextIcon />}
+              href="/admin/orders?status=PENDING"
             />
             <ViewAllCard
               title="Out of stock items"
               value={stats.outOfStockItems.toString()}
               icon={<CustomersIcon />}
+              href="/admin/products?status=INACTIVE"
             />
           </>
         ) : (
@@ -205,6 +271,71 @@ export default function AdminDashboard() {
             Failed to load dashboard statistics
           </div>
         )}
+      </div>
+
+      {/* Recent Orders Section */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Recent Orders</h2>
+          <Link
+            href="/admin/orders"
+            className="flex items-center text-sm text-[#38761d] hover:text-[#2d5a16] font-medium transition-colors"
+          >
+            View all orders <ViewAllArrowIcon className="ml-1" />
+          </Link>
+        </div>
+        <div className="bg-white rounded-lg border overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="p-4 font-semibold text-sm text-gray-700">Order ID</th>
+                <th className="p-4 font-semibold text-sm text-gray-700">Customer</th>
+                <th className="p-4 font-semibold text-sm text-gray-700">Total</th>
+                <th className="p-4 font-semibold text-sm text-gray-700">Status</th>
+                <th className="p-4 font-semibold text-sm text-gray-700">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentOrdersQuery.isLoading ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-600">Loading orders...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : recentOrders.length > 0 ? (
+                recentOrders.map((order) => (
+                  <tr key={order.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="p-4">
+                      <Link
+                        href={`/admin/orders?search=${order.orderNumber}`}
+                        className="text-[#38761d] hover:underline font-medium"
+                      >
+                        {order.orderNumber}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-gray-600">{order.customerName}</td>
+                    <td className="p-4 font-medium">₦{order.total.toLocaleString()}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600">{order.date}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                    No orders yet. Orders will appear here when customers place them.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Top Products Section */}
@@ -295,12 +426,12 @@ export default function AdminDashboard() {
 
         {filteredProducts.length > 10 && (
           <div className="mt-4 flex justify-center">
-            <button
-              type="button"
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            <Link
+              href="/admin/products"
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Load more products
-            </button>
+              View all products
+            </Link>
           </div>
         )}
       </div>
@@ -309,9 +440,9 @@ export default function AdminDashboard() {
       <div className="mt-8 bg-white p-6 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            type="button"
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          <Link
+            href="/admin/products?action=new"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block"
           >
             <div className="text-green-600 mb-2">
               <ProductsIcon />
@@ -320,40 +451,40 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">
               Create a new product listing
             </p>
-          </button>
+          </Link>
 
-          <button
-            type="button"
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          <Link
+            href="/admin/orders"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block"
           >
             <div className="text-blue-600 mb-2">
               <OrdersIcon />
             </div>
             <p className="font-medium">View Orders</p>
             <p className="text-sm text-gray-500">Manage customer orders</p>
-          </button>
+          </Link>
 
-          <button
-            type="button"
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          <Link
+            href="/admin/customers"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block"
           >
             <div className="text-purple-600 mb-2">
               <CustomersIcon />
             </div>
             <p className="font-medium">Customer List</p>
             <p className="text-sm text-gray-500">View customer details</p>
-          </button>
+          </Link>
 
-          <button
-            type="button"
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          <Link
+            href="/admin/analytics"
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block"
           >
             <div className="text-orange-600 mb-2">
               <DocumentTextIcon />
             </div>
-            <p className="font-medium">Generate Report</p>
-            <p className="text-sm text-gray-500">Create sales reports</p>
-          </button>
+            <p className="font-medium">View Analytics</p>
+            <p className="text-sm text-gray-500">View sales reports</p>
+          </Link>
         </div>
       </div>
     </div>

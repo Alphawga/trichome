@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 interface CategoryViewSheetProps {
@@ -43,10 +44,7 @@ export function CategoryViewSheet({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-12 h-12 border-4 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600">Loading category details...</p>
-            </div>
+            <LogoLoader size="lg" text="Loading category details..." />
           </div>
         ) : hasError ? (
           <div className="flex items-center justify-center py-12 px-6">
@@ -96,15 +94,14 @@ export function CategoryViewSheet({
               </p>
               <div className="flex items-center gap-3">
                 <span
-                  className={`px-3 py-1 text-sm font-semibold rounded-full ${
-                    category.status === ProductStatus.ACTIVE
+                  className={`px-3 py-1 text-sm font-semibold rounded-full ${category.status === ProductStatus.ACTIVE
                       ? "bg-green-100 text-green-800"
                       : category.status === ProductStatus.DRAFT
                         ? "bg-yellow-100 text-yellow-800"
                         : category.status === ProductStatus.INACTIVE
                           ? "bg-gray-100 text-gray-800"
                           : "bg-red-100 text-red-800"
-                  }`}
+                    }`}
                 >
                   {category.status}
                 </span>
@@ -182,13 +179,12 @@ export function CategoryViewSheet({
                         <p className="text-sm text-gray-600">{child.slug}</p>
                       </div>
                       <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          child.status === ProductStatus.ACTIVE
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${child.status === ProductStatus.ACTIVE
                             ? "bg-green-100 text-green-800"
                             : child.status === ProductStatus.DRAFT
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-gray-100 text-gray-800"
-                        }`}
+                          }`}
                       >
                         {child.status}
                       </span>

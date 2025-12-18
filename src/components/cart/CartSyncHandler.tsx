@@ -18,12 +18,15 @@ export function CartSyncHandler() {
   const previousAuthStateRef = useRef(false);
 
   useEffect(() => {
-    // Only sync when:
-    // 1. Auth is not loading
-    // 2. User is authenticated
-    // 3. User just logged in (transition from unauthenticated to authenticated)
-    // 4. We haven't synced yet for this session
-    // 5. There are items in localStorage cart
+    // Debug logging
+    console.log("CartSyncHandler check:", {
+      isLoading,
+      isAuthenticated,
+      prevAuth: previousAuthStateRef.current,
+      hasSynced: hasSyncedRef.current,
+      localCartSize: getLocalCart().length
+    });
+
     if (
       !isLoading &&
       isAuthenticated &&
@@ -31,11 +34,15 @@ export function CartSyncHandler() {
       !hasSyncedRef.current
     ) {
       const localCart = getLocalCart();
+      console.log("Attempting to sync cart...", localCart);
 
       if (localCart.length > 0) {
         // User just logged in and has items in localStorage
-        syncCart().then(() => {
+        syncCart().then((result) => {
+          console.log("Cart sync result:", result);
           hasSyncedRef.current = true;
+        }).catch(err => {
+          console.error("Cart sync failed:", err);
         });
       } else {
         // No local cart to sync, but mark as synced
@@ -44,10 +51,12 @@ export function CartSyncHandler() {
     }
 
     // Update previous auth state
-    previousAuthStateRef.current = isAuthenticated;
+    if (!isLoading) {
+      previousAuthStateRef.current = isAuthenticated;
+    }
 
     // Reset sync flag when user logs out
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isLoading) {
       hasSyncedRef.current = false;
     }
   }, [isAuthenticated, isLoading, syncCart]);

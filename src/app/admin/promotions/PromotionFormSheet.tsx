@@ -35,6 +35,14 @@ interface PromotionFormSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  template?: {
+    name: string;
+    code: string;
+    type: PromotionType;
+    value: number;
+    target: "ALL" | "NEW_CUSTOMERS" | "VIP";
+    min_order: number;
+  } | null;
 }
 
 interface PromotionFormData {
@@ -58,6 +66,7 @@ export function PromotionFormSheet({
   open,
   onOpenChange,
   onSuccess,
+  template,
 }: PromotionFormSheetProps) {
   const isEdit = !!promotion;
 
@@ -127,6 +136,24 @@ export function PromotionFormSheet({
         usage_limit: promotion.usage_limit,
         usage_limit_per_user: promotion.usage_limit_per_user || undefined,
       });
+    } else if (template) {
+      // Pre-fill from template
+      const today = new Date();
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+      reset({
+        name: template.name,
+        code: template.code,
+        type: template.type,
+        value: template.value,
+        min_order_value: template.min_order,
+        target_customers: template.target,
+        status: "INACTIVE",
+        usage_limit: 1000,
+        start_date: today.toISOString().split("T")[0],
+        end_date: nextMonth.toISOString().split("T")[0],
+      });
     } else {
       reset({
         type: "PERCENTAGE",
@@ -137,7 +164,7 @@ export function PromotionFormSheet({
         usage_limit: 100,
       });
     }
-  }, [promotion, reset]);
+  }, [promotion, template, reset]);
 
   const onSubmit = async (data: PromotionFormData) => {
     if (isEdit && promotion) {

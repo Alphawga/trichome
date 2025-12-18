@@ -18,19 +18,41 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      position="top-center"
+      expand={true}
+      richColors
+      closeButton
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        success: <CircleCheckIcon className="size-5" />,
+        info: <InfoIcon className="size-5" />,
+        warning: <TriangleAlertIcon className="size-5" />,
+        error: <OctagonXIcon className="size-5" />,
+        loading: <Loader2Icon className="size-5 animate-spin" />,
+      }}
+      toastOptions={{
+        className: "!bg-white !border-gray-200 !shadow-lg",
+        style: {
+          padding: "16px",
+          fontSize: "14px",
+          borderRadius: "12px",
+        },
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--normal-bg": "#ffffff",
+          "--normal-text": "#1f2937",
+          "--normal-border": "#e5e7eb",
+          "--success-bg": "#ecfdf5",
+          "--success-text": "#065f46",
+          "--success-border": "#a7f3d0",
+          "--error-bg": "#fef2f2",
+          "--error-text": "#991b1b",
+          "--error-border": "#fecaca",
+          "--warning-bg": "#fffbeb",
+          "--warning-text": "#92400e",
+          "--warning-border": "#fde68a",
+          "--border-radius": "12px",
+          zIndex: 9999,
         } as React.CSSProperties
       }
       {...props}

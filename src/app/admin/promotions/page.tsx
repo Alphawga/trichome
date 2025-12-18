@@ -1,10 +1,17 @@
 "use client";
 
 import type { Promotion, PromotionStatus, PromotionType } from "@prisma/client";
-import type React from "react";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   CopyIcon,
   EditIcon,
@@ -26,275 +33,34 @@ type PromotionWithDetails = Promotion & {
   };
 };
 
-// Actions dropdown component
-interface ActionsDropdownProps {
-  promotion: PromotionWithDetails;
-  onView: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onCopy: (code: string) => void;
-  onToggleStatus: (id: string) => void;
-  openDropdownId: string | null;
-  setOpenDropdownId: (id: string | null) => void;
-}
-
-const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
-  promotion,
-  onView,
-  onEdit,
-  onDelete,
-  onCopy,
-  onToggleStatus,
-  openDropdownId,
-  setOpenDropdownId,
-}) => (
-  <div className="relative">
-    <button
-      type="button"
-      onClick={() =>
-        setOpenDropdownId(openDropdownId === promotion.id ? null : promotion.id)
-      }
-      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-      title="Actions"
-    >
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-        <title>Open actions</title>
-        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-      </svg>
-    </button>
-
-    {openDropdownId === promotion.id && (
-      <>
-        <button
-          type="button"
-          className="fixed inset-0 z-10"
-          onClick={() => setOpenDropdownId(null)}
-          aria-label="Close actions menu"
-        />
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-          <button
-            type="button"
-            onClick={() => {
-              onView(promotion.id);
-              setOpenDropdownId(null);
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <EyeIcon className="w-4 h-4" />
-            View Details
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onEdit(promotion.id);
-              setOpenDropdownId(null);
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <EditIcon className="w-4 h-4" />
-            Edit Promotion
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onCopy(promotion.code);
-              setOpenDropdownId(null);
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <CopyIcon className="w-4 h-4" />
-            Copy Code
-          </button>
-          <div className="border-t border-gray-100 my-1" />
-          <button
-            type="button"
-            onClick={() => {
-              onToggleStatus(promotion.id);
-              setOpenDropdownId(null);
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            {promotion.status === "ACTIVE" ? "⏸️" : "▶️"}
-            {promotion.status === "ACTIVE" ? "Deactivate" : "Activate"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onDelete(promotion.id);
-              setOpenDropdownId(null);
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <TrashIcon className="w-4 h-4" />
-            Delete
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
 export default function AdminPromotionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PromotionStatus | "All">(
     "All",
   );
   const [typeFilter, setTypeFilter] = useState<PromotionType | "All">("All");
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [viewPromotionId, setViewPromotionId] = useState<string | null>(null);
   const [editPromotionId, setEditPromotionId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Define table columns
-  const columns: Column<PromotionWithDetails>[] = [
-    {
-      header: "Promotion Name",
-      cell: (promotion) => (
-        <div>
-          <span className="font-medium text-gray-900">{promotion.name}</span>
-          <p className="text-sm text-gray-500">
-            Created{" "}
-            {new Date(promotion.created_at).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </p>
-        </div>
-      ),
-    },
-    {
-      header: "Code",
-      cell: (promotion) => (
-        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-          {promotion.code}
-        </code>
-      ),
-    },
-    {
-      header: "Discount",
-      cell: (promotion) => {
-        let discountText = "";
-        switch (promotion.type) {
-          case "PERCENTAGE":
-            discountText = `${promotion.value}% OFF`;
-            break;
-          case "FIXED_AMOUNT":
-            discountText = `₦${Number(promotion.value).toLocaleString()} OFF`;
-            break;
-          case "FREE_SHIPPING":
-            discountText = "FREE SHIPPING";
-            break;
-          case "BUY_X_GET_Y":
-            discountText = "BUY X GET Y";
-            break;
-        }
-        return (
-          <div>
-            <span className="font-medium text-green-600">{discountText}</span>
-            <p className="text-sm text-gray-500">
-              Min: ₦{Number(promotion.min_order_value).toLocaleString()}
-            </p>
-          </div>
-        );
-      },
-    },
-    {
-      header: "Usage",
-      cell: (promotion) => {
-        const usageCount = promotion._count.usages;
-        const usageLimit = promotion.usage_limit;
-        const percentage =
-          usageLimit > 0 ? Math.min((usageCount / usageLimit) * 100, 100) : 0;
-
-        return (
-          <div>
-            <span className="text-gray-900">
-              {usageCount} / {usageLimit || "∞"}
-            </span>
-            {usageLimit > 0 && (
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                <div
-                  className="bg-blue-600 h-1 rounded-full"
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      header: "Duration",
-      cell: (promotion) => (
-        <div>
-          <span className="text-sm text-gray-600">
-            {new Date(promotion.start_date).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-          <br />
-          <span className="text-sm text-gray-600">
-            {new Date(promotion.end_date).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: "Status",
-      cell: (promotion) => {
-        const statusColors = {
-          ACTIVE: "bg-green-100 text-green-800",
-          INACTIVE: "bg-gray-100 text-gray-800",
-          EXPIRED: "bg-red-100 text-red-800",
-          SCHEDULED: "bg-blue-100 text-blue-800",
-        };
-        return (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}
-          >
-            {promotion.status}
-          </span>
-        );
-      },
-    },
-    {
-      header: "Target",
-      cell: (promotion) => (
-        <span className="text-gray-600">
-          {promotion.target_customers.replace("_", " ")}
-        </span>
-      ),
-    },
-    {
-      header: "Actions",
-      cell: (promotion) => (
-        <ActionsDropdown
-          promotion={promotion}
-          onView={handleViewPromotion}
-          onEdit={handleEditPromotion}
-          onDelete={handleDeletePromotion}
-          onCopy={handleCopyCode}
-          onToggleStatus={handleToggleStatus}
-          openDropdownId={openDropdownId}
-          setOpenDropdownId={setOpenDropdownId}
-        />
-      ),
-      className: "w-20",
-    },
-  ];
+  // Template presets for quick creation
+  const [pendingTemplate, setPendingTemplate] = useState<{
+    name: string;
+    code: string;
+    type: PromotionType;
+    value: number;
+    target: "ALL" | "NEW_CUSTOMERS" | "VIP";
+    min_order: number;
+  } | null>(null);
 
   // Fetch promotions from database
   const promotionsQuery = trpc.getPromotions.useQuery(
     {
-      page: 1,
-      limit: 100,
+      page: currentPage,
+      limit: 10,
       status: statusFilter !== "All" ? statusFilter : undefined,
       type: typeFilter !== "All" ? typeFilter : undefined,
       search: searchTerm || undefined,
@@ -320,6 +86,8 @@ export default function AdminPromotionsPage() {
       toast.success("Promotion deleted successfully");
       utils.getPromotions.invalidate();
       utils.getPromotionStats.invalidate();
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
     },
     onError: (error) => {
       toast.error(`Failed to delete promotion: ${error.message}`);
@@ -338,17 +106,18 @@ export default function AdminPromotionsPage() {
     },
   });
 
-  const handleAddPromotion = () => {
+  const handleAddPromotion = useCallback(() => {
+    setPendingTemplate(null);
     setIsCreating(true);
-  };
+  }, []);
 
-  const handleViewPromotion = (id: string) => {
+  const handleViewPromotion = useCallback((id: string) => {
     setViewPromotionId(id);
-  };
+  }, []);
 
-  const handleEditPromotion = (id: string) => {
+  const handleEditPromotion = useCallback((id: string) => {
     setEditPromotionId(id);
-  };
+  }, []);
 
   // Get selected promotions for sheets
   const selectedViewPromotion =
@@ -356,23 +125,39 @@ export default function AdminPromotionsPage() {
   const selectedEditPromotion =
     promotions.find((p) => p.id === editPromotionId) || null;
 
-  const handleDeletePromotion = (id: string) => {
-    if (
-      confirm(
-        "Are you sure you want to delete this promotion? This action cannot be undone.",
-      )
-    ) {
-      deletePromotionMutation.mutate({ id });
+  const handleDeletePromotion = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const confirmDelete = async () => {
+    if (deleteTargetId) {
+      await deletePromotionMutation.mutateAsync({ id: deleteTargetId });
     }
   };
 
-  const handleCopyCode = (code: string) => {
+  const handleCopyCode = useCallback((code: string) => {
     navigator.clipboard.writeText(code);
     toast.success(`Code "${code}" copied to clipboard`);
-  };
+  }, []);
 
-  const handleToggleStatus = (id: string) => {
-    toggleStatusMutation.mutate({ id });
+  const handleToggleStatus = useCallback(
+    (id: string) => {
+      toggleStatusMutation.mutate({ id });
+    },
+    [toggleStatusMutation],
+  );
+
+  const handleQuickTemplate = (template: {
+    name: string;
+    code: string;
+    type: PromotionType;
+    value: number;
+    target: "ALL" | "NEW_CUSTOMERS" | "VIP";
+    min_order: number;
+  }) => {
+    setPendingTemplate(template);
+    setIsCreating(true);
   };
 
   const handleExportCSV = () => {
@@ -413,6 +198,7 @@ export default function AdminPromotionsPage() {
       },
     ];
     exportToCSV(promotions, columns, "promotions");
+    toast.success("Promotions exported to CSV");
   };
 
   const statuses: Array<PromotionStatus | "All"> = [
@@ -446,6 +232,204 @@ export default function AdminPromotionsPage() {
     BUY_X_GET_Y: "Buy X Get Y",
   };
 
+  // Define table columns
+  const columns: Column<PromotionWithDetails>[] = useMemo(
+    () => [
+      {
+        header: "Promotion Name",
+        cell: (promotion) => (
+          <div>
+            <span className="font-medium text-gray-900">{promotion.name}</span>
+            <p className="text-sm text-gray-500">
+              Created{" "}
+              {new Date(promotion.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+        ),
+      },
+      {
+        header: "Code",
+        cell: (promotion) => (
+          <button
+            type="button"
+            onClick={() => handleCopyCode(promotion.code)}
+            className="bg-gray-100 px-2 py-1 rounded text-sm font-mono hover:bg-gray-200 transition-colors cursor-pointer"
+            title="Click to copy"
+          >
+            {promotion.code}
+          </button>
+        ),
+      },
+      {
+        header: "Discount",
+        cell: (promotion) => {
+          let discountText = "";
+          switch (promotion.type) {
+            case "PERCENTAGE":
+              discountText = `${promotion.value}% OFF`;
+              break;
+            case "FIXED_AMOUNT":
+              discountText = `₦${Number(promotion.value).toLocaleString()} OFF`;
+              break;
+            case "FREE_SHIPPING":
+              discountText = "FREE SHIPPING";
+              break;
+            case "BUY_X_GET_Y":
+              discountText = "BUY X GET Y";
+              break;
+          }
+          return (
+            <div>
+              <span className="font-medium text-green-600">{discountText}</span>
+              <p className="text-sm text-gray-500">
+                Min: ₦{Number(promotion.min_order_value).toLocaleString()}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        header: "Usage",
+        cell: (promotion) => {
+          const usageCount = promotion._count.usages;
+          const usageLimit = promotion.usage_limit;
+          const percentage =
+            usageLimit > 0 ? Math.min((usageCount / usageLimit) * 100, 100) : 0;
+
+          return (
+            <div>
+              <span className="text-gray-900">
+                {usageCount} / {usageLimit || "∞"}
+              </span>
+              {usageLimit > 0 && (
+                <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                  <div
+                    className="bg-blue-600 h-1 rounded-full"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        header: "Duration",
+        cell: (promotion) => (
+          <div>
+            <span className="text-sm text-gray-600">
+              {new Date(promotion.start_date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+            <span className="text-sm text-gray-400"> → </span>
+            <span className="text-sm text-gray-600">
+              {new Date(promotion.end_date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: "Status",
+        cell: (promotion) => {
+          const statusColors = {
+            ACTIVE: "bg-green-100 text-green-800",
+            INACTIVE: "bg-gray-100 text-gray-800",
+            EXPIRED: "bg-red-100 text-red-800",
+            SCHEDULED: "bg-blue-100 text-blue-800",
+          };
+          return (
+            <span
+              className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}
+            >
+              {promotion.status}
+            </span>
+          );
+        },
+      },
+      {
+        header: "Actions",
+        className: "w-20",
+        cell: (promotion) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Actions"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <title>Open actions</title>
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleViewPromotion(promotion.id)}
+                className="cursor-pointer"
+              >
+                <EyeIcon className="w-4 h-4 mr-2" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleEditPromotion(promotion.id)}
+                className="cursor-pointer"
+              >
+                <EditIcon className="w-4 h-4 mr-2" />
+                Edit Promotion
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleCopyCode(promotion.code)}
+                className="cursor-pointer"
+              >
+                <CopyIcon className="w-4 h-4 mr-2" />
+                Copy Code
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleToggleStatus(promotion.id)}
+                className="cursor-pointer"
+              >
+                {promotion.status === "ACTIVE" ? "⏸️" : "▶️"}
+                <span className="ml-2">
+                  {promotion.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeletePromotion(promotion.id)}
+                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <TrashIcon className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [
+      handleCopyCode,
+      handleViewPromotion,
+      handleEditPromotion,
+      handleToggleStatus,
+      handleDeletePromotion,
+    ],
+  );
+
   return (
     <div>
       {/* Header */}
@@ -477,10 +461,10 @@ export default function AdminPromotionsPage() {
               className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
             >
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                <div className="w-10 h-10 bg-gray-200 rounded-lg" />
                 <div className="ml-4 flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
+                  <div className="h-8 bg-gray-200 rounded w-16" />
                 </div>
               </div>
             </div>
@@ -565,7 +549,7 @@ export default function AdminPromotionsPage() {
             onChange={(e) =>
               setStatusFilter(e.target.value as PromotionStatus | "All")
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none bg-white"
           >
             {statuses.map((status) => (
               <option key={status} value={status}>
@@ -579,7 +563,7 @@ export default function AdminPromotionsPage() {
             onChange={(e) =>
               setTypeFilter(e.target.value as PromotionType | "All")
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none bg-white"
           >
             {types.map((type) => (
               <option key={type} value={type}>
@@ -607,16 +591,31 @@ export default function AdminPromotionsPage() {
         onRetry={() => promotionsQuery.refetch()}
         emptyMessage="No promotions found matching your filters"
         keyExtractor={(promotion) => promotion.id}
+        pagination={promotionsQuery.data?.pagination}
+        onPageChange={(page) => setCurrentPage(page)}
       />
 
       {/* Quick Campaign Templates */}
       <div className="mt-8 bg-white p-6 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Quick Campaign Templates</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Click a template to pre-fill the promotion form with suggested
+          settings
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "New Customer Welcome",
+                code: "WELCOME20",
+                type: "PERCENTAGE",
+                value: 20,
+                target: "NEW_CUSTOMERS",
+                min_order: 5000,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-300 transition-colors"
           >
             <div className="text-green-600 mb-2">🎯</div>
             <p className="font-medium">New Customer Welcome</p>
@@ -625,58 +624,99 @@ export default function AdminPromotionsPage() {
 
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "Free Shipping Promo",
+                code: "FREESHIP",
+                type: "FREE_SHIPPING",
+                value: 0,
+                target: "ALL",
+                min_order: 20000,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
           >
             <div className="text-blue-600 mb-2">🚚</div>
             <p className="font-medium">Free Shipping</p>
             <p className="text-sm text-gray-500">
-              Free delivery above minimum order
+              Free delivery above ₦20,000
             </p>
           </button>
 
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "VIP Exclusive Discount",
+                code: "VIP15",
+                type: "PERCENTAGE",
+                value: 15,
+                target: "VIP",
+                min_order: 0,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors"
           >
             <div className="text-purple-600 mb-2">⭐</div>
             <p className="font-medium">VIP Exclusive</p>
-            <p className="text-sm text-gray-500">
-              Special discount for loyal customers
-            </p>
+            <p className="text-sm text-gray-500">15% for loyal customers</p>
           </button>
 
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "Flash Sale",
+                code: "FLASH30",
+                type: "PERCENTAGE",
+                value: 30,
+                target: "ALL",
+                min_order: 10000,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-red-300 transition-colors"
           >
             <div className="text-red-600 mb-2">🔥</div>
             <p className="font-medium">Flash Sale</p>
-            <p className="text-sm text-gray-500">Limited time mega discount</p>
+            <p className="text-sm text-gray-500">30% off limited time</p>
           </button>
 
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "Fixed Amount Discount",
+                code: "SAVE5000",
+                type: "FIXED_AMOUNT",
+                value: 5000,
+                target: "ALL",
+                min_order: 30000,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-orange-300 transition-colors"
           >
-            <div className="text-orange-600 mb-2">🎓</div>
-            <p className="font-medium">Student Discount</p>
-            <p className="text-sm text-gray-500">
-              Educational institution discount
-            </p>
+            <div className="text-orange-600 mb-2">💰</div>
+            <p className="font-medium">Fixed ₦5,000 Off</p>
+            <p className="text-sm text-gray-500">On orders above ₦30,000</p>
           </button>
 
           <button
             type="button"
-            onClick={() => toast.info("Template coming soon")}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() =>
+              handleQuickTemplate({
+                name: "Birthday Special",
+                code: "BIRTHDAY25",
+                type: "PERCENTAGE",
+                value: 25,
+                target: "ALL",
+                min_order: 0,
+              })
+            }
+            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-yellow-300 transition-colors"
           >
             <div className="text-yellow-600 mb-2">🎂</div>
             <p className="font-medium">Birthday Special</p>
-            <p className="text-sm text-gray-500">Birthday month celebration</p>
+            <p className="text-sm text-gray-500">25% birthday discount</p>
           </button>
         </div>
       </div>
@@ -696,13 +736,32 @@ export default function AdminPromotionsPage() {
           if (!open) {
             setIsCreating(false);
             setEditPromotionId(null);
+            setPendingTemplate(null);
           }
         }}
         onSuccess={() => {
           promotionsQuery.refetch();
           setIsCreating(false);
           setEditPromotionId(null);
+          setPendingTemplate(null);
         }}
+        template={pendingTemplate}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open);
+          if (!open) setDeleteTargetId(null);
+        }}
+        title="Delete Promotion"
+        description="Are you sure you want to delete this promotion? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        isLoading={deletePromotionMutation.isPending}
+        variant="danger"
       />
     </div>
   );

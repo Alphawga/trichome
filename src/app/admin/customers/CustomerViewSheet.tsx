@@ -2,7 +2,9 @@
 
 import type { Address, User } from "@prisma/client";
 import Image from "next/image";
+import Link from "next/link";
 
+import { LogoLoader } from "@/components/ui/logo-loader";
 import {
   Sheet,
   SheetContent,
@@ -10,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { trpc } from "@/utils/trpc";
 
 type Customer = Pick<
   User,
@@ -41,6 +44,14 @@ export function CustomerViewSheet({
   open,
   onOpenChange,
 }: CustomerViewSheetProps) {
+  // Fetch full customer data with orders when sheet is open
+  const customerDetailQuery = trpc.getUserById.useQuery(
+    { id: customer?.id || "" },
+    {
+      enabled: !!customer?.id && open,
+    },
+  );
+
   if (!customer) return null;
 
   const location = customer.addresses[0]
@@ -53,6 +64,9 @@ export function CustomerViewSheet({
     SUSPENDED: "bg-red-100 text-red-800",
     INACTIVE: "bg-gray-100 text-gray-800",
   };
+
+  const fullCustomerData = customerDetailQuery.data;
+  const recentOrders = fullCustomerData?.orders || [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -70,7 +84,10 @@ export function CustomerViewSheet({
             <div className="flex items-center gap-4 mb-4">
               <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-200">
                 <Image
-                  src={customer.image || "/images/placeholder-user.png"}
+                  src={
+                    customer.image ||
+                    `https://placehold.co/80x80/38761d/white?text=${customer.first_name?.[0] || "U"}`
+                  }
                   alt={`${customer.first_name} ${customer.last_name}`}
                   fill
                   className="object-cover"
@@ -110,13 +127,13 @@ export function CustomerViewSheet({
                 <p className="font-medium text-gray-900">
                   {customer.last_login_at
                     ? new Date(customer.last_login_at).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        },
-                      )
+                      "en-US",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )
                     : "Never"}
                 </p>
               </div>
@@ -179,30 +196,75 @@ export function CustomerViewSheet({
                   ₦
                   {customer.totalOrders > 0
                     ? (
-                        customer.totalSpent / customer.totalOrders
-                      ).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
+                      customer.totalSpent / customer.totalOrders
+                    ).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
                     : "0.00"}
                 </p>
               </div>
-              {customer.lastOrderDate && (
-                <div className="bg-orange-50 p-4 rounded-lg col-span-2">
-                  <p className="text-sm text-gray-600 mb-1">Last Order Date</p>
-                  <p className="text-lg font-semibold text-orange-600">
-                    {new Date(customer.lastOrderDate).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )}
-                  </p>
-                </div>
-              )}
             </div>
+          </div>
+
+          {/* Recent Orders */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Recent Orders</h3>
+              <Link
+                href={`/admin/orders?search=${encodeURIComponent(customer.email)}`}
+                className="text-sm text-[#38761d] hover:underline"
+              >
+                View All Orders →
+              </Link>
+            </div>
+
+            {customerDetailQuery.isLoading ? (
+              <div className="flex justify-center py-8">
+                <LogoLoader size="sm" text="Loading orders..." />
+              </div>
+            ) : recentOrders.length > 0 ? (
+              <div className="space-y-3">
+                {recentOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        #{order.order_number}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">
+                        ₦{Number(order.total).toLocaleString()}
+                      </p>
+                      <span
+                        className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${order.status === "DELIVERED"
+                            ? "bg-green-100 text-green-800"
+                            : order.status === "SHIPPED"
+                              ? "bg-blue-100 text-blue-800"
+                              : order.status === "PROCESSING"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : order.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                <p>No orders yet</p>
+              </div>
+            )}
           </div>
 
           {/* Customer Tier */}

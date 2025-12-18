@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 interface ReviewViewSheetProps {
@@ -41,8 +42,8 @@ export function ReviewViewSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center py-12">
+            <LogoLoader size="md" text="Loading review..." />
           </div>
         </SheetContent>
       </Sheet>
@@ -146,10 +147,10 @@ export function ReviewViewSheet({
             <h3 className="text-lg font-semibold mb-4">Status</h3>
             <span
               className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${review.status === "APPROVED"
-                  ? "bg-green-100 text-green-800"
-                  : review.status === "PENDING"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
+                ? "bg-green-100 text-green-800"
+                : review.status === "PENDING"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
                 }`}
             >
               {review.status === "APPROVED"

@@ -50,6 +50,7 @@ interface CreateOrderWithPaymentInput {
   payment_method?: PaymentMethod;
   currency?: Currency;
   notes?: string;
+  promo_code?: string;
   onOrderCreated?: () => void | Promise<void>;
 }
 
@@ -119,6 +120,7 @@ export function useOrderCreation() {
         payment_method: input.payment_method || "WALLET",
         currency: input.currency || "NGN",
         notes: input.notes,
+        promo_code: input.promo_code,
       });
     },
     [createOrderMutation],

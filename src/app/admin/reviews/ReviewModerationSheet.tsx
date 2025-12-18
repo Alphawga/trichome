@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 const reviewModerationSchema = z.object({
@@ -110,8 +111,8 @@ export function ReviewModerationSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg px-4 md:px-6">
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center py-12">
+            <LogoLoader size="md" text="Loading review..." />
           </div>
         </SheetContent>
       </Sheet>
@@ -180,10 +181,10 @@ export function ReviewModerationSheet({
             <p className="text-sm text-gray-500 mb-2">Current Status</p>
             <span
               className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${review.status === "APPROVED"
-                  ? "bg-green-100 text-green-800"
-                  : review.status === "PENDING"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
+                ? "bg-green-100 text-green-800"
+                : review.status === "PENDING"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
                 }`}
             >
               {review.status === "APPROVED"
@@ -219,18 +220,18 @@ export function ReviewModerationSheet({
           {selectedStatus !== review.status && (
             <div
               className={`p-3 rounded-lg ${selectedStatus === "APPROVED"
-                  ? "bg-green-50 border border-green-200"
-                  : selectedStatus === "REJECTED"
-                    ? "bg-red-50 border border-red-200"
-                    : "bg-yellow-50 border border-yellow-200"
+                ? "bg-green-50 border border-green-200"
+                : selectedStatus === "REJECTED"
+                  ? "bg-red-50 border border-red-200"
+                  : "bg-yellow-50 border border-yellow-200"
                 }`}
             >
               <p
                 className={`text-sm ${selectedStatus === "APPROVED"
-                    ? "text-green-800"
-                    : selectedStatus === "REJECTED"
-                      ? "text-red-800"
-                      : "text-yellow-800"
+                  ? "text-green-800"
+                  : selectedStatus === "REJECTED"
+                    ? "text-red-800"
+                    : "text-yellow-800"
                   }`}
               >
                 {selectedStatus === "APPROVED" && (

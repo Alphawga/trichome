@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "@/components/providers";
+import { CompareFloatingBar } from "@/components/compare/CompareFloatingBar";
 
 // Inter font for body text
 const inter = Inter({
@@ -64,7 +65,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${classyVogue.variable} antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CompareFloatingBar />
+        </Providers>
       </body>
     </html>
   );

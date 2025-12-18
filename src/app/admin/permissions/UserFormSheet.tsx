@@ -1,7 +1,7 @@
 "use client";
 
 import type { UserRole, UserStatus } from "@prisma/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 interface UserFormSheetProps {
@@ -38,21 +39,23 @@ export function UserFormSheet({
 
   const userQuery = trpc.getUserById.useQuery(
     { id: userId! },
-    {
-      enabled: isEditing && open,
-      onSuccess: (data) => {
-        setFormData({
-          email: data.email,
-          password: "", // Don't populate password
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          phone: data.phone || "",
-          role: data.role,
-          status: data.status,
-        });
-      },
-    },
+    { enabled: isEditing && open }
   );
+
+  // Update form data when user data is loaded
+  useEffect(() => {
+    if (userQuery.data) {
+      setFormData({
+        email: userQuery.data.email,
+        password: "", // Don't populate password
+        first_name: userQuery.data.first_name || "",
+        last_name: userQuery.data.last_name || "",
+        phone: userQuery.data.phone || "",
+        role: userQuery.data.role,
+        status: userQuery.data.status,
+      });
+    }
+  }, [userQuery.data]);
 
   const createMutation = trpc.createUser.useMutation({
     onSuccess: () => {
@@ -124,7 +127,7 @@ export function UserFormSheet({
 
         {isEditing && userQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+            <LogoLoader size="md" text="Loading user..." />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">

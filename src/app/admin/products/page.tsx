@@ -46,7 +46,7 @@ export default function AdminProductsPage() {
     "All",
   );
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [currentPage, _setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(
     null,
   );
@@ -64,10 +64,19 @@ export default function AdminProductsPage() {
     name: string;
   } | null>(null);
 
+  // Bulk selection state
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [bulkStatusConfirmOpen, setBulkStatusConfirmOpen] = useState(false);
+  const [pendingBulkStatus, setPendingBulkStatus] =
+    useState<ProductStatus | null>(null);
+
   const productsQuery = trpc.getProducts.useQuery(
     {
       page: currentPage,
-      limit: 20,
+      limit: 10,
       search: searchTerm.trim() || undefined,
       status: statusFilter === "All" ? undefined : statusFilter,
     },
@@ -95,6 +104,33 @@ export default function AdminProductsPage() {
     },
   });
 
+  const bulkDeleteMutation = trpc.bulkDeleteProducts.useMutation({
+    onSuccess: (data) => {
+      productsQuery.refetch();
+      statsQuery.refetch();
+      setSelectedProductIds(new Set());
+      setBulkDeleteConfirmOpen(false);
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete products: ${error.message}`);
+    },
+  });
+
+  const bulkUpdateStatusMutation = trpc.bulkUpdateProductStatus.useMutation({
+    onSuccess: (data) => {
+      productsQuery.refetch();
+      statsQuery.refetch();
+      setSelectedProductIds(new Set());
+      setBulkStatusConfirmOpen(false);
+      setPendingBulkStatus(null);
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(`Failed to update products: ${error.message}`);
+    },
+  });
+
   const adminProducts =
     productsQuery.data?.products?.map((product) => ({
       ...product,
@@ -118,6 +154,60 @@ export default function AdminProductsPage() {
       categoryFilter === "All" || product.category.name === categoryFilter;
     return matchesCategory;
   });
+
+  // Bulk selection handlers
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedProductIds(new Set(filteredProducts.map((p) => p.id)));
+      } else {
+        setSelectedProductIds(new Set());
+      }
+    },
+    [filteredProducts],
+  );
+
+  const handleSelectProduct = useCallback((productId: string, checked: boolean) => {
+    setSelectedProductIds((prev) => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(productId);
+      } else {
+        newSet.delete(productId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const isAllSelected =
+    filteredProducts.length > 0 &&
+    filteredProducts.every((p) => selectedProductIds.has(p.id));
+  const isSomeSelected = selectedProductIds.size > 0;
+
+  const handleBulkDelete = () => {
+    if (selectedProductIds.size === 0) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    await bulkDeleteMutation.mutateAsync({
+      ids: Array.from(selectedProductIds),
+    });
+  };
+
+  const handleBulkStatusChange = (status: ProductStatus) => {
+    if (selectedProductIds.size === 0) return;
+    setPendingBulkStatus(status);
+    setBulkStatusConfirmOpen(true);
+  };
+
+  const confirmBulkStatusChange = async () => {
+    if (!pendingBulkStatus) return;
+    await bulkUpdateStatusMutation.mutateAsync({
+      ids: Array.from(selectedProductIds),
+      status: pendingBulkStatus,
+    });
+  };
 
   const handleAddProduct = () => {
     setEditingProductId(undefined);
@@ -194,6 +284,19 @@ export default function AdminProductsPage() {
 
   const columns: Column<ProductWithRelations>[] = useMemo(
     () => [
+      {
+        header: "",
+        className: "w-12",
+        cell: (product) => (
+          <input
+            type="checkbox"
+            checked={selectedProductIds.has(product.id)}
+            onChange={(e) => handleSelectProduct(product.id, e.target.checked)}
+            className="w-4 h-4 text-[#38761d] focus:ring-[#38761d] border-gray-300 rounded cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+      },
       {
         header: "Product",
         cell: (product) => (
@@ -310,6 +413,8 @@ export default function AdminProductsPage() {
       },
     ],
     [
+      selectedProductIds,
+      handleSelectProduct,
       deletingProductId,
       handleViewProduct,
       handleEditProduct,
@@ -396,6 +501,73 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {isSomeSelected && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-blue-900">
+              {selectedProductIds.size} product(s) selected
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedProductIds(new Set())}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Change Status
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("ACTIVE")}
+                  className="cursor-pointer"
+                >
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                  Active
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("DRAFT")}
+                  className="cursor-pointer"
+                >
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2" />
+                  Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("INACTIVE")}
+                  className="cursor-pointer"
+                >
+                  <span className="w-2 h-2 bg-gray-400 rounded-full mr-2" />
+                  Inactive
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("ARCHIVED")}
+                  className="cursor-pointer"
+                >
+                  <span className="w-2 h-2 bg-gray-600 rounded-full mr-2" />
+                  Archived
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-colors"
+            >
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
@@ -447,6 +619,19 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Select All Checkbox */}
+      <div className="bg-white px-4 py-2 border border-gray-200 rounded-t-lg border-b-0 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          onChange={(e) => handleSelectAll(e.target.checked)}
+          className="w-4 h-4 text-[#38761d] focus:ring-[#38761d] border-gray-300 rounded cursor-pointer"
+        />
+        <span className="text-sm text-gray-600">
+          {isAllSelected ? "Deselect all" : "Select all on this page"}
+        </span>
+      </div>
+
       <DataTable
         columns={columns}
         data={filteredProducts}
@@ -455,18 +640,9 @@ export default function AdminProductsPage() {
         onRetry={() => productsQuery.refetch()}
         emptyMessage="No products found matching your filters"
         keyExtractor={(product) => product.id}
+        pagination={productsQuery.data?.pagination}
+        onPageChange={(page) => setCurrentPage(page)}
       />
-
-      {filteredProducts.length > 20 && (
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            className="px-6 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Load More Products
-          </button>
-        </div>
-      )}
 
       <ProductFormSheet
         productId={editingProductId}
@@ -481,6 +657,7 @@ export default function AdminProductsPage() {
         onOpenChange={setViewSheetOpen}
       />
 
+      {/* Single delete confirm */}
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={(open) => {
@@ -494,6 +671,35 @@ export default function AdminProductsPage() {
         onConfirm={confirmDeleteProduct}
         isLoading={deleteProductMutation.isPending}
         variant="danger"
+      />
+
+      {/* Bulk delete confirm */}
+      <ConfirmDialog
+        open={bulkDeleteConfirmOpen}
+        onOpenChange={setBulkDeleteConfirmOpen}
+        title="Delete Selected Products"
+        description={`Are you sure you want to delete ${selectedProductIds.size} product(s)? This action cannot be undone.`}
+        confirmLabel="Delete All"
+        cancelLabel="Cancel"
+        onConfirm={confirmBulkDelete}
+        isLoading={bulkDeleteMutation.isPending}
+        variant="danger"
+      />
+
+      {/* Bulk status change confirm */}
+      <ConfirmDialog
+        open={bulkStatusConfirmOpen}
+        onOpenChange={(open) => {
+          setBulkStatusConfirmOpen(open);
+          if (!open) setPendingBulkStatus(null);
+        }}
+        title="Update Product Status"
+        description={`Are you sure you want to change the status of ${selectedProductIds.size} product(s) to "${pendingBulkStatus}"?`}
+        confirmLabel="Update Status"
+        cancelLabel="Cancel"
+        onConfirm={confirmBulkStatusChange}
+        isLoading={bulkUpdateStatusMutation.isPending}
+        variant="default"
       />
     </div>
   );

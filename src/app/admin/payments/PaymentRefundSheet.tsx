@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { LogoLoader } from "@/components/ui/logo-loader";
 import { trpc } from "@/utils/trpc";
 
 interface PaymentRefundSheetProps {
@@ -84,7 +85,7 @@ export function PaymentRefundSheet({
 
         {paymentQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
+            <LogoLoader size="md" text="Loading payment..." />
           </div>
         ) : paymentQuery.error ? (
           <div className="text-center py-12 text-red-600">

@@ -88,10 +88,17 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-body;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading;
   }
 }
@@ -144,6 +151,7 @@
 
 /* Ensure search bar is NEVER blurred - Mobile only */
 @media (max-width: 1023px) {
+
   form[action*="search"],
   form:has(input[placeholder*="Search"]),
   form:has(input[placeholder*="Search"]) *,
@@ -159,4 +167,37 @@
     filter: none;
     -webkit-filter: none;
   }
+}
+
+/* Custom Logo Loader Animations */
+@keyframes pulse-scale {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-pulse-scale {
+  animation: pulse-scale 1.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
 }

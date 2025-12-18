@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import Script from "next/script";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface GoogleOneTapProps {
     /** Whether to show the One Tap prompt on page load */
@@ -73,6 +73,15 @@ export function GoogleOneTap({
 }: GoogleOneTapProps) {
     const { status } = useSession();
     const initialized = useRef(false);
+    const [isStable, setIsStable] = useState(false);
+
+    // Wait for auth state to stabilize
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsStable(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleCredentialResponse = useCallback(
         async (response: GoogleCredentialResponse) => {
@@ -108,7 +117,8 @@ export function GoogleOneTap({
         if (
             !window.google?.accounts?.id ||
             initialized.current ||
-            status === "authenticated"
+            status === "authenticated" ||
+            !isStable
         ) {
             return;
         }
@@ -151,7 +161,16 @@ export function GoogleOneTap({
 
     useEffect(() => {
         // Only show One Tap for unauthenticated users
-        if (!enabled || status === "authenticated" || status === "loading") {
+        if (!enabled || status === "authenticated") {
+            // Cancel if visible
+            if (window.google?.accounts?.id && initialized.current) {
+                window.google.accounts.id.cancel();
+                initialized.current = false;
+            }
+            return;
+        }
+
+        if (status === "loading" || !isStable) {
             return;
         }
 
@@ -166,7 +185,7 @@ export function GoogleOneTap({
                 window.google.accounts.id.cancel();
             }
         };
-    }, [enabled, status, initializeGoogleOneTap]);
+    }, [enabled, status, isStable, initializeGoogleOneTap]);
 
     // Don't render anything if already authenticated
     if (status === "authenticated") {

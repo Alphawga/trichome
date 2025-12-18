@@ -195,12 +195,14 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async session({ session, token }) {
+      console.log("SESSION CALLBACK - token:", { sub: token.sub, role: token.role, first_name: token.first_name });
       if (token && session.user) {
         session.user.id = token.sub ?? "";
         session.user.role = token.role;
         session.user.first_name = token.first_name;
         session.user.last_name = token.last_name;
       }
+      console.log("SESSION CALLBACK - session.user:", session.user);
       return session;
     },
     // async jwt({ token, user }) {
@@ -244,10 +246,13 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (dbUser) {
+          console.log("JWT CALLBACK - dbUser found:", { id: dbUser.id, role: dbUser.role, email: dbUser.email });
           token.email = dbUser.email;
           token.role = dbUser.role;
           token.first_name = dbUser.first_name;
           token.last_name = dbUser.last_name;
+        } else {
+          console.log("JWT CALLBACK - NO dbUser found for token.sub:", token.sub);
         }
       }
 

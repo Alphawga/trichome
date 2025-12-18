@@ -387,3 +387,25 @@ export const getReviewStats = staffProcedure.query(async ({ ctx }) => {
     rejected,
   };
 });
+
+// Bulk update review status (staff/admin)
+export const bulkUpdateReviewStatus = staffProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(ReviewStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const result = await ctx.prisma.review.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully ${status.toLowerCase()} ${result.count} review(s)`,
+    };
+  });
