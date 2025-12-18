@@ -25,7 +25,7 @@ async function seedMinimalProd() {
   console.log("Running minimal production seed...");
 
   const adminEmail = "nonso@trichomes.com";
-  const adminPassword = "*udysnbwebudu*^28d";
+  const adminPassword = process.env.ADMIN_PASSWORD || "";
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   const adminUser = await prisma.user.upsert({
