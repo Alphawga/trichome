@@ -518,7 +518,7 @@ export function ProductFormSheet({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">No brand</option>
-                  {brandsQuery.data?.map((brand) => (
+                  {brandsQuery.data?.brands?.map((brand) => (
                     <option key={brand.id} value={brand.id}>
                       {brand.name}
                     </option>
