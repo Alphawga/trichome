@@ -11,13 +11,24 @@ import { TrackingUpdates } from "@/components/orders/TrackingUpdates";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
 
+import { useAuth } from "@/app/contexts/auth-context";
+
 function TrackOrderPageContent() {
   const searchParams = useSearchParams();
+  const { session } = useAuth();
   const orderNumber = searchParams.get("id") || searchParams.get("order") || "";
-  const email = searchParams.get("email") || "";
+  const urlEmail = searchParams.get("email") || "";
 
-  const [guestEmail, _setGuestEmail] = useState(email);
-  const [showEmailInput, _setShowEmailInput] = useState(!email && !orderNumber);
+  // Use URL email or session email
+  const effectiveEmail = urlEmail || session?.user?.email || "";
+
+  const [guestEmail, setGuestEmail] = useState(effectiveEmail);
+  // Show input if we don't have an email interacting with the page
+  const [showEmailInput, setShowEmailInput] = useState(!effectiveEmail);
+
+  // Update guestEmail state if session/url changes (and user hasn't typed yet?) 
+  // actually simpler to just use effectiveEmail in query if guestEmail is empty?
+  // Let's rely on guestEmail as the source of truth for the Query, initialized from effectiveEmail.
 
   // Fetch tracking information
   const {
@@ -27,17 +38,18 @@ function TrackOrderPageContent() {
   } = trpc.getOrderTracking.useQuery(
     {
       orderNumber: orderNumber || "",
-      email: guestEmail || email || undefined,
+      email: guestEmail || effectiveEmail || undefined, // Fallback to effective in case state didn't catch up
     },
     {
-      enabled: !!orderNumber && (!!email || !!guestEmail),
+      enabled: !!orderNumber && (!!guestEmail || !!effectiveEmail),
       refetchOnWindowFocus: false,
       retry: false,
     },
   );
 
   // Email input for guest tracking
-  if (showEmailInput || (!orderNumber && !email)) {
+  // Show if explicitly requested OR if we have order number but no email to track with
+  if (showEmailInput || (!!orderNumber && !guestEmail && !effectiveEmail) || (!orderNumber && !effectiveEmail)) {
     return (
       <div className="min-h-screen bg-white">
         {/* Hero Header Section */}
@@ -49,9 +61,9 @@ function TrackOrderPageContent() {
             className="object-cover"
             priority
           />
-          <div 
-            className="absolute inset-0" 
-            style={{ 
+          <div
+            className="absolute inset-0"
+            style={{
               background: 'linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)'
             }}
           />
@@ -214,9 +226,9 @@ function TrackOrderPageContent() {
           className="object-cover"
           priority
         />
-        <div 
-          className="absolute inset-0" 
-          style={{ 
+        <div
+          className="absolute inset-0"
+          style={{
             background: 'linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)'
           }}
         />

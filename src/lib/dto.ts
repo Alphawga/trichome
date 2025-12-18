@@ -96,6 +96,7 @@ export const createProductSchema = z.object({
   seo_title: z.string().optional(),
   seo_description: z.string().optional(),
   category_id: z.string().min(1, "Category is required"),
+  brand_id: z.string().optional(),
   images: z.array(productImageSchema).optional(),
 });
 
@@ -122,6 +123,7 @@ export const updateProductSchema = z.object({
   seo_title: z.string().optional(),
   seo_description: z.string().optional(),
   category_id: z.string().optional(),
+  brand_id: z.string().optional().nullable(),
 });
 
 export const getCategoriesSchema = z.object({

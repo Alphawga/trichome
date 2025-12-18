@@ -19,10 +19,10 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
- 
+
         router.replace("/");
       } else if (user.role !== "ADMIN" && user.role !== "STAFF") {
-      
+
         router.replace("/");
       }
     }
@@ -48,15 +48,15 @@ export default function AdminLayout({
     );
   }
 
- 
+
   if (!user || (user.role !== "ADMIN" && user.role !== "STAFF")) {
     notFound();
   }
 
   return (
-    <div className="flex bg-[#F8F9FA] min-h-screen">
+    <div className="bg-[#F8F9FA] min-h-screen">
       <AdminSidebar currentPath={pathname} onNavigate={handleNavigate} />
-      <div className="flex-1 flex flex-col">
+      <div className="ml-64 flex flex-col min-h-screen">
         <AdminHeader onExitAdmin={handleExitAdmin} />
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{children}</main>
       </div>

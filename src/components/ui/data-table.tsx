@@ -9,6 +9,13 @@ export interface Column<T> {
   className?: string;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
 export interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
@@ -19,6 +26,9 @@ export interface DataTableProps<T> {
   loadingRows?: number;
   keyExtractor: (item: T) => string;
   rowClassName?: string;
+  // Pagination props
+  pagination?: PaginationInfo;
+  onPageChange?: (page: number) => void;
 }
 
 export function DataTable<T>({
@@ -31,6 +41,8 @@ export function DataTable<T>({
   loadingRows = 5,
   keyExtractor,
   rowClassName = "border-b last:border-0 hover:bg-gray-50",
+  pagination,
+  onPageChange,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
@@ -73,51 +85,160 @@ export function DataTable<T>({
     );
   }
 
+  const renderPagination = () => {
+    if (!pagination || !onPageChange) return null;
+
+    const { page, pages, total, limit } = pagination;
+    const startItem = (page - 1) * limit + 1;
+    const endItem = Math.min(page * limit, total);
+
+    // Generate page numbers to show
+    const getPageNumbers = () => {
+      const pageNumbers: (number | string)[] = [];
+      const maxVisiblePages = 5;
+
+      if (pages <= maxVisiblePages) {
+        // Show all pages
+        for (let i = 1; i <= pages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        // Show first, last, and pages around current
+        if (page <= 3) {
+          for (let i = 1; i <= 4; i++) {
+            pageNumbers.push(i);
+          }
+          pageNumbers.push("...");
+          pageNumbers.push(pages);
+        } else if (page >= pages - 2) {
+          pageNumbers.push(1);
+          pageNumbers.push("...");
+          for (let i = pages - 3; i <= pages; i++) {
+            pageNumbers.push(i);
+          }
+        } else {
+          pageNumbers.push(1);
+          pageNumbers.push("...");
+          for (let i = page - 1; i <= page + 1; i++) {
+            pageNumbers.push(i);
+          }
+          pageNumbers.push("...");
+          pageNumbers.push(pages);
+        }
+      }
+
+      return pageNumbers;
+    };
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t bg-gray-50">
+        {/* Info text */}
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-medium">{startItem}</span> to{" "}
+          <span className="font-medium">{endItem}</span> of{" "}
+          <span className="font-medium">{total}</span> results
+        </div>
+
+        {/* Pagination controls */}
+        <div className="flex items-center gap-1">
+          {/* Previous button */}
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+          >
+            Previous
+          </button>
+
+          {/* Page numbers */}
+          <div className="flex items-center gap-1">
+            {getPageNumbers().map((pageNum, index) =>
+              pageNum === "..." ? (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 py-1 text-sm text-gray-500"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => onPageChange(pageNum as number)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${page === pageNum
+                      ? "bg-[#38761d] text-white"
+                      : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                    }`}
+                >
+                  {pageNum}
+                </button>
+              ),
+            )}
+          </div>
+
+          {/* Next button */}
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= pages}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="bg-white rounded-lg border overflow-x-auto">
-      <table className="w-full text-left">
-        <thead className="bg-gray-50 border-b">
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={column.header}
-                className={`p-4 font-semibold text-sm text-gray-700 ${column.className || ""}`}
-              >
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.length > 0 ? (
-            data.map((item) => (
-              <tr key={keyExtractor(item)} className={rowClassName}>
-                {columns.map((column) => (
-                  <td
-                    key={column.header}
-                    className={`p-4 ${column.className || ""}`}
-                  >
-                    {column.cell
-                      ? column.cell(item)
-                      : column.accessor
-                        ? String(item[column.accessor])
-                        : null}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
+    <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 border-b">
             <tr>
-              <td
-                colSpan={columns.length}
-                className="p-8 text-center text-gray-500"
-              >
-                {emptyMessage}
-              </td>
+              {columns.map((column) => (
+                <th
+                  key={column.header}
+                  className={`p-4 font-semibold text-sm text-gray-700 ${column.className || ""}`}
+                >
+                  {column.header}
+                </th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.length > 0 ? (
+              data.map((item) => (
+                <tr key={keyExtractor(item)} className={rowClassName}>
+                  {columns.map((column) => (
+                    <td
+                      key={column.header}
+                      className={`p-4 ${column.className || ""}`}
+                    >
+                      {column.cell
+                        ? column.cell(item)
+                        : column.accessor
+                          ? String(item[column.accessor])
+                          : null}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="p-8 text-center text-gray-500"
+                >
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {renderPagination()}
     </div>
   );
 }

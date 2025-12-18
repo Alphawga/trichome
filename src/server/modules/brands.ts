@@ -3,31 +3,51 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, staffProcedure } from "../trpc";
 
-// Get all brands (public)
+// Get all brands (public) - with optional pagination
 export const getBrands = publicProcedure
   .input(
     z.object({
       status: z.nativeEnum(ProductStatus).optional(),
       search: z.string().optional(),
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(100).default(10),
     }),
   )
   .query(async ({ input, ctx }) => {
-    const brands = await ctx.prisma.brand.findMany({
-      where: {
-        ...(input.status && { status: input.status }),
-        ...(input.search && {
-          name: { contains: input.search, mode: "insensitive" as const },
-        }),
-      },
-      include: {
-        _count: {
-          select: { products: true },
-        },
-      },
-      orderBy: { sort_order: "asc" },
-    });
+    const { page, limit, status, search } = input;
+    const skip = (page - 1) * limit;
 
-    return brands;
+    const where = {
+      ...(status && { status }),
+      ...(search && {
+        name: { contains: search, mode: "insensitive" as const },
+      }),
+    };
+
+    const [brands, total] = await Promise.all([
+      ctx.prisma.brand.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          _count: {
+            select: { products: true },
+          },
+        },
+        orderBy: { sort_order: "asc" },
+      }),
+      ctx.prisma.brand.count({ where }),
+    ]);
+
+    return {
+      brands,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
   });
 
 // Get brand by ID (public)
@@ -39,6 +59,20 @@ export const getBrandById = publicProcedure
       include: {
         _count: {
           select: { products: true },
+        },
+        products: {
+          take: 5,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            images: {
+              take: 1,
+              select: { url: true },
+            },
+          },
+          orderBy: { created_at: "desc" },
         },
       },
     });
@@ -206,5 +240,59 @@ export const deleteBrand = staffProcedure
     });
 
     return { message: "Brand deleted successfully" };
+  });
+
+// Bulk delete brands (staff)
+export const bulkDeleteBrands = staffProcedure
+  .input(z.object({ ids: z.array(z.string()).min(1) }))
+  .mutation(async ({ input, ctx }) => {
+    const { ids } = input;
+
+    // Check if any brands have products
+    const brandsWithProducts = await ctx.prisma.brand.findMany({
+      where: {
+        id: { in: ids },
+        products: { some: {} },
+      },
+      select: { id: true, name: true },
+    });
+
+    if (brandsWithProducts.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Cannot delete brands with associated products: ${brandsWithProducts.map((b) => b.name).join(", ")}`,
+      });
+    }
+
+    const result = await ctx.prisma.brand.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully deleted ${result.count} brand(s)`,
+    };
+  });
+
+// Bulk update brand status (staff)
+export const bulkUpdateBrandStatus = staffProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(ProductStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const result = await ctx.prisma.brand.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully updated ${result.count} brand(s) to ${status}`,
+    };
   });
 

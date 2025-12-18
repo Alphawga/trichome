@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReviewStatus } from "@prisma/client";
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column, DataTable } from "@/components/ui/data-table";
 import {
   DropdownMenu,
@@ -18,7 +18,6 @@ import {
   ExportIcon,
   EyeIcon,
   SearchIcon,
-  TrashIcon,
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
 import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
@@ -52,6 +51,7 @@ export default function AdminReviewsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | "All">("All");
   const [ratingFilter, setRatingFilter] = useState<number | "All">("All");
+  const [currentPage, setCurrentPage] = useState(1);
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [moderationSheetOpen, setModerationSheetOpen] = useState(false);
   const [viewingReviewId, setViewingReviewId] = useState<string | undefined>();
@@ -59,10 +59,19 @@ export default function AdminReviewsPage() {
     string | undefined
   >();
 
+  // Bulk selection state
+  const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [pendingBulkStatus, setPendingBulkStatus] = useState<
+    ReviewStatus | null
+  >(null);
+
   const reviewsQuery = trpc.getAllReviews.useQuery(
     {
-      page: 1,
-      limit: 100,
+      page: currentPage,
+      limit: 10,
       status: statusFilter !== "All" ? statusFilter : undefined,
     },
     {
@@ -87,6 +96,20 @@ export default function AdminReviewsPage() {
     },
   });
 
+  const bulkUpdateMutation = trpc.bulkUpdateReviewStatus.useMutation({
+    onSuccess: (data) => {
+      reviewsQuery.refetch();
+      statsQuery.refetch();
+      setSelectedReviewIds(new Set());
+      setBulkConfirmOpen(false);
+      setPendingBulkStatus(null);
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(`Failed to update reviews: ${error.message}`);
+    },
+  });
+
   const reviews = reviewsQuery.data?.reviews || [];
 
   const filteredReviews = reviews.filter((review) => {
@@ -104,6 +127,52 @@ export default function AdminReviewsPage() {
     }
     return true;
   });
+
+  // Bulk selection handlers
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedReviewIds(new Set(filteredReviews.map((r) => r.id)));
+      } else {
+        setSelectedReviewIds(new Set());
+      }
+    },
+    [filteredReviews],
+  );
+
+  const handleSelectReview = useCallback(
+    (reviewId: string, checked: boolean) => {
+      setSelectedReviewIds((prev) => {
+        const newSet = new Set(prev);
+        if (checked) {
+          newSet.add(reviewId);
+        } else {
+          newSet.delete(reviewId);
+        }
+        return newSet;
+      });
+    },
+    [],
+  );
+
+  const isAllSelected =
+    filteredReviews.length > 0 &&
+    filteredReviews.every((r) => selectedReviewIds.has(r.id));
+  const isSomeSelected = selectedReviewIds.size > 0;
+
+  const handleBulkStatusChange = (status: ReviewStatus) => {
+    if (selectedReviewIds.size === 0) return;
+    setPendingBulkStatus(status);
+    setBulkConfirmOpen(true);
+  };
+
+  const confirmBulkStatusChange = async () => {
+    if (!pendingBulkStatus) return;
+    await bulkUpdateMutation.mutateAsync({
+      ids: Array.from(selectedReviewIds),
+      status: pendingBulkStatus,
+    });
+  };
 
   const handleViewReview = useCallback((id: string) => {
     setViewingReviewId(id);
@@ -151,7 +220,12 @@ export default function AdminReviewsPage() {
       { key: "rating", label: "Rating" },
       { key: (r) => r.title || "No title", label: "Title" },
       {
-        key: (r) => (r.status === "APPROVED" ? "Approved" : r.status === "PENDING" ? "Pending" : "Rejected"),
+        key: (r) =>
+          r.status === "APPROVED"
+            ? "Approved"
+            : r.status === "PENDING"
+              ? "Pending"
+              : "Rejected",
         label: "Status",
       },
       { key: "helpful_count", label: "Helpful Count" },
@@ -161,12 +235,26 @@ export default function AdminReviewsPage() {
       },
     ];
     exportToCSV(filteredReviews, columns, "reviews");
+    toast.success("Reviews exported to CSV");
   };
 
   const stats = statsQuery.data;
 
   const columns: Column<ReviewWithRelations>[] = useMemo(
     () => [
+      {
+        header: "",
+        className: "w-12",
+        cell: (review) => (
+          <input
+            type="checkbox"
+            checked={selectedReviewIds.has(review.id)}
+            onChange={(e) => handleSelectReview(review.id, e.target.checked)}
+            className="w-4 h-4 text-[#38761d] focus:ring-[#38761d] border-gray-300 rounded cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+      },
       {
         header: "Product",
         cell: (review) => (
@@ -177,7 +265,9 @@ export default function AdminReviewsPage() {
             >
               {review.product.name}
             </Link>
-            <p className="text-sm text-gray-500">ID: {review.product.id.slice(0, 8)}</p>
+            <p className="text-sm text-gray-500">
+              ID: {review.product.id.slice(0, 8)}
+            </p>
           </div>
         ),
       },
@@ -225,13 +315,12 @@ export default function AdminReviewsPage() {
         header: "Status",
         cell: (review) => (
           <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              review.status === "APPROVED"
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${review.status === "APPROVED"
                 ? "bg-green-100 text-green-800"
                 : review.status === "PENDING"
                   ? "bg-yellow-100 text-yellow-800"
                   : "bg-red-100 text-red-800"
-            }`}
+              }`}
           >
             {review.status === "APPROVED"
               ? "Approved"
@@ -239,12 +328,6 @@ export default function AdminReviewsPage() {
                 ? "Pending"
                 : "Rejected"}
           </span>
-        ),
-      },
-      {
-        header: "Helpful",
-        cell: (review) => (
-          <span className="text-gray-600">{review.helpful_count}</span>
         ),
       },
       {
@@ -265,7 +348,11 @@ export default function AdminReviewsPage() {
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 title="Actions"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <title>Open actions</title>
                   <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                 </svg>
@@ -303,12 +390,34 @@ export default function AdminReviewsPage() {
                   </DropdownMenuItem>
                 </>
               )}
+              {review.status !== "PENDING" && (
+                <>
+                  <DropdownMenuSeparator />
+                  {review.status === "APPROVED" ? (
+                    <DropdownMenuItem
+                      onClick={() => handleQuickReject(review.id)}
+                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    >
+                      ✗ Reject
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => handleQuickApprove(review.id)}
+                      className="cursor-pointer text-green-600 focus:text-green-600 focus:bg-green-50"
+                    >
+                      ✓ Approve
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ],
     [
+      selectedReviewIds,
+      handleSelectReview,
       handleViewReview,
       handleModerateReview,
       handleQuickApprove,
@@ -382,6 +491,40 @@ export default function AdminReviewsPage() {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {isSomeSelected && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-blue-900">
+              {selectedReviewIds.size} review(s) selected
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedReviewIds(new Set())}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("APPROVED")}
+              className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200 transition-colors"
+            >
+              ✓ Approve Selected
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("REJECTED")}
+              className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-md hover:bg-red-200 transition-colors"
+            >
+              ✗ Reject Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -415,7 +558,9 @@ export default function AdminReviewsPage() {
             value={ratingFilter}
             onChange={(e) =>
               setRatingFilter(
-                e.target.value === "All" ? "All" : Number.parseInt(e.target.value, 10),
+                e.target.value === "All"
+                  ? "All"
+                  : Number.parseInt(e.target.value, 10),
               )
             }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 outline-none"
@@ -438,6 +583,19 @@ export default function AdminReviewsPage() {
         </div>
       </div>
 
+      {/* Select All Checkbox */}
+      <div className="bg-white px-4 py-2 border border-gray-200 rounded-t-lg border-b-0 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          onChange={(e) => handleSelectAll(e.target.checked)}
+          className="w-4 h-4 text-[#38761d] focus:ring-[#38761d] border-gray-300 rounded cursor-pointer"
+        />
+        <span className="text-sm text-gray-600">
+          {isAllSelected ? "Deselect all" : "Select all on this page"}
+        </span>
+      </div>
+
       {/* Data Table */}
       <DataTable
         columns={columns}
@@ -447,6 +605,8 @@ export default function AdminReviewsPage() {
         onRetry={() => reviewsQuery.refetch()}
         emptyMessage="No reviews found matching your filters"
         keyExtractor={(review) => review.id}
+        pagination={reviewsQuery.data?.pagination}
+        onPageChange={(page) => setCurrentPage(page)}
       />
 
       {/* View Sheet */}
@@ -466,7 +626,22 @@ export default function AdminReviewsPage() {
           statsQuery.refetch();
         }}
       />
+
+      {/* Bulk action confirm */}
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        onOpenChange={(open) => {
+          setBulkConfirmOpen(open);
+          if (!open) setPendingBulkStatus(null);
+        }}
+        title={`${pendingBulkStatus === "APPROVED" ? "Approve" : "Reject"} Reviews`}
+        description={`Are you sure you want to ${pendingBulkStatus === "APPROVED" ? "approve" : "reject"} ${selectedReviewIds.size} review(s)?`}
+        confirmLabel={pendingBulkStatus === "APPROVED" ? "Approve" : "Reject"}
+        cancelLabel="Cancel"
+        onConfirm={confirmBulkStatusChange}
+        isLoading={bulkUpdateMutation.isPending}
+        variant={pendingBulkStatus === "APPROVED" ? "default" : "danger"}
+      />
     </div>
   );
 }
-

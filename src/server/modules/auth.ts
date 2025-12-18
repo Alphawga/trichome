@@ -67,6 +67,25 @@ export const register = publicProcedure
       },
     });
 
+    // Send welcome email if enabled
+    try {
+      const welcomeEmailSetting = await ctx.prisma.systemSetting.findUnique({
+        where: { key: "email_welcome_enabled" },
+      });
+
+      if (welcomeEmailSetting?.value !== "false") {
+        const { sendWelcomeEmail } = await import("@/lib/email");
+        await sendWelcomeEmail({
+          recipientName: input.first_name || undefined,
+          recipientEmail: input.email,
+          loginUrl: process.env.NEXT_PUBLIC_APP_URL || "https://trichomes.com",
+        });
+      }
+    } catch (error) {
+      // Don't fail registration if email fails
+      console.error("Failed to send welcome email:", error);
+    }
+
     return { user, message: "User registered successfully" };
   });
 

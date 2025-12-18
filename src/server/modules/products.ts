@@ -254,6 +254,7 @@ export const createProduct = staffProcedure
       seo_title: z.string().optional(),
       seo_description: z.string().optional(),
       category_id: z.string(),
+      brand_id: z.string().optional(),
       images: z
         .array(
           z.object({
@@ -313,6 +314,7 @@ export const updateProduct = staffProcedure
       seo_title: z.string().optional(),
       seo_description: z.string().optional(),
       category_id: z.string().optional(),
+      brand_id: z.string().optional().nullable(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -465,3 +467,52 @@ export const getProductStats = staffProcedure.query(async ({ ctx }) => {
     lowStockProducts,
   };
 });
+
+// Bulk delete products (staff)
+export const bulkDeleteProducts = staffProcedure
+  .input(z.object({ ids: z.array(z.string()).min(1) }))
+  .mutation(async ({ input, ctx }) => {
+    const { ids } = input;
+
+    // First delete related images
+    await ctx.prisma.productImage.deleteMany({
+      where: { product_id: { in: ids } },
+    });
+
+    // Delete product variants
+    await ctx.prisma.productVariant.deleteMany({
+      where: { product_id: { in: ids } },
+    });
+
+    // Delete the products
+    const result = await ctx.prisma.product.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully deleted ${result.count} product(s)`,
+    };
+  });
+
+// Bulk update product status (staff)
+export const bulkUpdateProductStatus = staffProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()).min(1),
+      status: z.nativeEnum(ProductStatus),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { ids, status } = input;
+
+    const result = await ctx.prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return {
+      count: result.count,
+      message: `Successfully updated ${result.count} product(s) to ${status}`,
+    };
+  });

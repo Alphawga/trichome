@@ -76,7 +76,9 @@ export function PaymentHandler({
     onPaymentOpen?.();
 
     try {
+      // @ts-ignore - Monnify JS SDK does not have types
       const Monnify = (await import("monnify-js")).default;
+      // @ts-ignore - Monnify JS SDK does not have types
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
         process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
@@ -197,16 +199,11 @@ export function PaymentHandler({
     return <OrderCreationStatus status="processing" />;
   }
 
-  return null; 
+  return null;
 }
 
 
-export function usePaymentHandler(
-  props: Omit<
-    PaymentHandlerProps,
-    "onPaymentOpen" | "onPaymentClose" | "showStatus"
-  >,
-) {
+export function usePaymentHandler(props: PaymentHandlerProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "success" | "error"
   >("idle");
@@ -223,8 +220,10 @@ export function usePaymentHandler(
     setPaymentError(null);
 
     try {
-     
+
+      // @ts-ignore - Monnify JS SDK does not have types
       const Monnify = (await import("monnify-js")).default;
+      // @ts-ignore - Monnify JS SDK does not have types
       const monnify = new Monnify(
         process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
         process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
@@ -266,7 +265,7 @@ export function usePaymentHandler(
 
           if (response.paymentStatus === "PAID") {
             setPaymentStatus("success");
-            
+
             createOrder({
               paymentResponse: {
                 paymentStatus: response.paymentStatus,
@@ -283,6 +282,7 @@ export function usePaymentHandler(
               payment_method: props.paymentMethod || "WALLET",
               currency: props.currency || "NGN",
               notes: props.notes,
+              promo_code: props.promoCode,
             });
           } else {
             setPaymentStatus("error");

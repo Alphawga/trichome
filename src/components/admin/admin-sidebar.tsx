@@ -65,7 +65,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 shrink-0 min-h-screen sticky top-0">
+    <aside className="w-64 bg-white border-r border-gray-200 shrink-0 h-screen fixed top-0 left-0 overflow-y-auto">
       <div className="h-20 flex items-center px-6">
         <h2 className="text-lg font-semibold text-gray-800">Admin Panel</h2>
       </div>
@@ -77,8 +77,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 type="button"
                 onClick={() => onNavigate(item.path)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left font-medium transition-colors ${isActive(item.path)
-                    ? "bg-green-100 text-[#38761d]"
-                    : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-green-100 text-[#38761d]"
+                  : "text-gray-600 hover:bg-gray-100"
                   }`}
               >
                 {item.icon}

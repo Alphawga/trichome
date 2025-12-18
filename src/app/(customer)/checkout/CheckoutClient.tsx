@@ -134,10 +134,20 @@ function CheckoutPageContent() {
   } | null>(null);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
 
+  // Calculate totals
+  const subtotal = useMemo(
+    () =>
+      cartItems.reduce((sum, item) => {
+        const price = Number(item.product.price as unknown as number);
+        return sum + price * item.quantity;
+      }, 0),
+    [cartItems],
+  );
+
   // Validate promo code query
   const validatePromoCodeQuery = trpc.validatePromoCode.useQuery(
-    { code: promoCode },
-    { enabled: false },
+    { code: promoCode, subtotal },
+    { enabled: false, retry: false },
   );
 
   const handleApplyPromoCode = async () => {
@@ -148,16 +158,21 @@ function CheckoutPageContent() {
 
     try {
       const result = await validatePromoCodeQuery.refetch();
-      if (result.data && result.data.isValid) {
+
+      if (result.isError) {
+        setPromoCodeError(result.error.message || "Invalid promo code");
+        setAppliedPromoCode(null);
+        return;
+      }
+
+      if (result.data) {
         setAppliedPromoCode({
           code: promoCode,
-          discount: result.data.discount || 0,
-          isFreeShipping: result.data.isFreeShipping || false,
+          discount: result.data.discountAmount,
+          isFreeShipping: result.data.isFreeShipping,
         });
         setPromoCodeError(null);
         toast.success("Promo code applied successfully!");
-      } else {
-        setPromoCodeError(result.data?.message || "Invalid promo code");
       }
     } catch (error) {
       setPromoCodeError("Failed to validate promo code");
@@ -170,15 +185,7 @@ function CheckoutPageContent() {
     setPromoCodeError(null);
   };
 
-  // Calculate totals
-  const subtotal = useMemo(
-    () =>
-      cartItems.reduce((sum, item) => {
-        const price = Number(item.product.price as unknown as number);
-        return sum + price * item.quantity;
-      }, 0),
-    [cartItems],
-  );
+
 
   const shippingCalculation = useMemo(() => {
     const input = {
@@ -256,6 +263,7 @@ function CheckoutPageContent() {
     },
     customerName: `${formData.first_name} ${formData.last_name}`,
     customerEmail: formData.email,
+    promoCode: appliedPromoCode?.code,
   });
 
   const guestPaymentHandler = useGuestPaymentHandler({
@@ -270,6 +278,7 @@ function CheckoutPageContent() {
       tax,
       total,
     },
+    promoCode: appliedPromoCode?.code,
   });
 
   const paymentHandler =
