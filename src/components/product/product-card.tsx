@@ -3,8 +3,9 @@
 import Image from "next/image";
 import type React from "react";
 import { useState } from "react";
-import { HeartIcon, MinusIcon, PlusIcon } from "../ui/icons";
+import { HeartIcon, MinusIcon, PlusIcon, CompareIcon } from "../ui/icons";
 import type { ProductWithRelations } from "./product-grid";
+import { useCompare } from "@/app/contexts/compare-context";
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -23,15 +24,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const isInWishlist = wishlist.includes(product.id);
+  const { addToCompare, removeFromCompare, isInCompare } = useCompare();
+  const isCompared = isInCompare(product.id);
 
-  
+
   const primaryImage =
     product.images?.find((img) => img.is_primary) || product.images?.[0];
   const imageUrl =
     primaryImage?.url ||
     `https://placehold.co/400x400/e6e4c6/3a643b?text=${encodeURIComponent(product.name.charAt(0))}`;
 
- 
+
   const inStock = !product.track_quantity || product.quantity > 0;
   const maxQuantity = product.track_quantity ? product.quantity : 999;
 
@@ -57,12 +60,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     onToggleWishlist(product);
   };
 
+  const handleToggleCompareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isCompared) {
+      removeFromCompare(product.id);
+    } else {
+      addToCompare(product.id);
+    }
+  };
+
   const handleCardClick = () => {
     onProductClick(product);
   };
 
   return (
-    <div 
+    <div
       onClick={handleCardClick}
       className="bg-white pb-5 group transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl h-full w-full overflow-hidden rounded-xl flex flex-col cursor-pointer"
     >
@@ -80,6 +92,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             Out of Stock
           </div>
         )}
+        {/* Hover Actions */}
+        <div className="absolute top-2 left-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <button
+            type="button"
+            onClick={handleToggleCompareClick}
+            className={`p-1.5 rounded-full shadow-sm transition-colors duration-200 ${isCompared
+              ? "bg-[#1E3024] text-white"
+              : "bg-white text-[#1E3024] hover:bg-[#1E3024] hover:text-white"
+              }`}
+            title={isCompared ? "Remove from compare" : "Add to compare"}
+          >
+            <CompareIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Product Information */}
@@ -106,7 +132,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </p>
           {product.compare_price &&
             Number(product.compare_price) > Number(product.price) && (
-                <p className="text-[8px] md:text-xs font-body text-[#1E3024]/40 line-through decoration-[#1E3024]/40">
+              <p className="text-[8px] md:text-xs font-body text-[#1E3024]/40 line-through decoration-[#1E3024]/40">
                 ₦{Number(product.compare_price).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,

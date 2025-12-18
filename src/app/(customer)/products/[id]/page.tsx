@@ -4,7 +4,7 @@ import type { Category, Product, ProductImage } from "@prisma/client";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,6 +15,8 @@ import { HeartIcon, MinusIcon, PlusIcon } from "@/components/ui/icons";
 import { WhatsAppButton } from "@/components/whatsapp/WhatsAppButton";
 import { addToLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
+import { useCompare } from "@/app/contexts/compare-context";
+import { CompareIcon } from "@/components/ui/icons";
 
 type ProductWithRelations = Product & {
   category: Pick<Category, "id" | "name" | "slug">;
@@ -44,6 +46,17 @@ export default function ProductDetailsPage() {
 
   const [quantity, setQuantity] = useState(1);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const { addToCompare, removeFromCompare, isInCompare } = useCompare();
+  const isCompared = product ? isInCompare(product.id) : false;
+
+  const handleToggleCompare = () => {
+    if (!product) return;
+    if (isCompared) {
+      removeFromCompare(product.id);
+    } else {
+      addToCompare(product.id);
+    }
+  };
 
   // Wishlist TRPC integration
 
@@ -298,6 +311,16 @@ export default function ProductDetailsPage() {
                     filled={isInWishlist}
                     className={isInWishlist ? "text-[#40702A]" : ""}
                   />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleCompare}
+                  className={`p-3 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 ease-out rounded-sm ${isCompared ? "text-[#1E3024] bg-gray-100" : "text-gray-600"
+                    }`}
+                  title={isCompared ? "Remove from compare" : "Add to compare"}
+                >
+                  <CompareIcon className={isCompared ? "text-[#1E3024]" : ""} />
                 </button>
 
                 <div className="flex items-center border border-gray-200 rounded-sm">

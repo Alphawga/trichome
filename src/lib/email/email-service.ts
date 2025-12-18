@@ -97,7 +97,14 @@ class ProductionEmailService implements EmailService {
 
 
     if (!smtpHost || !smtpUser || !smtpPass) {
-      console.warn("SMTP credentials not configured, falling back to development mode");
+      const missingVars = [];
+      if (!smtpHost) missingVars.push("SMTP_HOST/SMTP_SERVER");
+      if (!smtpUser) missingVars.push("SMTP_USER/LOGIN");
+      if (!smtpPass) missingVars.push("SMTP_PASSWORD");
+
+      console.warn(
+        `⚠️ SMTP credentials not fully configured. Missing: ${missingVars.join(", ")}. Falling back to development mode (console log).`
+      );
       const devService = new DevelopmentEmailService();
       return devService.send(options);
     }

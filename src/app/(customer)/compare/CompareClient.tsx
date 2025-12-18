@@ -7,33 +7,25 @@ import { useState } from "react";
 import { ComparisonTable } from "@/components/products/ComparisonTable";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
+import { useCompare } from "@/app/contexts/compare-context";
 
 export default function CompareClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [productIds, setProductIds] = useState<string[]>(() => {
-    const ids = searchParams.get("products")?.split(",").filter(Boolean) || [];
-    return ids.slice(0, 4);
-  });
+  const { comparedProductIds, removeFromCompare, addToCompare } = useCompare();
 
+  // Use context IDs instead of URL params
   const { data: products, isLoading } = trpc.getProductsByIds.useQuery(
-    { ids: productIds },
+    { ids: comparedProductIds },
     {
-      enabled: productIds.length > 0,
+      enabled: comparedProductIds.length > 0,
       refetchOnWindowFocus: false,
     },
   );
 
   const handleRemove = (productId: string) => {
-    const newIds = productIds.filter((id) => id !== productId);
-    setProductIds(newIds);
-
-    if (newIds.length > 0) {
-      router.push(`/compare?products=${newIds.join(",")}`);
-    } else {
-      router.push("/compare");
-    }
+    removeFromCompare(productId);
   };
+
 
   const handleAddProduct = () => {
     router.push("/products?addToCompare=true");
