@@ -180,14 +180,13 @@ export const authOptions: NextAuthOptions = {
       console.log("SIGN IN STARTED", { user, account, profile });
       if (account?.provider === "google") {
         try {
-          // Following CODING_RULES.md - proper error handling and type safety
+
           if (!user.email) {
             console.error("Google sign in failed: No email provided");
             return false;
           }
           return true;
         } catch (error) {
-          // Following CODING_RULES.md - proper error handling
           console.error("Error during Google sign in:", error);
           return false;
         }
@@ -195,14 +194,14 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async session({ session, token }) {
-      console.log("SESSION CALLBACK - token:", { sub: token.sub, role: token.role, first_name: token.first_name });
+
       if (token && session.user) {
         session.user.id = token.sub ?? "";
         session.user.role = token.role;
         session.user.first_name = token.first_name;
         session.user.last_name = token.last_name;
       }
-      console.log("SESSION CALLBACK - session.user:", session.user);
+
       return session;
     },
     // async jwt({ token, user }) {

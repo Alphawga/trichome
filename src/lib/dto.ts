@@ -1,6 +1,5 @@
 import {
   ContentStatus,
-  ContentType,
   Currency,
   OrderStatus,
   PaymentMethod,
@@ -95,7 +94,7 @@ export const createProductSchema = z.object({
   taxable: z.boolean().optional(),
   seo_title: z.string().optional(),
   seo_description: z.string().optional(),
-  category_id: z.string().min(1, "Category is required"),
+  category_id: z.string(), // Allow empty string when creating new category inline
   brand_id: z.string().optional(),
   images: z.array(productImageSchema).optional(),
 });
@@ -243,7 +242,7 @@ export const getSubscribersSchema = z.object({
 });
 
 export const createContentSchema = z.object({
-  type: z.nativeEnum(ContentType),
+  type: z.string().min(1, "Content type is required"),
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().optional(),
   description: z.string().optional(),
@@ -261,7 +260,7 @@ export const createContentSchema = z.object({
 
 export const updateContentSchema = z.object({
   id: z.string(),
-  type: z.nativeEnum(ContentType).optional(),
+  type: z.string().optional(),
   title: z.string().min(1).optional(),
   subtitle: z.string().optional(),
   description: z.string().optional(),
@@ -280,7 +279,7 @@ export const updateContentSchema = z.object({
 export const getContentSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(20),
-  type: z.nativeEnum(ContentType).optional(),
+  type: z.string().optional(),
   status: z.nativeEnum(ContentStatus).optional(),
 });
 

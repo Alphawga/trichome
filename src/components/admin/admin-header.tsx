@@ -44,8 +44,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   const handleLogout = async () => {
     try {
       router.push("/auth/signin");
-      await logout();
       toast.success("Logged out successfully");
+      await logout();
       setDropdownOpen(false);
     } catch (error) {
       toast.error("Failed to logout");
