@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import { ServerSearchCombobox } from "@/components/ui/server-search-combobox";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import {
   Sheet,
@@ -79,7 +80,7 @@ export function ProductFormSheet({
   );
 
   const categoriesQuery = trpc.getCategories.useQuery({});
-  const brandsQuery = trpc.getBrands.useQuery({});
+  // Note: Brands now use server-side search instead of loading all at once
   const utils = trpc.useUtils();
 
   const getOrCreateBrandMutation = trpc.getOrCreateBrand.useMutation({
@@ -270,11 +271,22 @@ export function ProductFormSheet({
 
   const isLoading = createMutation.isPending || updateMutation.isPending || getOrCreateBrandMutation.isPending || getOrCreateCategoryMutation.isPending;
 
-  // Prepare brand options for the combobox
-  const brandOptions = (brandsQuery.data?.brands || []).map((brand) => ({
-    label: brand.name,
-    value: brand.id,
-  }));
+  // Server-side brand search function
+  const searchBrands = async (query: string) => {
+    try {
+      const result = await utils.client.getBrands.query({
+        search: query,
+        limit: 20,
+      });
+      return result.brands.map((brand) => ({
+        label: brand.name,
+        value: brand.id,
+      }));
+    } catch (error) {
+      console.error("Brand search error:", error);
+      return [];
+    }
+  };
 
   // Prepare category options for the combobox
   const categoryOptions = (categoriesQuery.data || []).map((category) => ({
@@ -615,16 +627,17 @@ export function ProductFormSheet({
                 >
                   Brand
                 </label>
-                <CreatableCombobox
+                <ServerSearchCombobox
                   id="product-brand"
-                  options={brandOptions}
                   value={watch("brand_id") || ""}
                   onChange={handleBrandChange}
+                  onSearch={searchBrands}
                   placeholder="Search or type to create brand..."
                   createLabel="Create brand"
                   disabled={isLoading || isSubmitting}
-                  isLoading={brandsQuery.isLoading}
                   pendingLabel={pendingBrandName || undefined}
+                  debounceMs={300}
+                  minSearchLength={1}
                 />
                 {pendingBrandName && (
                   <p className="mt-1 text-sm text-green-600">
