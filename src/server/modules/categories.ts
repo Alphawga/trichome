@@ -187,3 +187,50 @@ export const deleteCategory = staffProcedure
 
     return { message: "Category deleted successfully" };
   });
+
+// Get or create category by name (staff)
+// Used for inline category creation in product form
+export const getOrCreateCategory = staffProcedure
+  .input(
+    z.object({
+      name: z.string().min(1, "Category name is required"),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { name } = input;
+
+    // Check if category with this name exists (case-insensitive)
+    const existingCategory = await ctx.prisma.category.findFirst({
+      where: {
+        name: { equals: name, mode: "insensitive" },
+      },
+    });
+
+    if (existingCategory) {
+      return { category: existingCategory, created: false };
+    }
+
+    // Create new category with auto-generated slug
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    // Ensure slug is unique by appending a number if needed
+    let finalSlug = slug;
+    let counter = 1;
+    while (await ctx.prisma.category.findUnique({ where: { slug: finalSlug } })) {
+      finalSlug = `${slug}-${counter}`;
+      counter++;
+    }
+
+    const newCategory = await ctx.prisma.category.create({
+      data: {
+        name,
+        slug: finalSlug,
+        status: "ACTIVE",
+      },
+    });
+
+    return { category: newCategory, created: true };
+  });

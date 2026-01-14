@@ -5,6 +5,7 @@ import { ProductStatus } from "@prisma/client";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import {
   Sheet,
@@ -33,6 +34,10 @@ export function ProductFormSheet({
   const [productImages, setProductImages] = useState<
     Array<{ url: string; alt_text?: string; is_primary?: boolean }>
   >([]);
+  // State for pending brand creation (when user types a new brand name)
+  const [pendingBrandName, setPendingBrandName] = useState<string | null>(null);
+  // State for pending category creation (when user types a new category name)
+  const [pendingCategoryName, setPendingCategoryName] = useState<string | null>(null);
 
   const {
     register,
@@ -61,6 +66,13 @@ export function ProductFormSheet({
     },
   });
 
+  // Debug: log form errors when they change
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log("Form validation errors:", errors);
+    }
+  }, [errors]);
+
   const productQuery = trpc.getProductById.useQuery(
     productId ? { id: productId } : { id: "" },
     { enabled: !!productId },
@@ -68,6 +80,21 @@ export function ProductFormSheet({
 
   const categoriesQuery = trpc.getCategories.useQuery({});
   const brandsQuery = trpc.getBrands.useQuery({});
+  const utils = trpc.useUtils();
+
+  const getOrCreateBrandMutation = trpc.getOrCreateBrand.useMutation({
+    onSuccess: () => {
+      // Refetch brands to include the new brand in the dropdown
+      utils.getBrands.invalidate();
+    },
+  });
+
+  const getOrCreateCategoryMutation = trpc.getOrCreateCategory.useMutation({
+    onSuccess: () => {
+      // Refetch categories to include the new category in the dropdown
+      utils.getCategories.invalidate();
+    },
+  });
 
   const createMutation = trpc.createProduct.useMutation({
     onSuccess: () => {
@@ -174,6 +201,12 @@ export function ProductFormSheet({
 
   const onSubmit = async (data: CreateProductInput) => {
     try {
+      // Validate that category is provided (either selected or pending creation)
+      if (!data.category_id && !pendingCategoryName) {
+        toast.error("Category is required");
+        return;
+      }
+
       // Clean up optional numeric fields - remove if 0 or undefined
       const cleanedData = { ...data };
       if (!cleanedData.cost_price || cleanedData.cost_price === 0) {
@@ -186,9 +219,37 @@ export function ProductFormSheet({
         delete cleanedData.weight;
       }
 
+      // Handle brand creation if user typed a new brand name
+      let finalBrandId = cleanedData.brand_id;
+      if (pendingBrandName) {
+        const result = await getOrCreateBrandMutation.mutateAsync({
+          name: pendingBrandName,
+        });
+        finalBrandId = result.brand.id;
+        if (result.created) {
+          toast.success(`Brand "${pendingBrandName}" created`);
+        }
+        setPendingBrandName(null);
+      }
+
+      // Handle category creation if user typed a new category name
+      let finalCategoryId = cleanedData.category_id;
+      if (pendingCategoryName) {
+        const result = await getOrCreateCategoryMutation.mutateAsync({
+          name: pendingCategoryName,
+        });
+        finalCategoryId = result.category.id;
+        if (result.created) {
+          toast.success(`Category "${pendingCategoryName}" created`);
+        }
+        setPendingCategoryName(null);
+      }
+
       // Add images to the data
       const productData = {
         ...cleanedData,
+        brand_id: finalBrandId,
+        category_id: finalCategoryId,
         images: productImages.map((img, index) => ({
           url: img.url,
           alt_text: img.alt_text || data.name,
@@ -207,7 +268,45 @@ export function ProductFormSheet({
     }
   };
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isLoading = createMutation.isPending || updateMutation.isPending || getOrCreateBrandMutation.isPending || getOrCreateCategoryMutation.isPending;
+
+  // Prepare brand options for the combobox
+  const brandOptions = (brandsQuery.data?.brands || []).map((brand) => ({
+    label: brand.name,
+    value: brand.id,
+  }));
+
+  // Prepare category options for the combobox
+  const categoryOptions = (categoriesQuery.data || []).map((category) => ({
+    label: category.name,
+    value: category.id,
+  }));
+
+  // Handle brand selection or creation
+  const handleBrandChange = (value: string, isNew: boolean, newLabel?: string) => {
+    if (isNew && newLabel) {
+      // User wants to create a new brand
+      setPendingBrandName(newLabel);
+      setValue("brand_id", ""); // Clear the brand_id since we'll create it on submit
+    } else {
+      // User selected an existing brand
+      setPendingBrandName(null);
+      setValue("brand_id", value || undefined);
+    }
+  };
+
+  // Handle category selection or creation
+  const handleCategoryChange = (value: string, isNew: boolean, newLabel?: string) => {
+    if (isNew && newLabel) {
+      // User wants to create a new category
+      setPendingCategoryName(newLabel);
+      setValue("category_id", ""); // Clear the category_id since we'll create it on submit
+    } else {
+      // User selected an existing category
+      setPendingCategoryName(null);
+      setValue("category_id", value);
+    }
+  };
 
   const isLoadingProduct = productId && productQuery.isLoading;
   const hasError = productId && productQuery.error;
@@ -467,19 +566,23 @@ export function ProductFormSheet({
                 >
                   Category *
                 </label>
-                <select
+                <CreatableCombobox
                   id="product-category"
-                  {...register("category_id")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="">Select category</option>
-                  {categoriesQuery.data?.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.category_id && (
+                  options={categoryOptions}
+                  value={watch("category_id") || ""}
+                  onChange={handleCategoryChange}
+                  placeholder="Search or type to create category..."
+                  createLabel="Create category"
+                  disabled={isLoading || isSubmitting}
+                  isLoading={categoriesQuery.isLoading}
+                  pendingLabel={pendingCategoryName || undefined}
+                />
+                {pendingCategoryName && (
+                  <p className="mt-1 text-sm text-green-600">
+                    New category "{pendingCategoryName}" will be created when you save
+                  </p>
+                )}
+                {errors.category_id && !pendingCategoryName && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.category_id.message}
                   </p>
@@ -512,18 +615,22 @@ export function ProductFormSheet({
                 >
                   Brand
                 </label>
-                <select
+                <CreatableCombobox
                   id="product-brand"
-                  {...register("brand_id")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="">No brand</option>
-                  {brandsQuery.data?.brands?.map((brand) => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
+                  options={brandOptions}
+                  value={watch("brand_id") || ""}
+                  onChange={handleBrandChange}
+                  placeholder="Search or type to create brand..."
+                  createLabel="Create brand"
+                  disabled={isLoading || isSubmitting}
+                  isLoading={brandsQuery.isLoading}
+                  pendingLabel={pendingBrandName || undefined}
+                />
+                {pendingBrandName && (
+                  <p className="mt-1 text-sm text-green-600">
+                    New brand "{pendingBrandName}" will be created when you save
+                  </p>
+                )}
               </div>
 
               <div>

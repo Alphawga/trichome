@@ -296,3 +296,49 @@ export const bulkUpdateBrandStatus = staffProcedure
     };
   });
 
+// Get or create brand by name (staff)
+// Used for inline brand creation in product form
+export const getOrCreateBrand = staffProcedure
+  .input(
+    z.object({
+      name: z.string().min(1, "Brand name is required"),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const { name } = input;
+
+    // Check if brand with this name exists (case-insensitive)
+    const existingBrand = await ctx.prisma.brand.findFirst({
+      where: {
+        name: { equals: name, mode: "insensitive" },
+      },
+    });
+
+    if (existingBrand) {
+      return { brand: existingBrand, created: false };
+    }
+
+    // Create new brand with auto-generated slug
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    // Ensure slug is unique by appending a number if needed
+    let finalSlug = slug;
+    let counter = 1;
+    while (await ctx.prisma.brand.findUnique({ where: { slug: finalSlug } })) {
+      finalSlug = `${slug}-${counter}`;
+      counter++;
+    }
+
+    const newBrand = await ctx.prisma.brand.create({
+      data: {
+        name,
+        slug: finalSlug,
+        status: "ACTIVE",
+      },
+    });
+
+    return { brand: newBrand, created: true };
+  });

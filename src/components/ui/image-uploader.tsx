@@ -11,6 +11,7 @@ interface ImageUploaderProps {
   onRemove?: () => void;
   disabled?: boolean;
   folder?: string;
+  className?: string;
 }
 
 export function ImageUploader({
@@ -19,6 +20,7 @@ export function ImageUploader({
   onRemove,
   disabled,
   folder = "trichome",
+  className,
 }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +87,7 @@ export function ImageUploader({
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className ?? ""}`}>
       <div className="flex items-center gap-4">
         <input
           ref={fileInputRef}

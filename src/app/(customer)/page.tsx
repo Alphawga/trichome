@@ -11,13 +11,125 @@ import type { ProductWithRelations } from "@/components/product/product-grid";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Hero } from "@/components/sections/hero";
 import { ChevronRightIcon } from "@/components/ui/icons";
+import { CONTENT_TYPES } from "@/lib/constants/content-types";
 import { addToLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
+
+// Default content for fallbacks
+const DEFAULTS = {
+  collectionTitle: "Our Collection",
+  featuredTitle: "Featured Items",
+  topSellersTitle: "Top Sellers",
+  bannerLeft: {
+    buttonText: "Top Sellers",
+    buttonLink: "/products?sort=popular",
+    imageUrl: "/banners/new-arrivals.jpg",
+  },
+  bannerRight: {
+    buttonText: "New arrivals",
+    buttonLink: "/products?sort=newest",
+    imageUrl: "/banners/top-seller.jpg",
+  },
+  bookSession: {
+    title: "Unlock your best skin, style, and scent. Book a 1 on 1 session.",
+    description:
+      "Stop guessing, start glowing. Your beauty journey is unique, and true refinement requires expert guidance. Our private consultations are designed to go beyond surface-level advice, offering you a tailored roadmap across Skincare, Haircare, Bodycare, Decorative Artistry, and Fragrance.",
+    buttonText: "Book my session",
+    buttonLink: "/consultation",
+    imageUrl: "/book-a-session.jpg",
+  },
+  whyChoose: {
+    title: "Why Choose Trichomes?",
+    imageUrl: "/store.png",
+  },
+};
 
 export default function Page() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
+
+  // Fetch all home page content from database
+  const contentQuery = trpc.getPageContent.useQuery(
+    {
+      types: [
+        CONTENT_TYPES.HOME_COLLECTION_TITLE,
+        CONTENT_TYPES.HOME_FEATURED_TITLE,
+        CONTENT_TYPES.HOME_TOPSELLERS_TITLE,
+        CONTENT_TYPES.HOME_BANNER_LEFT,
+        CONTENT_TYPES.HOME_BANNER_RIGHT,
+        CONTENT_TYPES.HOME_BOOK_SESSION,
+        CONTENT_TYPES.HOME_WHY_CHOOSE,
+      ],
+    },
+    {
+      staleTime: 60000,
+      refetchOnWindowFocus: false,
+    },
+  );
+
+  // Extract content with fallbacks
+  const contentMap = contentQuery.data || {};
+  const collectionTitle =
+    contentMap[CONTENT_TYPES.HOME_COLLECTION_TITLE]?.title ||
+    DEFAULTS.collectionTitle;
+  const featuredTitle =
+    contentMap[CONTENT_TYPES.HOME_FEATURED_TITLE]?.title ||
+    DEFAULTS.featuredTitle;
+  const topSellersTitle =
+    contentMap[CONTENT_TYPES.HOME_TOPSELLERS_TITLE]?.title ||
+    DEFAULTS.topSellersTitle;
+
+  const bannerLeft = {
+    buttonText:
+      contentMap[CONTENT_TYPES.HOME_BANNER_LEFT]?.button_text ||
+      DEFAULTS.bannerLeft.buttonText,
+    buttonLink:
+      contentMap[CONTENT_TYPES.HOME_BANNER_LEFT]?.button_link ||
+      DEFAULTS.bannerLeft.buttonLink,
+    imageUrl:
+      contentMap[CONTENT_TYPES.HOME_BANNER_LEFT]?.image_url ||
+      DEFAULTS.bannerLeft.imageUrl,
+  };
+
+  const bannerRight = {
+    buttonText:
+      contentMap[CONTENT_TYPES.HOME_BANNER_RIGHT]?.button_text ||
+      DEFAULTS.bannerRight.buttonText,
+    buttonLink:
+      contentMap[CONTENT_TYPES.HOME_BANNER_RIGHT]?.button_link ||
+      DEFAULTS.bannerRight.buttonLink,
+    imageUrl:
+      contentMap[CONTENT_TYPES.HOME_BANNER_RIGHT]?.image_url ||
+      DEFAULTS.bannerRight.imageUrl,
+  };
+
+  const bookSession = {
+    title:
+      contentMap[CONTENT_TYPES.HOME_BOOK_SESSION]?.title ||
+      DEFAULTS.bookSession.title,
+    description:
+      contentMap[CONTENT_TYPES.HOME_BOOK_SESSION]?.description ||
+      DEFAULTS.bookSession.description,
+    buttonText:
+      contentMap[CONTENT_TYPES.HOME_BOOK_SESSION]?.button_text ||
+      DEFAULTS.bookSession.buttonText,
+    buttonLink:
+      contentMap[CONTENT_TYPES.HOME_BOOK_SESSION]?.button_link ||
+      DEFAULTS.bookSession.buttonLink,
+    imageUrl:
+      contentMap[CONTENT_TYPES.HOME_BOOK_SESSION]?.image_url ||
+      DEFAULTS.bookSession.imageUrl,
+  };
+
+  const whyChoose = {
+    title:
+      contentMap[CONTENT_TYPES.HOME_WHY_CHOOSE]?.title ||
+      DEFAULTS.whyChoose.title,
+    imageUrl:
+      contentMap[CONTENT_TYPES.HOME_WHY_CHOOSE]?.image_url ||
+      DEFAULTS.whyChoose.imageUrl,
+  };
 
   // Fetch top-level categories from backend
   const categoriesQuery = trpc.getCategoryTree.useQuery(undefined, {
@@ -95,9 +207,7 @@ export default function Page() {
     }
   };
 
-
   const collections = categoriesQuery.data?.slice(0, 4) || [];
-
 
   const featuredProducts = featuredProductsQuery.data?.products || [];
   const topSellers = topSellersQuery.data?.products || [];
@@ -109,9 +219,9 @@ export default function Page() {
       <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[2200px]">
         <div className="w-full mx-auto px-4 md:px-6">
           <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
-            Our Collection
+            {collectionTitle}
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full"></div>
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full" />
 
           {categoriesQuery.isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4">
@@ -174,7 +284,7 @@ export default function Page() {
                       <h3 className="text-white text-xl md:text-2xl text-left font-body leading-tight line-clamp-1">
                         {category.name}
                       </h3>
-                      <div className="w-10 md:w-14 h-1 bg-trichomes-primary mt-2 rounded-full"></div>
+                      <div className="w-10 md:w-14 h-1 bg-trichomes-primary mt-2 rounded-full" />
                     </div>
                   </div>
                 </Link>
@@ -187,22 +297,25 @@ export default function Page() {
       <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[2200px] ">
         <div className="w-full mx-auto px-4 md:px-6">
           <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
-            Featured Items
+            {featuredTitle}
           </h2>
-          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full"></div>
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full" />
 
           {featuredProductsQuery.isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
               {["f1", "f2", "f3", "f4"].map((key) => (
-                <div key={key} className="animate-pulse bg-white rounded-xl overflow-hidden border border-gray-100">
-                  <div className="aspect-square w-full bg-gray-200"></div>
+                <div
+                  key={key}
+                  className="animate-pulse bg-white rounded-xl overflow-hidden border border-gray-100"
+                >
+                  <div className="aspect-square w-full bg-gray-200" />
                   <div className="p-4 space-y-3">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-                    <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
+                    <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto" />
                     <div className="flex justify-center gap-2 pt-2">
-                      <div className="h-8 w-8 bg-gray-200 rounded-md"></div>
-                      <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
-                      <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
+                      <div className="h-8 w-8 bg-gray-200 rounded-md" />
+                      <div className="h-8 w-24 bg-gray-200 rounded-full" />
+                      <div className="h-8 w-24 bg-gray-200 rounded-full" />
                     </div>
                   </div>
                 </div>
@@ -248,22 +361,25 @@ export default function Page() {
         <div className="max-w-[2200px] mx-auto ">
           <div className=" w-full mx-auto px-4 md:px-6">
             <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
-              Top Sellers
+              {topSellersTitle}
             </h2>
-            <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full"></div>
+            <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full" />
 
             {topSellersQuery.isLoading ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mx-auto max-w-[2200px] ">
                 {["t1", "t2", "t3", "t4"].map((key) => (
-                  <div key={key} className="animate-pulse bg-white rounded-xl overflow-hidden border border-gray-100">
-                    <div className="aspect-square w-full bg-gray-200"></div>
+                  <div
+                    key={key}
+                    className="animate-pulse bg-white rounded-xl overflow-hidden border border-gray-100"
+                  >
+                    <div className="aspect-square w-full bg-gray-200" />
                     <div className="p-4 space-y-3">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-                      <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
+                      <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto" />
                       <div className="flex justify-center gap-2 pt-2">
-                        <div className="h-8 w-8 bg-gray-200 rounded-md"></div>
-                        <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
-                        <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
+                        <div className="h-8 w-8 bg-gray-200 rounded-md" />
+                        <div className="h-8 w-24 bg-gray-200 rounded-full" />
+                        <div className="h-8 w-24 bg-gray-200 rounded-full" />
                       </div>
                     </div>
                   </div>
@@ -302,37 +418,32 @@ export default function Page() {
               </>
             )}
           </div>
-
         </div>
       </section>
 
       {/* Banners - Design Guide: Warm Sand for lifestyle sections, Gold buttons */}
       <section className=" mx-auto px-4 sm:px-6 lg:px-8 w-full py-8 sm:py-12 lg:py-20  animate-[sectionEntrance_600ms_ease-out]">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 max-w-[2200px] mx-auto">
-          <div
+          <Link
+            href={bannerLeft.buttonLink}
             className="flex-1 bg-cover bg-center min-h-[250px]  md:min-h-[600px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group rounded-2xl"
-            style={{ backgroundImage: "url('/banners/new-arrivals.jpg')" }}
+            style={{ backgroundImage: `url('${bannerLeft.imageUrl}')` }}
           >
-            <button
-              type="button"
-              className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg"
-            >
-              Top Sellers{" "}
+            <span className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg">
+              {bannerLeft.buttonText}{" "}
               <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
-            </button>
-          </div>
-          <div
+            </span>
+          </Link>
+          <Link
+            href={bannerRight.buttonLink}
             className="flex-1 bg-cover bg-center min-h-[250px] md:min-h-[600px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group rounded-2xl"
-            style={{ backgroundImage: "url('/banners/top-seller.jpg')" }}
+            style={{ backgroundImage: `url('${bannerRight.imageUrl}')` }}
           >
-            <button
-              type="button"
-              className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg"
-            >
-              New arrivals{" "}
+            <span className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg">
+              {bannerRight.buttonText}{" "}
               <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
-            </button>
-          </div>
+            </span>
+          </Link>
         </div>
       </section>
 
@@ -340,35 +451,30 @@ export default function Page() {
       <section className="relative w-full bg-white py-16 sm:py-24 lg:py-32 overflow-hidden h-[800px]">
         {/* Background Image - Absolute */}
         <div className="absolute inset-0 w-full h-full">
-
           <Image
-            src="/book-a-session.jpg"
+            src={bookSession.imageUrl}
             alt="Woman with glowing skin"
             fill
             className="object-cover object-center opacity-100"
           />
           {/* Gradient Overlay for text readability */}
-          <div className="absolute inset-0 bg-[#F6F1EC] opacity-85"></div>
+          <div className="absolute inset-0 bg-[#F6F1EC] opacity-85" />
         </div>
 
         <div className="relative mx-auto px-4 sm:px-6 lg:px-8 w-full max-w-[2200px] h-full flex flex-col justify-center items-center text-center">
           <div className=" max-w-7xl animate-[fadeInUp_600ms_ease-out]">
             <h2 className="text-[32px] sm:text-[42px] lg:text-[56px] leading-[1.1] font-heading text-trichomes-forest mb-6">
-              Unlock your best skin, style, and scent. <br className="hidden sm:block" /> Book a 1 on 1 session.
+              {bookSession.title}
             </h2>
             <p className="text-[15px] md:text-[16px] leading-relaxed text-trichomes-forest/80 mb-8 ] font-body text-center ">
-              Stop guessing, start glowing. Your beauty journey is unique, and
-              true refinement requires expert guidance. Our private consultations
-              are designed to go beyond surface-level advice, offering you a
-              tailored roadmap across Skincare, Haircare, Bodycare, Decorative
-              Artistry, and Fragrance.
+              {bookSession.description}
             </p>
-            <button
-              type="button"
-              className="bg-[#407029] text-white font-medium py-3.5 px-8 sm:py-4 sm:px-10 text-[15px] sm:text-[16px] hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg rounded-md font-body"
+            <Link
+              href={bookSession.buttonLink}
+              className="bg-[#407029] text-white font-medium py-3.5 px-8 sm:py-4 sm:px-10 text-[15px] sm:text-[16px] hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg rounded-md font-body inline-block"
             >
-              Book my session
-            </button>
+              {bookSession.buttonText}
+            </Link>
           </div>
         </div>
       </section>
@@ -376,44 +482,47 @@ export default function Page() {
       <section className="py-12 sm:py-16 lg:py-24 bg-white animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1440px]">
           <div className="flex flex-col lg:flex-row gap-8 sm:gap-12 lg:gap-20 items-center">
-
             <div className="w-full lg:w-1/2 order-2 lg:order-1 relative">
               {/* Container with background image */}
-              <div className="relative w-full h-[500px] sm:h-[600px] lg:h-[650px]"
-                style={{ backgroundImage: 'url(/store.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-
+              <div
+                className="relative w-full h-[500px] sm:h-[600px] lg:h-[650px]"
+                style={{
+                  backgroundImage: `url(${whyChoose.imageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              >
                 {/* White overlay covering entire background */}
-                <div className="absolute inset-0 bg-white z-10"></div>
+                <div className="absolute inset-0 bg-white z-10" />
 
                 {/* Left Window - reveals background at this exact position */}
                 <div
                   className="absolute top-[22%] left-5  w-[45%] h-[60%] rounded-[32px] overflow-hidden shadow-xl z-20"
                   style={{
-                    backgroundImage: 'url(/store.png)',
-                    backgroundSize: 'calc(120% / 0.48) calc(120% / 0.60)',
-                    backgroundPosition: 'calc(18% / 0.90) calc(28% / 0.60)',
-                    backgroundRepeat: 'no-repeat'
-                  }}>
-                </div>
+                    backgroundImage: `url(${whyChoose.imageUrl})`,
+                    backgroundSize: "calc(120% / 0.48) calc(120% / 0.60)",
+                    backgroundPosition: "calc(18% / 0.90) calc(28% / 0.60)",
+                    backgroundRepeat: "no-repeat",
+                  }}
+                />
 
                 {/* Right Window - reveals background at this exact position */}
                 <div
                   className="absolute top-[30%] right-0 w-[45%] h-[60%] rounded-[32px] overflow-hidden shadow-xl z-20"
                   style={{
-                    backgroundImage: 'url(/store.png)',
-                    backgroundSize: 'calc(120% / 0.48) calc(120% / 0.60)',
-                    backgroundPosition: 'calc(100%) calc(36% / 0.60)',
-                    backgroundRepeat: 'no-repeat'
-                  }}>
-                </div>
-
+                    backgroundImage: `url(${whyChoose.imageUrl})`,
+                    backgroundSize: "calc(120% / 0.48) calc(120% / 0.60)",
+                    backgroundPosition: "calc(100%) calc(36% / 0.60)",
+                    backgroundRepeat: "no-repeat",
+                  }}
+                />
               </div>
             </div>
 
             {/* Right Side - Content */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center order-1 lg:order-2">
               <h2 className="text-[32px] sm:text-[40px] lg:text-[48px] text-trichomes-forest font-heading mb-8 sm:mb-10 lg:mb-12 leading-tight">
-                Why Choose Trichomes?
+                {whyChoose.title}
               </h2>
 
               <div className="space-y-8 sm:space-y-10">
@@ -421,7 +530,7 @@ export default function Page() {
                   <h3 className="text-[20px] sm:text-[22px] font-heading text-trichomes-forest mb-3 font-semibold">
                     Premium Quality
                   </h3>
-                  <div className="w-full h-px bg-trichomes-forest/10 mb-4"></div>
+                  <div className="w-full h-px bg-trichomes-forest/10 mb-4" />
                   <p className="text-[15px] sm:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
                     Only the finest ingredients, scientifically proven to
                     deliver results. Our modern clinic space combines advanced
@@ -429,11 +538,14 @@ export default function Page() {
                   </p>
                 </div>
 
-                <div className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]" style={{ animationDelay: "100ms" }}>
+                <div
+                  className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+                  style={{ animationDelay: "100ms" }}
+                >
                   <h3 className="text-[20px] sm:text-[22px] font-heading text-trichomes-forest mb-3 font-semibold">
                     Expert Guidance
                   </h3>
-                  <div className="w-full h-px bg-trichomes-forest/10 mb-4"></div>
+                  <div className="w-full h-px bg-trichomes-forest/10 mb-4" />
                   <p className="text-[15px] sm:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
                     Personalized consultations to help you find your perfect
                     routine. Every visit is an opportunity to understand your
@@ -441,11 +553,14 @@ export default function Page() {
                   </p>
                 </div>
 
-                <div className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]" style={{ animationDelay: "200ms" }}>
+                <div
+                  className="animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)]"
+                  style={{ animationDelay: "200ms" }}
+                >
                   <h3 className="text-[20px] sm:text-[22px] font-heading text-trichomes-forest mb-3 font-semibold">
                     Educate First
                   </h3>
-                  <div className="w-full h-px bg-trichomes-forest/10 mb-4"></div>
+                  <div className="w-full h-px bg-trichomes-forest/10 mb-4" />
                   <p className="text-[15px] sm:text-[16px] text-trichomes-forest/70 leading-relaxed font-body">
                     Join our community of satisfied customers who've transformed
                     their skin. We believe in the power of education first,

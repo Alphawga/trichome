@@ -327,7 +327,7 @@ model Newsletter {
 
 model Content {
   id           String        @id @default(cuid())
-  type         ContentType
+  type         String
   title        String
   subtitle     String?
   description  String?
@@ -585,17 +585,6 @@ enum ProductStatus {
   ACTIVE
   INACTIVE
   ARCHIVED
-}
-
-enum ContentType {
-  BANNER
-  ANNOUNCEMENT
-  PROMOTION
-  HERO_SECTION
-  SIDEBAR_WIDGET
-  FOOTER_CONTENT
-  POPUP
-  NEWSLETTER
 }
 
 enum ContentStatus {

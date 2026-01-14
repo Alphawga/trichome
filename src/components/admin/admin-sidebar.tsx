@@ -16,6 +16,7 @@ import {
   PromotionsIcon,
   ReviewsIcon,
   SettingsIcon,
+  WebsiteContentIcon,
 } from "../ui/icons";
 
 interface AdminSidebarProps {
@@ -32,6 +33,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/admin", label: "Dashboard", icon: <InventoryIcon /> },
+  { path: "/admin/content", label: "Website Content", icon: <WebsiteContentIcon /> },
   { path: "/admin/products", label: "Products", icon: <ProductsIcon />, requiredPermission: "products.read" },
   { path: "/admin/categories", label: "Categories", icon: <CategoriesIcon />, requiredPermission: "categories.read" },
   { path: "/admin/brands", label: "Brands", icon: <BrandsIcon />, requiredPermission: "brands.read" },
