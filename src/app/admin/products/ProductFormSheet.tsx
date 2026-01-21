@@ -99,6 +99,8 @@ export function ProductFormSheet({
 
   const createMutation = trpc.createProduct.useMutation({
     onSuccess: () => {
+      // Invalidate products list to show the new product
+      utils.getProducts.invalidate();
       onSuccess?.();
       onOpenChange(false);
       reset();
@@ -111,6 +113,11 @@ export function ProductFormSheet({
 
   const updateMutation = trpc.updateProduct.useMutation({
     onSuccess: () => {
+      // Invalidate products list and the specific product to refresh data
+      utils.getProducts.invalidate();
+      if (productId) {
+        utils.getProductById.invalidate({ id: productId });
+      }
       onSuccess?.();
       onOpenChange(false);
       toast.success("Product updated successfully");
