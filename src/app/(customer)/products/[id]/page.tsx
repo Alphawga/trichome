@@ -266,7 +266,7 @@ export default function ProductDetailsPage() {
                 </span>
               </div>
 
-              <p className="text-gray-600 text-[14px] sm:text-[15px] mb-6 leading-relaxed">
+              <p className="text-gray-600 text-[14px] sm:text-[15px] mb-6 leading-relaxed whitespace-pre-wrap">
                 {product?.description}
               </p>
 
