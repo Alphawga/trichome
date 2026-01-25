@@ -56,7 +56,7 @@ function ProductsPageContent() {
   const [searchTerm, setSearchTerm] = useState(searchParam || "");
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(100000);
-  const [sortBy, setSortBy] = useState("featured");
+  const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterClosing, setMobileFilterClosing] = useState(false);

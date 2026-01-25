@@ -127,7 +127,9 @@ export default function AdminBrandsPage() {
       imageUrl:
         brand.logo ||
         brand.image ||
-        `https://placehold.co/80x80/38761d/white?text=${brand.name.charAt(0)}`,
+        `https://placehold.co/80x80/38761d/white?text=${encodeURIComponent(
+          Array.from(brand.name)[0] || "B",
+        )}`,
     })) || [];
 
   // Bulk selection handlers

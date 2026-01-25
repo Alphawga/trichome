@@ -136,7 +136,9 @@ export default function AdminProductsPage() {
       ...product,
       imageUrl:
         product.images?.[0]?.url ||
-        `https://placehold.co/80x80/38761d/white?text=${product.name.charAt(0)}`,
+        `https://placehold.co/80x80/38761d/white?text=${encodeURIComponent(
+          Array.from(product.name)[0] || "P",
+        )}`,
       stock: product.quantity,
       statusDisplay:
         product.quantity === 0
