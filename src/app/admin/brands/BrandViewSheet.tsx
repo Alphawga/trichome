@@ -90,7 +90,9 @@ export function BrandViewSheet({
                   src={
                     brand.logo ||
                     brand.image ||
-                    `https://placehold.co/200x200/38761d/white?text=${brand.name.charAt(0)}`
+                    `https://placehold.co/200x200/38761d/white?text=${encodeURIComponent(
+                      Array.from(brand.name)[0] || "B",
+                    )}`
                   }
                   alt={brand.name}
                   fill
@@ -170,7 +172,9 @@ export function BrandViewSheet({
                         <Image
                           src={
                             product.images?.[0]?.url ||
-                            `https://placehold.co/80x80/38761d/white?text=${product.name.charAt(0)}`
+                            `https://placehold.co/80x80/38761d/white?text=${encodeURIComponent(
+                              Array.from(product.name)[0] || "P",
+                            )}`
                           }
                           alt={product.name}
                           fill

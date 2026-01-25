@@ -91,7 +91,9 @@ export function ProductViewSheet({
                 <Image
                   src={
                     product.images?.[0]?.url ||
-                    `https://placehold.co/400x400/38761d/white?text=${product.name.charAt(0)}`
+                    `https://placehold.co/400x400/38761d/white?text=${encodeURIComponent(
+                      Array.from(product.name)[0] || "P",
+                    )}`
                   }
                   alt={product.name}
                   fill
@@ -108,12 +110,12 @@ export function ProductViewSheet({
                 <div className="flex items-center gap-3">
                   <span
                     className={`px-3 py-1 text-sm font-semibold rounded-full ${product.status === ProductStatus.ACTIVE
-                        ? "bg-green-100 text-green-800"
-                        : product.status === ProductStatus.DRAFT
-                          ? "bg-yellow-100 text-yellow-800"
-                          : product.status === ProductStatus.INACTIVE
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-red-100 text-red-800"
+                      ? "bg-green-100 text-green-800"
+                      : product.status === ProductStatus.DRAFT
+                        ? "bg-yellow-100 text-yellow-800"
+                        : product.status === ProductStatus.INACTIVE
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-red-100 text-red-800"
                       }`}
                   >
                     {product.status}
