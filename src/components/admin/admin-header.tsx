@@ -56,9 +56,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   // Get user's initials for avatar
   const getUserInitials = () => {
     if (!user) return "A";
-    const firstInitial = user.first_name?.charAt(0)?.toUpperCase() || "";
-    const lastInitial = user.last_name?.charAt(0)?.toUpperCase() || "";
-    return firstInitial + lastInitial || user.email.charAt(0).toUpperCase();
+    const firstInitial = user.first_name ? Array.from(user.first_name)[0]?.toUpperCase() : "";
+    const lastInitial = user.last_name ? Array.from(user.last_name)[0]?.toUpperCase() : "";
+    return firstInitial + lastInitial || (user.email ? Array.from(user.email)[0]?.toUpperCase() : "");
   };
 
   // Get user's display name

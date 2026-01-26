@@ -52,8 +52,8 @@ function BrandsPageContent() {
   // Helper to find initial brand name if slug is in param
   const initialBrandSlug = brandSlugParam;
   const initialBrandName = useMemo(() => {
-    if (!initialBrandSlug || !brandsQuery.data) return initialBrandSlug;
-    return brandsQuery.data.find(b => b.slug === initialBrandSlug)?.name || initialBrandSlug;
+    if (!initialBrandSlug || !brandsQuery.data?.brands) return initialBrandSlug;
+    return brandsQuery.data.brands.find(b => b.slug === initialBrandSlug)?.name || initialBrandSlug;
   }, [initialBrandSlug, brandsQuery.data]);
 
   // Store brand NAMES in selectedBrands (to match ProductFilter behavior)
@@ -61,8 +61,8 @@ function BrandsPageContent() {
 
   // Update selected brands when query data loads if param exists
   useEffect(() => {
-    if (initialBrandName && brandsQuery.data) {
-      const name = brandsQuery.data.find(b => b.slug === initialBrandSlug)?.name;
+    if (initialBrandName && brandsQuery.data?.brands) {
+      const name = brandsQuery.data.brands.find(b => b.slug === initialBrandSlug)?.name;
       if (name) setSelectedBrands([name]);
     }
   }, [initialBrandName, brandsQuery.data, initialBrandSlug]);
@@ -76,7 +76,7 @@ function BrandsPageContent() {
 
   // Helper to get slug from name
   const getSlugByName = (name: string) => {
-    return brandsQuery.data?.find(b => b.name === name)?.slug;
+    return brandsQuery.data?.brands.find(b => b.name === name)?.slug;
   };
 
   // Fetch products based on filters
@@ -236,11 +236,11 @@ function BrandsPageContent() {
 
   // Group brands alphabetically
   const groupedBrands = useMemo(() => {
-    const groups: Record<string, typeof brandsQuery.data> = {};
-    if (!brandsQuery.data) return groups;
+    const groups: Record<string, any[]> = {};
+    if (!brandsQuery.data?.brands) return groups;
 
-    brandsQuery.data.forEach((brand) => {
-      const firstLetter = brand.name.charAt(0).toUpperCase();
+    brandsQuery.data.brands.forEach((brand) => {
+      const firstLetter = (Array.from(brand.name)[0] || "").toUpperCase();
       if (!groups[firstLetter]) {
         groups[firstLetter] = [];
       }
@@ -250,7 +250,7 @@ function BrandsPageContent() {
   }, [brandsQuery.data]);
 
   const filterOptions: FilterOptions = {
-    brands: brandsQuery.data ? brandsQuery.data.map(b => b.name) : [],
+    brands: brandsQuery.data?.brands ? brandsQuery.data.brands.map(b => b.name) : [],
     concerns: [
       "Acne",
       "Dry Skin",
@@ -270,7 +270,7 @@ function BrandsPageContent() {
 
   // Helper to get brand name from slug
   const getBrandName = (slug: string) => {
-    return brandsQuery.data?.find(b => b.slug === slug)?.name || slug;
+    return brandsQuery.data?.brands.find(b => b.slug === slug)?.name || slug;
   };
 
   return (
@@ -371,7 +371,7 @@ function BrandsPageContent() {
                     </div>
                   ))}
 
-                {(!brandsQuery.data || brandsQuery.data.length === 0) && (
+                {(!brandsQuery.data?.brands || brandsQuery.data.brands.length === 0) && (
                   <div className="text-center py-12">
                     <p className="text-gray-600 font-body text-[15px] sm:text-[16px]">
                       No brands available at the moment.
