@@ -86,7 +86,9 @@ export function CustomerViewSheet({
                 <Image
                   src={
                     customer.image ||
-                    `https://placehold.co/80x80/38761d/white?text=${customer.first_name?.[0] || "U"}`
+                    `https://placehold.co/80x80/38761d/white?text=${encodeURIComponent(
+                      Array.from(customer.first_name || "")[0] || "U",
+                    )}`
                   }
                   alt={`${customer.first_name} ${customer.last_name}`}
                   fill
@@ -244,14 +246,14 @@ export function CustomerViewSheet({
                       </p>
                       <span
                         className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${order.status === "DELIVERED"
-                            ? "bg-green-100 text-green-800"
-                            : order.status === "SHIPPED"
-                              ? "bg-blue-100 text-blue-800"
-                              : order.status === "PROCESSING"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : order.status === "CANCELLED"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
+                          ? "bg-green-100 text-green-800"
+                          : order.status === "SHIPPED"
+                            ? "bg-blue-100 text-blue-800"
+                            : order.status === "PROCESSING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : order.status === "CANCELLED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
                           }`}
                       >
                         {order.status}

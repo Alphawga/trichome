@@ -737,7 +737,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                     >
                       {/* Avatar */}
                       <div className="w-8 h-8 rounded-full bg-[#3A643B] flex items-center justify-center text-white text-sm font-semibold uppercase overflow-hidden">
-                        {user.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                        {Array.from(user.first_name || user.email || 'U')[0]}
                       </div>
                     </button>
 
@@ -1146,7 +1146,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                       <div className="px-4 py-3 mb-2">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-[#3A643B] flex items-center justify-center text-white text-lg font-semibold uppercase">
-                            {user.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                            {Array.from(user.first_name || user.email || 'U')[0]}
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-[#1E3024]">

@@ -32,7 +32,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     product.images?.find((img) => img.is_primary) || product.images?.[0];
   const imageUrl =
     primaryImage?.url ||
-    `https://placehold.co/400x400/e6e4c6/3a643b?text=${encodeURIComponent(product.name.charAt(0))}`;
+    `https://placehold.co/400x400/e6e4c6/3a643b?text=${encodeURIComponent(Array.from(product.name)[0] || "P")}`;
 
 
   const inStock = !product.track_quantity || product.quantity > 0;

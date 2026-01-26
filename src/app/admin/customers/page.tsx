@@ -676,7 +676,9 @@ export default function AdminCustomersPage() {
                       <Image
                         src={
                           customer.image ||
-                          `https://placehold.co/80x80/38761d/white?text=${customer.first_name?.[0] || "U"}`
+                          `https://placehold.co/80x80/38761d/white?text=${encodeURIComponent(
+                            Array.from(customer.first_name || "")[0] || "U",
+                          )}`
                         }
                         alt={
                           `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||

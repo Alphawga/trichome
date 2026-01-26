@@ -270,7 +270,7 @@ export default function Page() {
                       ) : (
                         <div className="w-full h-full bg-trichomes-soft flex items-center justify-center">
                           <span className="text-4xl sm:text-5xl lg:text-6xl font-bold text-trichomes-forest/20">
-                            {category.name.charAt(0)}
+                            {Array.from(category.name)[0]}
                           </span>
                         </div>
                       )}
