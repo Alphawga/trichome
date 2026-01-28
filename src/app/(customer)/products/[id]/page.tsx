@@ -361,7 +361,7 @@ export default function ProductDetailsPage() {
               <div className="mt-3">
                 <WhatsAppButton
                   phoneNumber={
-                    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2341234567890"
+                    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2348087098720"
                   }
                   message={`Hi! I'm interested in ${product?.name}. Can you tell me more about it?`}
                   variant="inline"

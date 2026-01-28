@@ -48,7 +48,7 @@ function CustomerLayoutContent({ children }: { children: ReactNode }) {
 
   // Get WhatsApp number from environment variable or use default
   const whatsappNumber =
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2341234567890";
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2348087098720";
 
   return (
     <div className="min-h-screen flex flex-col">
