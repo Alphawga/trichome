@@ -45,9 +45,9 @@ export const getDashboardStats = staffProcedure.query(async ({ ctx }) => {
   const productsSoldTrend =
     productsSoldPrevious > 0
       ? (
-          ((productsSold - productsSoldPrevious) / productsSoldPrevious) *
-          100
-        ).toFixed(1)
+        ((productsSold - productsSoldPrevious) / productsSoldPrevious) *
+        100
+      ).toFixed(1)
       : "0.0";
 
   // Completed orders this month
@@ -72,10 +72,10 @@ export const getDashboardStats = staffProcedure.query(async ({ ctx }) => {
   const completedOrdersTrend =
     completedOrdersLastMonth > 0
       ? (
-          ((completedOrdersThisMonth - completedOrdersLastMonth) /
-            completedOrdersLastMonth) *
-          100
-        ).toFixed(1)
+        ((completedOrdersThisMonth - completedOrdersLastMonth) /
+          completedOrdersLastMonth) *
+        100
+      ).toFixed(1)
       : "0.0";
 
   // Pending orders
@@ -171,3 +171,4 @@ export const getTopProducts = staffProcedure
 
     return productsWithSales;
   });
+

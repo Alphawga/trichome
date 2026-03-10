@@ -166,6 +166,20 @@ export default function Page() {
     },
   );
 
+  // Fetch new arrivals (newest products)
+  const newArrivalsQuery = trpc.getProducts.useQuery(
+    {
+      page: 1,
+      limit: 4,
+      status: ProductStatus.ACTIVE,
+      sort_by: "newest",
+    },
+    {
+      staleTime: 30000,
+      refetchOnWindowFocus: false,
+    },
+  );
+
   // Wishlist state
   const [wishlist, setWishlist] = useState<string[]>([]);
 
@@ -211,6 +225,7 @@ export default function Page() {
 
   const featuredProducts = featuredProductsQuery.data?.products || [];
   const topSellers = topSellersQuery.data?.products || [];
+  const newArrivals = newArrivalsQuery.data?.products || [];
 
   return (
     <main className="bg-white overflow-x-hidden">
@@ -421,29 +436,66 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Banners - Design Guide: Warm Sand for lifestyle sections, Gold buttons */}
-      <section className=" mx-auto px-4 sm:px-6 lg:px-8 w-full py-8 sm:py-12 lg:py-20  animate-[sectionEntrance_600ms_ease-out]">
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 max-w-[2200px] mx-auto">
-          <Link
-            href={bannerLeft.buttonLink}
-            className="flex-1 bg-cover bg-center min-h-[250px]  md:min-h-[600px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group rounded-2xl"
-            style={{ backgroundImage: `url('${bannerLeft.imageUrl}')` }}
-          >
-            <span className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg">
-              {bannerLeft.buttonText}{" "}
-              <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
-            </span>
-          </Link>
-          <Link
-            href={bannerRight.buttonLink}
-            className="flex-1 bg-cover bg-center min-h-[250px] md:min-h-[600px] flex items-end p-4 sm:p-6 lg:p-8 shadow-md overflow-hidden group rounded-2xl"
-            style={{ backgroundImage: `url('${bannerRight.imageUrl}')` }}
-          >
-            <span className="bg-[#407029] text-white font-semibold py-3 px-6 sm:py-3 sm:px-8 lg:py-4 lg:px-10 text-sm sm:text-base lg:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg hover:scale-105 font-body rounded-lg">
-              {bannerRight.buttonText}{" "}
-              <ChevronRightIcon className="inline-block w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
-            </span>
-          </Link>
+      {/* New Arrivals */}
+      <section className="py-8 sm:py-12 lg:py-20 bg-white animate-[sectionEntrance_600ms_ease-out] mx-auto max-w-[2200px]">
+        <div className="w-full mx-auto px-4 md:px-6">
+          <h2 className="text-[24px] sm:text-[32px] lg:text-[40px] text-center mb-2 sm:mb-3 text-trichomes-forest font-heading">
+            {bannerRight.buttonText}
+          </h2>
+          <div className="w-16 sm:w-20 h-1 bg-trichomes-primary mb-6 sm:mb-8 lg:mb-12 mx-auto rounded-full" />
+
+          {newArrivalsQuery.isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {["na1", "na2", "na3", "na4"].map((key) => (
+                <div
+                  key={key}
+                  className="animate-pulse bg-white rounded-xl overflow-hidden border border-gray-100"
+                >
+                  <div className="aspect-square w-full bg-gray-200" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
+                    <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto" />
+                    <div className="flex justify-center gap-2 pt-2">
+                      <div className="h-8 w-8 bg-gray-200 rounded-md" />
+                      <div className="h-8 w-24 bg-gray-200 rounded-full" />
+                      <div className="h-8 w-24 bg-gray-200 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : newArrivalsQuery.error ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">
+                Unable to load new arrivals. Please try again later.
+              </p>
+            </div>
+          ) : newArrivals.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-trichomes-forest/70 text-lg">
+                No new arrivals available at the moment.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ProductGrid
+                products={newArrivals}
+                onProductClick={handleProductClick}
+                onAddToCart={handleAddToCart}
+                wishlist={wishlist}
+                onToggleWishlist={handleToggleWishlist}
+              />
+              <div className="text-center mt-8 sm:mt-12">
+                <button
+                  type="button"
+                  onClick={() => router.push(bannerRight.buttonLink)}
+                  className="text-[15px] sm:text-[17px] font-semibold flex items-center justify-center mx-auto text-trichomes-primary hover:text-trichomes-forest transition-colors duration-150 font-body"
+                >
+                  View All <ChevronRightIcon />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

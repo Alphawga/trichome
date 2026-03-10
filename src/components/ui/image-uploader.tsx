@@ -12,6 +12,10 @@ interface ImageUploaderProps {
   disabled?: boolean;
   folder?: string;
   className?: string;
+  /** Max file size in MB. Defaults to 5. */
+  maxSizeMB?: number;
+  /** Custom id for the file input element. */
+  inputId?: string;
 }
 
 export function ImageUploader({
@@ -21,6 +25,8 @@ export function ImageUploader({
   disabled,
   folder = "trichome",
   className,
+  maxSizeMB = 5,
+  inputId = "image-upload",
 }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,9 +48,9 @@ export function ImageUploader({
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5000000) {
-      toast.error("Image size must be less than 5MB");
+    // Validate file size
+    if (file.size > maxSizeMB * 1_000_000) {
+      toast.error(`Image size must be less than ${maxSizeMB}MB`);
       return;
     }
 
@@ -96,9 +102,9 @@ export function ImageUploader({
           onChange={handleFileChange}
           disabled={disabled || isUploading}
           className="hidden"
-          id="image-upload"
+          id={inputId}
         />
-        <label htmlFor="image-upload">
+        <label htmlFor={inputId}>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -140,7 +146,7 @@ export function ImageUploader({
       )}
 
       <p className="text-xs text-gray-500">
-        Supported formats: JPG, PNG, GIF, WEBP. Max size: 5MB
+        Supported formats: JPG, PNG, GIF, WEBP. Max size: {maxSizeMB}MB
       </p>
     </div>
   );
