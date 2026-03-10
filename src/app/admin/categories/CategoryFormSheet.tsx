@@ -286,6 +286,7 @@ export function CategoryFormSheet({
                 onRemove={() => setValue("image", "")}
                 disabled={isLoading || isSubmitting}
                 folder="categories"
+                maxSizeMB={15}
               />
             </div>
 
