@@ -95,7 +95,7 @@ export function PaymentHandler({
         apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
         contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
         paymentDescription: "Trichomes Product Payment",
-        isTestMode: process.env.NODE_ENV !== "production",
+        isTestMode: (process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "").startsWith("MK_TEST_"),
         metadata: {
           orderTotal: totals.total.toString(),
           itemCount: items.length.toString(),
