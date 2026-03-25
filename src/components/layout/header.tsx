@@ -587,16 +587,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   LEARN MORE
                 </Link>
               </span>
-              <span className="mx-2 hidden lg:inline">•</span>
-              <span className="hidden lg:inline">
-                BOOK YOUR FREE CONSULTATION -{" "}
-                <Link
-                  href="/consultation"
-                  className="underline hover:text-[#3A643B] transition-colors"
-                >
-                  BOOK NOW
-                </Link>
-              </span>
             </p>
           </div>
 
@@ -1121,17 +1111,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   All Products
                 </Link>
 
-                {/* Book a Consultation */}
-                <Link
-                  href="/consultation"
-                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/consultation")
-                    ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                    : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
-                  onClick={toggleMobileMenu}
-                >
-                  Book a Consultation
-                </Link>
 
                 {/* Rewards */}
                 <Link
@@ -1309,9 +1288,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
             All Products
           </NavLink>
 
-          <NavLink href="/consultation" isActive={isActive("/consultation")}>
-            Book a Consultation
-          </NavLink>
+
           <NavLink href="/rewards" isActive={isActive("/rewards")}>
             Rewards
           </NavLink>
