@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/contexts/auth-context";
@@ -229,7 +229,14 @@ const MenuIcon: React.FC<{ isOpen: boolean; className?: string }> = ({
 );
 
 export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const searchParam = searchParams.get("search");
+  const [searchQuery, setSearchQuery] = useState(searchParam || "");
+
+  // Sync search input with URL search param
+  useEffect(() => {
+    setSearchQuery(searchParam || "");
+  }, [searchParam]);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuClosing, setMobileMenuClosing] = useState(false);

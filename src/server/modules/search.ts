@@ -21,17 +21,25 @@ export const searchProducts = publicProcedure
       where: {
         status: "ACTIVE",
         ...(category_id && { category_id }),
-        OR: [
-          { name: { contains: query, mode: "insensitive" as const } },
-          { description: { contains: query, mode: "insensitive" as const } },
-          { sku: { contains: query, mode: "insensitive" as const } },
-          {
-            short_description: {
-              contains: query,
-              mode: "insensitive" as const,
-            },
-          },
-        ],
+        AND: query
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((word) => ({
+            OR: [
+              { name: { contains: word, mode: "insensitive" as const } },
+              { description: { contains: word, mode: "insensitive" as const } },
+              { sku: { contains: word, mode: "insensitive" as const } },
+              {
+                short_description: {
+                  contains: word,
+                  mode: "insensitive" as const,
+                },
+              },
+              { brand: { name: { contains: word, mode: "insensitive" as const } } },
+              { category: { name: { contains: word, mode: "insensitive" as const } } },
+            ],
+          })),
       },
       take: limit,
       select: {

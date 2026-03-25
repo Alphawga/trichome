@@ -47,7 +47,8 @@ interface ProductFilterGridProps {
   ) => void;
   onApplyFilters: () => void;
   isFiltering?: boolean;
-  onCategorySelect?: (categoryName: string) => void;
+  selectedCategories?: string[];
+  onCategoryToggle?: (categoryName: string) => void;
   categories: Category[];
   filterOptions: FilterOptions;
 
@@ -84,7 +85,8 @@ export const ProductFilterGrid: React.FC<ProductFilterGridProps> = ({
   onToggleFilter = () => { },
   onApplyFilters,
   isFiltering = false,
-  onCategorySelect,
+  selectedCategories = [],
+  onCategoryToggle,
   categories,
   filterOptions,
   onProductClick,
@@ -119,7 +121,8 @@ export const ProductFilterGrid: React.FC<ProductFilterGridProps> = ({
           onToggleFilter={onToggleFilter}
           onApplyFilters={onApplyFilters}
           isFiltering={isFiltering}
-          onCategorySelect={onCategorySelect}
+          selectedCategories={selectedCategories}
+          onCategoryToggle={onCategoryToggle}
           categories={categories}
           filterOptions={filterOptions}
         />

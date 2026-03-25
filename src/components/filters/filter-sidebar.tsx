@@ -35,7 +35,8 @@ interface SidebarProps {
   ) => void;
   onApplyFilters: () => void;
   isFiltering?: boolean;
-  onCategorySelect?: (categoryName: string) => void;
+  selectedCategories?: string[];
+  onCategoryToggle?: (categoryName: string) => void;
   searchResults?: Product[];
   categories: Category[];
   filterOptions: {
@@ -87,47 +88,56 @@ const FilterPill: React.FC<{
 
 const CategoryAccordion: React.FC<{
   category: Category;
-  onCategorySelect?: (categoryName: string) => void;
-}> = ({ category, onCategorySelect }) => {
+  selectedCategories?: string[];
+  onCategoryToggle?: (categoryName: string) => void;
+}> = ({ category, selectedCategories = [], onCategoryToggle }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+  const isSelected = selectedCategories.includes(category.name);
 
-  const handleCategoryClick = (name: string) => {
-    if (onCategorySelect) {
-      onCategorySelect(name);
+  const handleToggle = (name: string) => {
+    if (onCategoryToggle) {
+      onCategoryToggle(name);
     }
   };
 
   return (
     <div className="py-2">
-      <button
-        type="button"
-        className="w-full flex justify-between items-center text-left text-xs font-body text-black hover:text-black/50 transition-colors duration-150 ease-out border-b border-black/10 pb-2 cursor-pointer"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        <span
-          className="hover:underline"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCategoryClick(category.name);
-          }}
-        >
-          {category.name}
-        </span>
-        <span
-          className={`transform transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`}
-        >
-          <ChevronDownIcon className="w-4 h-4 text-black/60" />
-        </span>
-      </button>
       <div
-        className={`overflow-hidden transition-all duration-300 ease-out ${isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-          }`}
+        className="w-full flex justify-between items-center text-left text-xs font-body text-black border-b border-black/10 pb-2"
       >
-        {category.subcategories && category.subcategories.length > 0 && (
+        <label className="flex items-center gap-2 cursor-pointer hover:text-black/70 transition-colors duration-150 ease-out flex-1">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => handleToggle(category.name)}
+            className="w-3.5 h-3.5 rounded border-black/30 text-[#3A643B] focus:ring-[#3A643B] cursor-pointer accent-[#3A643B]"
+          />
+          <span className="text-xs">{category.name}</span>
+        </label>
+        {hasSubcategories && (
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-0.5 hover:bg-black/5 rounded transition-colors duration-150"
+            aria-expanded={isOpen}
+          >
+            <span
+              className={`block transform transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : ""}`}
+            >
+              <ChevronDownIcon className="w-4 h-4 text-black/60" />
+            </span>
+          </button>
+        )}
+      </div>
+      {hasSubcategories && (
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-out ${isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}
+        >
           <div className="pt-3 pl-4">
-            <ul className="space-y-1.5">
-              {category.subcategories.map((subcategory, index) => (
+            <ul className="space-y-2">
+              {category.subcategories!.map((subcategory, index) => (
                 <li
                   key={subcategory}
                   className={`transform transition-all duration-300 ease-out ${isOpen
@@ -138,19 +148,21 @@ const CategoryAccordion: React.FC<{
                     transitionDelay: isOpen ? `${index * 30}ms` : "0ms",
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => handleCategoryClick(subcategory)}
-                    className="text-[12px] font-body text-black/70 hover:text-black/80 hover:underline cursor-pointer transition-colors duration-150 ease-out"
-                  >
+                  <label className="flex items-center gap-2 cursor-pointer text-[12px] font-body text-black/70 hover:text-black/80 transition-colors duration-150 ease-out">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(subcategory)}
+                      onChange={() => handleToggle(subcategory)}
+                      className="w-3.5 h-3.5 rounded border-black/30 text-[#3A643B] focus:ring-[#3A643B] cursor-pointer accent-[#3A643B]"
+                    />
                     {subcategory}
-                  </button>
+                  </label>
                 </li>
               ))}
             </ul>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -168,7 +180,8 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
   onToggleFilter,
   onApplyFilters,
   isFiltering = false,
-  onCategorySelect,
+  selectedCategories = [],
+  onCategoryToggle,
   searchResults = [],
   categories,
   filterOptions,
@@ -374,7 +387,8 @@ export const FilterSidebar: React.FC<SidebarProps> = ({
             <CategoryAccordion
               key={cat.name}
               category={cat}
-              onCategorySelect={onCategorySelect}
+              selectedCategories={selectedCategories}
+              onCategoryToggle={onCategoryToggle}
             />
           ))}
         </div>

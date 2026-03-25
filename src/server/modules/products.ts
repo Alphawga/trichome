@@ -10,6 +10,7 @@ export const getProducts = publicProcedure
       limit: z.number().min(1).max(100).default(12),
       category_id: z.string().optional(),
       category_slug: z.string().optional(),
+      category_slugs: z.array(z.string()).optional(),
       brand_id: z.string().optional(),
       brand_slug: z.string().optional(),
       status: z.nativeEnum(ProductStatus).optional(),
@@ -35,6 +36,7 @@ export const getProducts = publicProcedure
       limit,
       category_id,
       category_slug,
+      category_slugs,
       brand_id,
       brand_slug,
       status,
@@ -46,9 +48,17 @@ export const getProducts = publicProcedure
     } = input;
     const skip = (page - 1) * limit;
 
-    // Resolve category_id from slug if provided
+    // Resolve category IDs from slugs
     let resolvedCategoryId = category_id;
-    if (category_slug && !category_id) {
+    let resolvedCategoryIds: string[] | undefined;
+
+    if (category_slugs && category_slugs.length > 0) {
+      const categories = await ctx.prisma.category.findMany({
+        where: { slug: { in: category_slugs } },
+        select: { id: true },
+      });
+      resolvedCategoryIds = categories.map((c) => c.id);
+    } else if (category_slug && !category_id) {
       const category = await ctx.prisma.category.findUnique({
         where: { slug: category_slug },
         select: { id: true },
@@ -72,15 +82,27 @@ export const getProducts = publicProcedure
 
     const where = {
       ...(status && { status }),
-      ...(resolvedCategoryId && { category_id: resolvedCategoryId }),
+      ...(resolvedCategoryIds && resolvedCategoryIds.length > 0
+        ? { category_id: { in: resolvedCategoryIds } }
+        : resolvedCategoryId
+          ? { category_id: resolvedCategoryId }
+          : {}),
       ...(resolvedBrandId && { brand_id: resolvedBrandId }),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { description: { contains: search, mode: "insensitive" as const } },
-          { sku: { contains: search, mode: "insensitive" as const } },
-        ],
+        AND: search
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((word) => ({
+            OR: [
+              { name: { contains: word, mode: "insensitive" as const } },
+              { description: { contains: word, mode: "insensitive" as const } },
+              { sku: { contains: word, mode: "insensitive" as const } },
+              { brand: { name: { contains: word, mode: "insensitive" as const } } },
+              { category: { name: { contains: word, mode: "insensitive" as const } } },
+            ],
+          })),
       }),
       ...(min_price !== undefined || max_price !== undefined
         ? {

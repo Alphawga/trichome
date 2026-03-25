@@ -41,6 +41,7 @@ function BrandsPageContent() {
   // Fetch all active brands
   const brandsQuery = trpc.getBrands.useQuery({
     status: ProductStatus.ACTIVE,
+    limit: 500,
   }, {
     staleTime: 300000, // 5 mins
     refetchOnWindowFocus: false
