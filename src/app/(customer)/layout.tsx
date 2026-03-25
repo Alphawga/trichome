@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/app/contexts/auth-context";
 import { Header } from "@/components/layout/header";
 import { WhatsAppWidget } from "@/components/whatsapp/WhatsAppWidget";
@@ -58,7 +58,9 @@ function CustomerLayoutContent({ children }: { children: ReactNode }) {
       {/* Google One Tap - shows quick sign-in popup for unauthenticated users */}
       <GoogleOneTap enabled={!isAuthenticated} />
 
-      <Header cartCount={cartCount} wishlistCount={wishlistCount} />
+      <Suspense>
+        <Header cartCount={cartCount} wishlistCount={wishlistCount} />
+      </Suspense>
       <main className="flex-1">{children}</main>
       {/* WhatsApp Widget */}
       <WhatsAppWidget

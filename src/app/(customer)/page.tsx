@@ -499,37 +499,6 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Unlock Section - Full width background style with overlay content */}
-      <section className="relative w-full bg-white py-16 sm:py-24 lg:py-32 overflow-hidden h-[800px]">
-        {/* Background Image - Absolute */}
-        <div className="absolute inset-0 w-full h-full">
-          <Image
-            src={bookSession.imageUrl}
-            alt="Woman with glowing skin"
-            fill
-            className="object-cover object-center opacity-100"
-          />
-          {/* Gradient Overlay for text readability */}
-          <div className="absolute inset-0 bg-[#F6F1EC] opacity-85" />
-        </div>
-
-        <div className="relative mx-auto px-4 sm:px-6 lg:px-8 w-full max-w-[2200px] h-full flex flex-col justify-center items-center text-center">
-          <div className=" max-w-7xl animate-[fadeInUp_600ms_ease-out]">
-            <h2 className="text-[32px] sm:text-[42px] lg:text-[56px] leading-[1.1] font-heading text-trichomes-forest mb-6">
-              {bookSession.title}
-            </h2>
-            <p className="text-[15px] md:text-[16px] leading-relaxed text-trichomes-forest/80 mb-8 ] font-body text-center ">
-              {bookSession.description}
-            </p>
-            <Link
-              href={bookSession.buttonLink}
-              className="bg-[#407029] text-white font-medium py-3.5 px-8 sm:py-4 sm:px-10 text-[15px] sm:text-[16px] hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg rounded-md font-body inline-block"
-            >
-              {bookSession.buttonText}
-            </Link>
-          </div>
-        </div>
-      </section>
 
       <section className="py-12 sm:py-16 lg:py-24 bg-white animate-[sectionEntrance_600ms_ease-out]">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1440px]">

@@ -21,8 +21,6 @@ const timeSlots = [
 
 const consultationTypes = [
   { value: "skincare", label: "Skincare Consultation", duration: "30 min" },
-  { value: "makeup", label: "Makeup Consultation", duration: "30 min" },
-  { value: "full", label: "Full Beauty Consultation", duration: "60 min" },
 ];
 
 const skinConcerns = [
@@ -129,8 +127,6 @@ export default function ConsultationPage() {
       "SKIN_ANALYSIS" | "PRODUCT_RECOMMENDATION" | "ROUTINE_BUILDING" | "GENERAL"
     > = {
       skincare: "SKIN_ANALYSIS",
-      makeup: "PRODUCT_RECOMMENDATION",
-      full: "ROUTINE_BUILDING",
     };
 
     createConsultationMutation.mutate({

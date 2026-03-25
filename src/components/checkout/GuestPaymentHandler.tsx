@@ -74,7 +74,7 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
         apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
         contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
         paymentDescription: "Trichomes Guest Order Payment",
-        isTestMode: process.env.NODE_ENV !== "production",
+        isTestMode: (process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "").startsWith("MK_TEST_"),
         metadata: {
           orderTotal: props.totals.total.toString(),
           itemCount: props.items.length.toString(),

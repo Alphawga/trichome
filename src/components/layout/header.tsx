@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/contexts/auth-context";
@@ -229,7 +229,14 @@ const MenuIcon: React.FC<{ isOpen: boolean; className?: string }> = ({
 );
 
 export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const searchParam = searchParams.get("search");
+  const [searchQuery, setSearchQuery] = useState(searchParam || "");
+
+  // Sync search input with URL search param
+  useEffect(() => {
+    setSearchQuery(searchParam || "");
+  }, [searchParam]);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuClosing, setMobileMenuClosing] = useState(false);
@@ -578,16 +585,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   className="underline hover:text-[#3A643B] transition-colors"
                 >
                   LEARN MORE
-                </Link>
-              </span>
-              <span className="mx-2 hidden lg:inline">•</span>
-              <span className="hidden lg:inline">
-                BOOK YOUR FREE CONSULTATION -{" "}
-                <Link
-                  href="/consultation"
-                  className="underline hover:text-[#3A643B] transition-colors"
-                >
-                  BOOK NOW
                 </Link>
               </span>
             </p>
@@ -1114,17 +1111,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   All Products
                 </Link>
 
-                {/* Book a Consultation */}
-                <Link
-                  href="/consultation"
-                  className={`block py-3 px-4 text-base font-semibold uppercase tracking-wider transition-colors duration-150 ease-out ${isActive("/consultation")
-                    ? "text-[#3A643B] bg-[#E6E4C6]/30"
-                    : "text-[#1E3024] hover:bg-[#E6E4C6]/20"
-                    }`}
-                  onClick={toggleMobileMenu}
-                >
-                  Book a Consultation
-                </Link>
 
                 {/* Rewards */}
                 <Link
@@ -1302,9 +1288,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
             All Products
           </NavLink>
 
-          <NavLink href="/consultation" isActive={isActive("/consultation")}>
-            Book a Consultation
-          </NavLink>
+
           <NavLink href="/rewards" isActive={isActive("/rewards")}>
             Rewards
           </NavLink>

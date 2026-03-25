@@ -41,7 +41,7 @@ const sortOptions = [
 interface FilterState {
   min_price?: number;
   max_price?: number;
-  category_slug?: string;
+  category_slugs?: string[];
 }
 
 function ProductsPageContent() {
@@ -54,6 +54,13 @@ function ProductsPageContent() {
 
   const [wishlist, setWishlist] = useState<string[]>([]); // Store product IDs only
   const [searchTerm, setSearchTerm] = useState(searchParam || "");
+
+  // Sync searchTerm with URL search param changes (e.g. from SearchBar navigation)
+  useEffect(() => {
+    setSearchTerm(searchParam || "");
+    setCurrentPage(1);
+  }, [searchParam]);
+
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(100000);
   const [sortBy, setSortBy] = useState("newest");
@@ -61,11 +68,32 @@ function ProductsPageContent() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterClosing, setMobileFilterClosing] = useState(false);
 
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    categoryParam ? [categoryParam] : [],
+  );
+
+  // Sync selectedCategories when URL category param changes (e.g. from navbar)
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategories([categoryParam]);
+      setActiveFilters((prev) => ({ ...prev, category_slugs: [categoryParam] }));
+    } else {
+      setSelectedCategories([]);
+      setActiveFilters((prev) => {
+        if (!prev) return null;
+        const newFilters = { ...prev };
+        delete newFilters.category_slugs;
+        return (newFilters.min_price !== undefined || newFilters.max_price !== undefined) ? newFilters : null;
+      });
+    }
+    setCurrentPage(1);
+  }, [categoryParam]);
+
   // Active filters stores the state of filters when 'Apply' is clicked
   const [activeFilters, setActiveFilters] = useState<FilterState | null>(
     categoryParam
       ? {
-        category_slug: categoryParam,
+        category_slugs: [categoryParam],
       }
       : null,
   );
@@ -77,7 +105,9 @@ function ProductsPageContent() {
       search: searchTerm.trim() || undefined,
       min_price: activeFilters?.min_price,
       max_price: activeFilters?.max_price,
-      category_slug: activeFilters?.category_slug || categoryParam || undefined,
+      category_slugs: selectedCategories.length > 0
+        ? selectedCategories
+        : categoryParam ? [categoryParam] : undefined,
       status: ProductStatus.ACTIVE,
       sort_by: sortBy as
         | "newest"
@@ -207,9 +237,9 @@ function ProductsPageContent() {
   const handleApplyFilters = () => {
     const filters: FilterState = {};
 
-    // Add category filter if exists
-    if (categoryParam) {
-      filters.category_slug = categoryParam;
+    // Add category filters if any selected
+    if (selectedCategories.length > 0) {
+      filters.category_slugs = selectedCategories;
     }
 
     // Only add price filters if they're set to non-default values
@@ -224,7 +254,7 @@ function ProductsPageContent() {
     if (
       filters.min_price !== undefined ||
       filters.max_price !== undefined ||
-      filters.category_slug
+      (filters.category_slugs && filters.category_slugs.length > 0)
     ) {
       setActiveFilters(filters);
     } else {
@@ -235,6 +265,7 @@ function ProductsPageContent() {
 
   const handleClearFilters = () => {
     setActiveFilters(null);
+    setSelectedCategories([]);
     setMinPrice(0);
     setMaxPrice(100000);
     if (categoryParam) {
@@ -242,9 +273,8 @@ function ProductsPageContent() {
     }
   };
 
-  // Convert category name to slug and navigate
-  const handleCategorySelect = useCallback((categoryName: string) => {
-    // Find the category slug from the category tree
+  // Toggle a category in the selectedCategories array
+  const handleCategoryToggle = useCallback((categoryName: string) => {
     if (!categoriesQuery.data) return;
 
     // Flatten all categories to find the slug
@@ -257,10 +287,32 @@ function ProductsPageContent() {
     ]);
 
     const found = allCategories.find((c) => c.name === categoryName);
-    if (found?.slug) {
-      router.push(`/products?category=${found.slug}`);
-    }
-  }, [categoriesQuery.data, router]);
+    if (!found?.slug) return;
+
+    setSelectedCategories((prev) => {
+      const newSlugs = prev.includes(found.slug)
+        ? prev.filter((s) => s !== found.slug)
+        : [...prev, found.slug];
+
+      // Auto-apply category filter immediately using functional updater to avoid stale state
+      setActiveFilters((prevFilters) => {
+        const filters: FilterState = { ...prevFilters };
+        if (newSlugs.length > 0) {
+          filters.category_slugs = newSlugs;
+        } else {
+          delete filters.category_slugs;
+        }
+
+        const hasFilters = (filters.category_slugs && filters.category_slugs.length > 0) ||
+          filters.min_price !== undefined ||
+          filters.max_price !== undefined;
+        return hasFilters ? filters : null;
+      });
+      setCurrentPage(1);
+
+      return newSlugs;
+    });
+  }, [categoriesQuery.data]);
 
   const toggleMobileFilter = () => {
     if (mobileFilterOpen) {
@@ -297,6 +349,20 @@ function ProductsPageContent() {
     };
   }, [mobileFilterOpen]);
 
+  // Map category slugs to banner images
+  const getCategoryBannerImage = (slug: string | null): string => {
+    if (!slug) return "/categories/back-1.png";
+    const categoryBannerMap: Record<string, string> = {
+      "face-care": "/categories/Now_help_update_202603250942.png",
+      "body-care": "/categories/Now_help_update_202603250942 (1).png",
+      "hair-care": "/categories/Help_combine_all_202603250942.png",
+      "eye-care": "/categories/back-1.png",
+    };
+    return categoryBannerMap[slug] ?? "/categories/back-1.png";
+  };
+
+  const bannerImage = getCategoryBannerImage(categoryParam);
+
   return (
     <div className="min-h-screen bg-white ">
       {/* Hero Header Section */}
@@ -305,7 +371,7 @@ function ProductsPageContent() {
         <div className="absolute inset-0">
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: "url('/banners/product-banner.jpg')" }}
+            style={{ backgroundImage: `url('${bannerImage}')` }}
           />
           {/* Gradient Overlay */}
           <div
@@ -413,31 +479,33 @@ function ProductsPageContent() {
         {/* Active filters display */}
         {activeFilters && (
           <div className="flex flex-wrap gap-2 mb-6">
-            {activeFilters.category_slug && (
-              <span className="inline-flex items-center px-3 py-1.5 text-[12px] bg-gray-100 text-gray-900 font-body border border-gray-200 rounded">
-                Category:{" "}
-                {getCategoryNameFromTree(activeFilters.category_slug) ||
-                  formatCategorySlug(activeFilters.category_slug)}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newFilters = { ...activeFilters };
-                    delete newFilters.category_slug;
-                    setActiveFilters(
-                      Object.keys(newFilters).length > 0 &&
-                        (newFilters.min_price !== undefined ||
-                          newFilters.max_price !== undefined)
-                        ? newFilters
-                        : null,
-                    );
-                    router.push("/products");
-                  }}
-                  className="ml-1.5 text-gray-500 hover:text-gray-900 transition-colors duration-150 ease-out text-base leading-none"
-                  aria-label="Remove category filter"
-                >
-                  ×
-                </button>
-              </span>
+            {activeFilters.category_slugs && activeFilters.category_slugs.length > 0 && (
+              activeFilters.category_slugs.map((slug) => (
+                <span key={slug} className="inline-flex items-center px-3 py-1.5 text-[12px] bg-gray-100 text-gray-900 font-body border border-gray-200 rounded">
+                  {getCategoryNameFromTree(slug) ||
+                    formatCategorySlug(slug)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newSlugs = (activeFilters.category_slugs || []).filter((s) => s !== slug);
+                      setSelectedCategories(newSlugs);
+                      if (newSlugs.length > 0) {
+                        setActiveFilters({ ...activeFilters, category_slugs: newSlugs });
+                      } else {
+                        const newFilters = { ...activeFilters };
+                        delete newFilters.category_slugs;
+                        const hasOtherFilters = newFilters.min_price !== undefined || newFilters.max_price !== undefined;
+                        setActiveFilters(hasOtherFilters ? newFilters : null);
+                      }
+                      setCurrentPage(1);
+                    }}
+                    className="ml-1.5 text-gray-500 hover:text-gray-900 transition-colors duration-150 ease-out text-base leading-none"
+                    aria-label="Remove category filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))
             )}
             {activeFilters.min_price !== undefined &&
               activeFilters.min_price > 0 && (
@@ -450,7 +518,7 @@ function ProductsPageContent() {
                       delete newFilters.min_price;
                       const hasOtherFilters =
                         newFilters.max_price !== undefined ||
-                        newFilters.category_slug !== undefined;
+                        (newFilters.category_slugs && newFilters.category_slugs.length > 0);
                       setActiveFilters(hasOtherFilters ? newFilters : null);
                       setMinPrice(0);
                       // Re-apply filters to update the query
@@ -476,7 +544,7 @@ function ProductsPageContent() {
                       delete newFilters.max_price;
                       const hasOtherFilters =
                         newFilters.min_price !== undefined ||
-                        newFilters.category_slug !== undefined;
+                        (newFilters.category_slugs && newFilters.category_slugs.length > 0);
                       setActiveFilters(hasOtherFilters ? newFilters : null);
                       setMaxPrice(100000);
                       // Re-apply filters to update the query
@@ -513,7 +581,14 @@ function ProductsPageContent() {
             onToggleFilter={() => { }}
             onApplyFilters={handleApplyFilters}
             isFiltering={productsQuery.isFetching}
-            onCategorySelect={handleCategorySelect}
+            selectedCategories={selectedCategories.map((slug) => {
+              const allCats = categoriesQuery.data?.flatMap((cat) => [
+                { name: cat.name, slug: cat.slug },
+                ...(cat.children || []).map((child) => ({ name: child.name, slug: child.slug })),
+              ]) || [];
+              return allCats.find((c) => c.slug === slug)?.name || slug;
+            })}
+            onCategoryToggle={handleCategoryToggle}
             categories={transformedCategories}
             filterOptions={{
               brands: [],
@@ -590,8 +665,15 @@ function ProductsPageContent() {
                       toggleMobileFilter();
                     }}
                     isFiltering={productsQuery.isFetching}
-                    onCategorySelect={(categoryName) => {
-                      handleCategorySelect(categoryName);
+                    selectedCategories={selectedCategories.map((slug) => {
+                      const allCats = categoriesQuery.data?.flatMap((cat) => [
+                        { name: cat.name, slug: cat.slug },
+                        ...(cat.children || []).map((child) => ({ name: child.name, slug: child.slug })),
+                      ]) || [];
+                      return allCats.find((c) => c.slug === slug)?.name || slug;
+                    })}
+                    onCategoryToggle={(categoryName: string) => {
+                      handleCategoryToggle(categoryName);
                       toggleMobileFilter();
                     }}
                     categories={transformedCategories}

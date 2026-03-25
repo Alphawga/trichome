@@ -187,7 +187,7 @@ export default function ProductDetailsPage() {
         <div className="absolute inset-0">
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: "url('/banners/product-banner.jpg')" }}
+            style={{ backgroundImage: `url(${product?.images?.[0]?.url})` }}
           />
           {/* Gradient Overlay */}
           <div

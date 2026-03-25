@@ -53,6 +53,11 @@ export function SearchBar({
   const [query, setQuery] = useState(initialQuery);
   const [isFocused, setIsFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Sync internal query state with initialQuery prop changes
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
