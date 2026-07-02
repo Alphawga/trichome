@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -140,6 +140,7 @@ export function ImageUploader({
             src={value}
             alt="Uploaded image"
             fill
+            sizes="(max-width: 640px) 100vw, 600px"
             className="object-contain"
           />
         </div>

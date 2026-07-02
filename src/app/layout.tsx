@@ -5,6 +5,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "@/components/providers";
 import { CompareFloatingBar } from "@/components/compare/CompareFloatingBar";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site-config";
 
 // Inter font for body text
 const inter = Inter({
@@ -28,32 +29,34 @@ const classyVogue = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Trichomes - Cosmeceuticals & Skincare Coming Soon",
-  description:
-    "Discover the future of skincare with Trichomes. Revolutionary cosmeceutical products inspired by nature's most powerful ingredients. Coming soon.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - Cosmeceuticals & Skincare`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
   keywords: [
     "cosmeceuticals",
     "skincare",
     "beauty",
     "trichomes",
     "natural skincare",
-    "innovative beauty",
+    "Nigerian skincare",
   ],
-  authors: [{ name: "Trichomes" }],
-  creator: "Trichomes",
-  publisher: "Trichomes",
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   openGraph: {
-    title: "Trichomes - Cosmeceuticals & Skincare Coming Soon",
-    description:
-      "Revolutionary cosmeceutical products inspired by nature's most powerful ingredients.",
+    title: `${SITE_NAME} - Cosmeceuticals & Skincare`,
+    description: SITE_DESCRIPTION,
     type: "website",
-    siteName: "Trichomes",
+    siteName: SITE_NAME,
+    url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trichomes - Cosmeceuticals & Skincare Coming Soon",
-    description:
-      "Revolutionary cosmeceutical products inspired by nature's most powerful ingredients.",
+    title: `${SITE_NAME} - Cosmeceuticals & Skincare`,
+    description: SITE_DESCRIPTION,
   },
 };
 

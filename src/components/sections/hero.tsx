@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import type React from "react";
 import { CONTENT_TYPES } from "@/lib/constants/content-types";
@@ -47,7 +47,7 @@ export const Hero: React.FC = () => {
           src={imageUrl}
           alt="Natural skincare products with coconut and botanical ingredients"
           fill
-          className="object-cover object-center mt-15 md:mt-0"
+          className="object-cover object-center"
           priority
           quality={100}
           sizes="100vw"
@@ -55,7 +55,7 @@ export const Hero: React.FC = () => {
       </div>
 
       {/* Mobile: gradient top bar to blend into the image */}
-      <div className="absolute top-0 inset-x-0 h-[260px] md:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
+      <div className="absolute top-0 inset-x-0 h-[260px] lg:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
 
       <div className="hidden lg:block absolute inset-0 bg-[#1E3024]/10 pointer-events-none" />
 
@@ -63,7 +63,7 @@ export const Hero: React.FC = () => {
         {/* Text Container - Constrained width, left-aligned */}
         <div className="w-full  max-w-md md:max-w-xl ml-5 md:ml-0">
           {/* Headline - Classy Vogue font */}
-          <h1 className=" mx-auto items-center justify-center text-[48px] md:text-[64px] leading-[1.1] text-trichomes-forest tracking-tight mb-4 sm:mb-5 lg:mb-6 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-heading">
+          <h1 className=" mx-auto items-center justify-center text-[48px] sm:text-[52px] md:text-[64px] lg:text-[72px] xl:text-[80px] leading-[1.1] text-trichomes-forest tracking-tight mb-4 sm:mb-5 lg:mb-6 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-heading">
             {titleParts.map((part, index) => (
               <span key={part}>
                 {part}
@@ -74,7 +74,7 @@ export const Hero: React.FC = () => {
 
           {/* Body Text - Inter font - Full text on mobile */}
           <p
-            className="mb-6 sm:mb-8 lg:mb-10 text-[14px] sm:text-[15px] lg:text-[17px] text-trichomes-forest/70 leading-relaxed font-normal animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
+            className="mb-6 sm:mb-8 lg:mb-10 text-[14px] sm:text-[15px] md:text-[16px] lg:text-[17px] xl:text-[18px] text-trichomes-forest/70 leading-relaxed font-normal animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
             style={{ animationDelay: "150ms", animationFillMode: "both" }}
           >
             {description}

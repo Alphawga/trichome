@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
+import { trpc } from "@/utils/trpc";
 import { ChevronDownIcon } from "../ui/icons";
 
 interface AdminHeaderProps {
@@ -15,9 +17,38 @@ interface AdminHeaderProps {
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
   const router = useRouter();
+
+  const unreadCountQuery = trpc.getUnreadNotificationCount.useQuery(undefined, {
+    refetchInterval: 30000,
+  });
+  const notificationsQuery = trpc.getNotifications.useQuery(
+    { limit: 10 },
+    {
+      enabled: notificationsOpen,
+      refetchInterval: notificationsOpen ? 30000 : false,
+    },
+  );
+  const utils = trpc.useUtils();
+  const markAsReadMutation = trpc.markNotificationAsRead.useMutation({
+    onSuccess: () => {
+      utils.getUnreadNotificationCount.invalidate();
+      utils.getNotifications.invalidate();
+    },
+  });
+  const markAllAsReadMutation = trpc.markAllNotificationsAsRead.useMutation({
+    onSuccess: () => {
+      utils.getUnreadNotificationCount.invalidate();
+      utils.getNotifications.invalidate();
+    },
+  });
+
+  const unreadCount = unreadCountQuery.data ?? 0;
+  const notifications = notificationsQuery.data ?? [];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -26,6 +57,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setDropdownOpen(false);
+      }
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
+        setNotificationsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -89,29 +126,105 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
 
       <div className="ml-auto flex items-center space-x-4">
         {/* Notifications */}
-        <button
-          type="button"
-          className="p-2 text-gray-400 hover:text-gray-600 relative"
-          onClick={() => toast.info("Notifications feature coming soon")}
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="relative" ref={notificationsRef}>
+          <button
+            type="button"
+            className="p-2 text-gray-400 hover:text-gray-600 relative"
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
           >
-            <title>Notifications</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            3
-          </span>
-        </button>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <title>Notifications</title>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-medium text-gray-900">
+                  Notifications
+                </p>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    className="text-xs text-[#38761d] hover:underline disabled:opacity-50"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-96 overflow-y-auto">
+                {notificationsQuery.isLoading ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-500">
+                    Loading...
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-500">
+                    No notifications yet
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <Link
+                      key={notification.id}
+                      href={
+                        notification.order
+                          ? `/admin/orders/${notification.order.id}`
+                          : "#"
+                      }
+                      onClick={() => {
+                        if (!notification.read) {
+                          markAsReadMutation.mutate({ id: notification.id });
+                        }
+                        setNotificationsOpen(false);
+                      }}
+                      className={`block px-4 py-3 text-sm border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                        notification.read ? "bg-white" : "bg-green-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-gray-900">
+                          {notification.title}
+                        </p>
+                        {!notification.read && (
+                          <span className="w-2 h-2 rounded-full bg-[#38761d] mt-1.5 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-gray-600 mt-0.5">
+                        {notification.message}
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {formatDistanceToNow(
+                          new Date(notification.created_at),
+                          {
+                            addSuffix: true,
+                          },
+                        )}
+                      </p>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Menu */}
         <div className="relative" ref={dropdownRef}>

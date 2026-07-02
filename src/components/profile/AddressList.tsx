@@ -1,19 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { toast } from "sonner";
 import { EditIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
-import { AddressForm } from "./AddressForm";
+import { AddressForm, type AddressFormRef } from "@/components/forms/AddressForm";
+import { useAuth } from "@/app/contexts/auth-context";
 import type { Address } from "@prisma/client";
 import { Loader2 } from "lucide-react";
 
 export function AddressList() {
+    const { user } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+    const addressFormRef = useRef<AddressFormRef>(null);
 
     const utils = trpc.useUtils();
     const { data: addresses, isLoading } = trpc.getAddresses.useQuery();
+
+    const createAddressMutation = trpc.createAddress.useMutation({
+        onSuccess: () => {
+            utils.getAddresses.invalidate();
+            toast.success("Address added successfully");
+            setIsCreating(false);
+        },
+        onError: (error) => {
+            toast.error(error.message || "Failed to add address");
+        },
+    });
+
+    const updateAddressMutation = trpc.updateAddress.useMutation({
+        onSuccess: () => {
+            utils.getAddresses.invalidate();
+            toast.success("Address updated successfully");
+            setEditingAddress(null);
+        },
+        onError: (error) => {
+            toast.error(error.message || "Failed to update address");
+        },
+    });
 
     const deleteAddressMutation = trpc.deleteAddress.useMutation({
         onSuccess: () => {
@@ -46,6 +71,51 @@ export function AddressList() {
         setDefaultAddressMutation.mutate({ id });
     }
 
+    const handleSaveNew = () => {
+        if (!addressFormRef.current?.isValid()) {
+            addressFormRef.current?.validate();
+            toast.error("Please fill in all required fields correctly");
+            return;
+        }
+
+        const formData = addressFormRef.current.getData();
+        createAddressMutation.mutate({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            phone: formData.phone || undefined,
+            address_1: formData.address_1,
+            address_2: formData.address_2 || undefined,
+            city: formData.city,
+            state: formData.state || undefined,
+            postal_code: formData.postal_code || undefined,
+            country: formData.country,
+        });
+    };
+
+    const handleSaveEdit = () => {
+        if (!editingAddress) return;
+
+        if (!addressFormRef.current?.isValid()) {
+            addressFormRef.current?.validate();
+            toast.error("Please fill in all required fields correctly");
+            return;
+        }
+
+        const formData = addressFormRef.current.getData();
+        updateAddressMutation.mutate({
+            id: editingAddress.id,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            phone: formData.phone || undefined,
+            address_1: formData.address_1,
+            address_2: formData.address_2 || undefined,
+            city: formData.city,
+            state: formData.state || undefined,
+            postal_code: formData.postal_code || undefined,
+            country: formData.country,
+        });
+    };
+
     if (isLoading) {
         return (
             <div className="flex justify-center p-8">
@@ -72,21 +142,71 @@ export function AddressList() {
             </div>
 
             {isCreating && (
-                <div className="mb-6">
+                <div className="mb-6 bg-gray-50 p-4 sm:p-6 border border-gray-200 rounded-sm">
+                    <h3 className="font-heading font-bold text-lg mb-4">Add New Address</h3>
                     <AddressForm
-                        onSuccess={() => setIsCreating(false)}
-                        onCancel={() => setIsCreating(false)}
+                        ref={addressFormRef}
+                        initialValues={{ email: user?.email }}
+                        showEmail={false}
+                        asDiv
                     />
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={handleSaveNew}
+                            disabled={createAddressMutation.isPending}
+                            className="px-4 py-2 bg-[#1E3024] text-white rounded-sm font-medium text-sm hover:bg-[#1E3024]/90 transition-all disabled:opacity-50"
+                        >
+                            {createAddressMutation.isPending ? "Saving..." : "Save Address"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsCreating(false)}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-sm font-medium text-sm hover:bg-gray-100 transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             )}
 
             {editingAddress && (
-                <div className="mb-6">
+                <div className="mb-6 bg-gray-50 p-4 sm:p-6 border border-gray-200 rounded-sm">
+                    <h3 className="font-heading font-bold text-lg mb-4">Edit Address</h3>
                     <AddressForm
-                        address={editingAddress}
-                        onSuccess={() => setEditingAddress(null)}
-                        onCancel={() => setEditingAddress(null)}
+                        ref={addressFormRef}
+                        initialValues={{
+                            first_name: editingAddress.first_name,
+                            last_name: editingAddress.last_name,
+                            email: user?.email,
+                            phone: editingAddress.phone || "",
+                            address_1: editingAddress.address_1,
+                            address_2: editingAddress.address_2 || "",
+                            city: editingAddress.city,
+                            state: editingAddress.state || "",
+                            postal_code: editingAddress.postal_code || "",
+                            country: editingAddress.country || "Nigeria",
+                        }}
+                        showEmail={false}
+                        asDiv
                     />
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={handleSaveEdit}
+                            disabled={updateAddressMutation.isPending}
+                            className="px-4 py-2 bg-[#1E3024] text-white rounded-sm font-medium text-sm hover:bg-[#1E3024]/90 transition-all disabled:opacity-50"
+                        >
+                            {updateAddressMutation.isPending ? "Saving..." : "Save Changes"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEditingAddress(null)}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-sm font-medium text-sm hover:bg-gray-100 transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             )}
 

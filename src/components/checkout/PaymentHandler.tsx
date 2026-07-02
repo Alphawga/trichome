@@ -5,6 +5,8 @@ import { useCallback, useState } from "react";
 import { useOrderCreation } from "@/hooks/useOrderCreation";
 import { OrderCreationStatus } from "./OrderCreationStatus";
 
+type PaystackResponse = PaystackPopResponse;
+
 interface AddressData {
   first_name: string;
   last_name: string;
@@ -46,11 +48,32 @@ interface PaymentHandlerProps {
   showStatus?: boolean;
 }
 
+function loadPaystackScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== "undefined" && window.PaystackPop) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById("paystack-inline-js");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "paystack-inline-js";
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Paystack script"));
+    document.head.appendChild(script);
+  });
+}
+
 export function PaymentHandler({
   address,
   items,
   totals,
-  paymentMethod = "WALLET",
+  paymentMethod = "PAYSTACK",
   currency = "NGN",
   notes,
   customerName,
@@ -76,61 +99,30 @@ export function PaymentHandler({
     onPaymentOpen?.();
 
     try {
-      // @ts-ignore - Monnify JS SDK does not have types
-      const Monnify = (await import("monnify-js")).default;
-      // @ts-ignore - Monnify JS SDK does not have types
-      const monnify = new Monnify(
-        process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
-        process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
-      );
+      await loadPaystackScript();
 
       const paymentReference = `TRICHOMES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-      monnify.initializePayment({
-        amount: `${totals.total}`,
+      const handler = window.PaystackPop.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
+        email: customerEmail,
+        amount: Math.round(totals.total * 100), // kobo
         currency: currency,
-        reference: paymentReference,
-        customerFullName: customerName,
-        customerEmail: customerEmail,
-        apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
-        contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
-        paymentDescription: "Trichomes Product Payment",
-        isTestMode: (process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "").startsWith("MK_TEST_"),
-        metadata: {
-          orderTotal: totals.total.toString(),
-          itemCount: items.length.toString(),
-        },
-        onLoadStart: () => {
-          console.log("Loading Monnify payment modal...");
-        },
-        onLoadComplete: () => {
-          console.log("Monnify payment modal loaded");
-        },
-        onComplete: (response: {
-          paymentStatus?: string;
-          transactionReference?: string;
-          paymentReference?: string;
-          amountPaid?: number | string;
-          paymentDescription?: string;
-          customerEmail?: string;
-          customerName?: string;
-          message?: string;
-        }) => {
-          console.log("Payment response:", response);
-
-          if (response.paymentStatus === "PAID") {
+        ref: paymentReference,
+        label: customerName,
+        callback: (response: PaystackResponse) => {
+          if (response.status === "success") {
             setPaymentStatus("success");
-            console.log("Payment successful, creating order...", response);
 
             createOrder({
               paymentResponse: {
-                paymentStatus: response.paymentStatus,
-                transactionReference: response.transactionReference,
-                paymentReference: response.paymentReference || paymentReference,
-                amountPaid: response.amountPaid?.toString(),
-                paymentDescription: response.paymentDescription,
-                customerEmail: customerEmail,
-                customerName: customerName,
+                paymentStatus: "PAID",
+                transactionReference: response.trans,
+                paymentReference: response.reference,
+                amountPaid: totals.total.toString(),
+                paymentDescription: "Trichomes Product Payment",
+                customerEmail,
+                customerName,
               },
               address,
               items,
@@ -141,14 +133,11 @@ export function PaymentHandler({
             });
           } else {
             setPaymentStatus("error");
-            setPaymentError(
-              response.message || "Payment not successful. Please try again.",
-            );
+            setPaymentError(response.message || "Payment not successful. Please try again.");
             onPaymentClose?.();
           }
         },
         onClose: () => {
-          console.log("Monnify payment modal closed");
           if (paymentStatus === "processing") {
             setPaymentStatus("idle");
             setPaymentError("Payment was cancelled");
@@ -156,13 +145,13 @@ export function PaymentHandler({
           onPaymentClose?.();
         },
       });
-    } catch (error) {
-      console.error("Error initializing payment:", error);
+
+      handler.openIframe();
+    } catch (err) {
+      console.error("Error initializing payment:", err);
       setPaymentStatus("error");
       setPaymentError(
-        error instanceof Error
-          ? error.message
-          : "Failed to initialize payment. Please try again.",
+        err instanceof Error ? err.message : "Failed to initialize payment. Please try again.",
       );
       onPaymentClose?.();
     }
@@ -202,7 +191,6 @@ export function PaymentHandler({
   return null;
 }
 
-
 export function usePaymentHandler(props: PaymentHandlerProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "success" | "error"
@@ -220,92 +208,58 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
     setPaymentError(null);
 
     try {
-
-      // @ts-ignore - Monnify JS SDK does not have types
-      const Monnify = (await import("monnify-js")).default;
-      // @ts-ignore - Monnify JS SDK does not have types
-      const monnify = new Monnify(
-        process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
-        process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
-      );
+      await loadPaystackScript();
 
       const paymentReference = `TRICHOMES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-      monnify.initializePayment({
-        amount: `${props.totals.total}`,
+      const handler = window.PaystackPop.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
+        email: props.customerEmail,
+        amount: Math.round(props.totals.total * 100),
         currency: props.currency || "NGN",
-        reference: paymentReference,
-        customerFullName: props.customerName,
-        customerEmail: props.customerEmail,
-        apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY || "",
-        contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE || "",
-        paymentDescription: "Trichomes Product Payment",
-        isTestMode: process.env.NODE_ENV !== "production",
-        metadata: {
-          orderTotal: props.totals.total.toString(),
-          itemCount: props.items.length.toString(),
-        },
-        onLoadStart: () => {
-          console.log("Loading Monnify payment modal...");
-        },
-        onLoadComplete: () => {
-          console.log("Monnify payment modal loaded");
-        },
-        onComplete: (response: {
-          paymentStatus?: string;
-          transactionReference?: string;
-          paymentReference?: string;
-          amountPaid?: number | string;
-          paymentDescription?: string;
-          customerEmail?: string;
-          customerName?: string;
-          message?: string;
-        }) => {
-          console.log("Payment response:", response);
-
-          if (response.paymentStatus === "PAID") {
+        ref: paymentReference,
+        label: props.customerName,
+        callback: (response: PaystackResponse) => {
+          if (response.status === "success") {
             setPaymentStatus("success");
 
             createOrder({
               paymentResponse: {
-                paymentStatus: response.paymentStatus,
-                transactionReference: response.transactionReference,
-                paymentReference: response.paymentReference || paymentReference,
-                amountPaid: response.amountPaid?.toString(),
-                paymentDescription: response.paymentDescription,
+                paymentStatus: "PAID",
+                transactionReference: response.trans,
+                paymentReference: response.reference,
+                amountPaid: props.totals.total.toString(),
+                paymentDescription: "Trichomes Product Payment",
                 customerEmail: props.customerEmail,
                 customerName: props.customerName,
               },
               address: props.address,
               items: props.items,
               totals: props.totals,
-              payment_method: props.paymentMethod || "WALLET",
+              payment_method: props.paymentMethod || "PAYSTACK",
               currency: props.currency || "NGN",
               notes: props.notes,
               promo_code: props.promoCode,
             });
           } else {
             setPaymentStatus("error");
-            setPaymentError(
-              response.message || "Payment not successful. Please try again.",
-            );
+            setPaymentError(response.message || "Payment not successful. Please try again.");
           }
         },
         onClose: () => {
-          console.log("Monnify payment modal closed");
           if (paymentStatus === "processing") {
             setPaymentStatus("idle");
             setPaymentError("Payment was cancelled");
           }
         },
       });
-    } catch (error) {
-      console.error("Error initializing payment:", error);
+
+      handler.openIframe();
+    } catch (err) {
+      console.error("Error initializing payment:", err);
       setPaymentStatus("error");
       setPaymentError(
-        error instanceof Error
-          ? error.message
-          : "Failed to initialize payment. Please try again.",
+        err instanceof Error ? err.message : "Failed to initialize payment. Please try again.",
       );
     }
   }, [props, paymentStatus, createOrder]);

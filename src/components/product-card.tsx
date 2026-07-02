@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart, Minus, Plus } from "lucide-react"; // Assuming lucide-react for icons
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import type { ProductCardData } from "@/types/product";
 
 interface ProductCardProps {

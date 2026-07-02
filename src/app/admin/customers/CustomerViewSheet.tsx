@@ -1,7 +1,7 @@
 "use client";
 
 import type { Address, User } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 
 import { LogoLoader } from "@/components/ui/logo-loader";

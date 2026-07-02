@@ -63,15 +63,7 @@ function CustomerLayoutContent({ children }: { children: ReactNode }) {
       </Suspense>
       <main className="flex-1">{children}</main>
       {/* WhatsApp Widget */}
-      <WhatsAppWidget
-        phoneNumber={whatsappNumber}
-        messages={[
-          "Hello, I would like to inquire about your products.",
-          "I need help with my order.",
-          "I have a question about shipping.",
-          "Can you help me choose a product?",
-        ]}
-      />
+      <WhatsAppWidget phoneNumber={whatsappNumber} />
       <Footer />
     </div>
   );

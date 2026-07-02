@@ -1,0 +1,20 @@
+# Trichomes
+
+> Trichomes Cosmeceuticals is a Nigeria-based online skincare retailer selling science-backed,
+> nature-inspired cosmeceutical products, alongside expert one-on-one skincare consultations.
+
+Trichomes sells skincare and cosmeceutical products (cleansers, serums, moisturizers, treatments,
+and more) sourced from trusted brands, curated for Nigerian skin and climate. Customers can shop
+by product or category, book a paid consultation with a skincare expert, and check out as a guest
+or a registered account. Payments are processed via Paystack; delivery is available across Nigeria.
+
+## Key pages
+
+- [Shop all products](https://www.trichomesshop.com/products): full product catalog
+- [Brands](https://www.trichomesshop.com/brands): brands carried by Trichomes
+- [Book a consultation](https://www.trichomesshop.com/consultation): paid 1:1 skincare consultations
+- [About](https://www.trichomesshop.com/about): company background and mission
+- [Shipping policy](https://www.trichomesshop.com/shipping): delivery times and costs by Nigerian state
+- [Returns policy](https://www.trichomesshop.com/returns): return and refund terms
+- [Terms of use](https://www.trichomesshop.com/terms)
+- [Privacy policy](https://www.trichomesshop.com/privacy): NDPR-compliant data handling

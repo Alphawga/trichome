@@ -1,7 +1,7 @@
 "use client";
 
 import type { Category, Product, ProductImage } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import { useState } from "react";
 import { PlusIcon, XIcon } from "@/components/ui/icons";

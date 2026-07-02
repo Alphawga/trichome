@@ -2,9 +2,9 @@
 
 import type { OrderStatus } from "@prisma/client";
 import Link from "next/link";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/utils/trpc";
 
@@ -24,12 +24,15 @@ export default function OrderViewPage() {
     { orderNumber },
     {
       enabled: !!orderNumber,
-      onSuccess: (data) => {
-        setStatus(data.status);
-        setTrackingNumber(data.tracking_number || "");
-      },
     },
   );
+
+  useEffect(() => {
+    if (orderQuery.data) {
+      setStatus(orderQuery.data.status);
+      setTrackingNumber(orderQuery.data.tracking_number || "");
+    }
+  }, [orderQuery.data]);
 
   // Update status mutation
   const updateStatusMutation = trpc.updateOrderStatus.useMutation({
@@ -292,7 +295,7 @@ export default function OrderViewPage() {
                   ₦{Number(order.subtotal).toLocaleString()}
                 </span>
               </p>
-              {order.tax > 0 && (
+              {Number(order.tax) > 0 && (
                 <p className="text-gray-600">
                   Tax:{" "}
                   <span className="font-medium text-black">
@@ -306,7 +309,7 @@ export default function OrderViewPage() {
                   ₦{Number(order.shipping_cost).toLocaleString()}
                 </span>
               </p>
-              {order.discount > 0 && (
+              {Number(order.discount) > 0 && (
                 <p className="text-gray-600">
                   Discount:{" "}
                   <span className="font-medium text-green-600">

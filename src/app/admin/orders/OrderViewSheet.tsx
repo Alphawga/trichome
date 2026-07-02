@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrderStatus } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

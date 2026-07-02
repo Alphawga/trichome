@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useEffect, useState } from "react";
 import { ChevronDownIcon, FilterIcon, SearchIcon } from "../ui/icons";
 import { RangeSlider } from "../ui/range-slider";

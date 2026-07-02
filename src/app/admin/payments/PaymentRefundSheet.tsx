@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -31,11 +31,14 @@ export function PaymentRefundSheet({
     { id: paymentId! },
     {
       enabled: !!paymentId && open,
-      onSuccess: (data) => {
-        setRefundAmount(Number(data.amount).toString());
-      },
     },
   );
+
+  useEffect(() => {
+    if (paymentQuery.data) {
+      setRefundAmount(Number(paymentQuery.data.amount).toString());
+    }
+  }, [paymentQuery.data]);
 
   const refundMutation = trpc.processRefund.useMutation({
     onSuccess: () => {

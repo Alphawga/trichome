@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
@@ -64,3 +65,39 @@ export const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
     ctx,
   });
 });
+
+async function assertNotRateLimited(
+  name: string,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+) {
+  const { allowed, retryAfterSeconds } = await checkRateLimit(
+    `${name}:${key}`,
+    limit,
+    windowSeconds,
+  );
+
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Too many requests. Try again in ${retryAfterSeconds}s.`,
+    });
+  }
+}
+
+// Guest checkout - unauthenticated, rate limited by IP
+export const guestCheckoutRateLimited = publicProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("guestCheckout", ctx.ip, 5, 600);
+    return next();
+  },
+);
+
+// Authenticated checkout - rate limited by user id
+export const checkoutRateLimited = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("checkout", ctx.user.id, 10, 600);
+    return next();
+  },
+);

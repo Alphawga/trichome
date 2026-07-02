@@ -9,6 +9,7 @@ import * as contentModule from "./modules/content";
 import * as dashboardModule from "./modules/dashboard";
 import * as loyaltyModule from "./modules/loyalty";
 import * as newsletterModule from "./modules/newsletter";
+import * as notificationsModule from "./modules/notifications";
 import * as ordersModule from "./modules/orders";
 import * as paymentsModule from "./modules/payments";
 import * as productsModule from "./modules/products";
@@ -44,6 +45,7 @@ export const appRouter = router({
   ...searchModule,
   ...loyaltyModule,
   ...settingsModule,
+  ...notificationsModule,
 
   // Health check
   healthCheck: publicProcedure.query(() => {

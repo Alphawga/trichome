@@ -9,6 +9,7 @@
  * - Clear localStorage after successful sync
  */
 
+import type { Decimal } from "@prisma/client/runtime/library";
 import type { LocalCartItem } from "@/utils/local-cart";
 
 export interface CartSyncResult {
@@ -29,7 +30,7 @@ export interface DatabaseCartItem {
   product: {
     id: string;
     name: string;
-    price: number | string;
+    price: number | string | Decimal;
   };
 }
 
@@ -37,7 +38,7 @@ export interface LocalCartItemWithProduct extends LocalCartItem {
   product?: {
     id: string;
     name: string;
-    price: number | string;
+    price: number | string | Decimal;
   };
 }
 

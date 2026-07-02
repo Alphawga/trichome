@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronRightIcon } from "@/components/ui/icons";
@@ -244,7 +244,7 @@ export default function OrderDetailsPage() {
                       </p>
                       <p className="text-[14px] sm:text-[15px] font-heading font-semibold text-gray-900">
                         ₦
-                        {Number(item.unit_price).toLocaleString(undefined, {
+                        {Number(item.price).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                         })}{" "}
                         <span className="text-[13px] text-gray-600 font-body font-normal">
@@ -255,9 +255,7 @@ export default function OrderDetailsPage() {
                     <div className="text-right flex-shrink-0">
                       <p className="text-[15px] sm:text-[16px] font-heading font-semibold text-gray-900">
                         ₦
-                        {(
-                          Number(item.unit_price) * item.quantity
-                        ).toLocaleString(undefined, {
+                        {Number(item.total).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                         })}
                       </p>
@@ -274,26 +272,33 @@ export default function OrderDetailsPage() {
               </h3>
               <div className="text-[14px] sm:text-[15px] text-gray-700 font-body space-y-1">
                 <p className="font-semibold text-gray-900">
-                  {order.shipping_first_name} {order.shipping_last_name}
+                  {order.first_name} {order.last_name}
                 </p>
-                <p>{order.shipping_address_1}</p>
-                {order.shipping_address_2 && <p>{order.shipping_address_2}</p>}
-                <p>
-                  {order.shipping_city}
-                  {order.shipping_state && `, ${order.shipping_state}`}
-                </p>
-                {order.shipping_postal_code && (
-                  <p>{order.shipping_postal_code}</p>
+                {order.shipping_address && (
+                  <>
+                    <p>{order.shipping_address.address_1}</p>
+                    {order.shipping_address.address_2 && (
+                      <p>{order.shipping_address.address_2}</p>
+                    )}
+                    <p>
+                      {order.shipping_address.city}
+                      {order.shipping_address.state &&
+                        `, ${order.shipping_address.state}`}
+                    </p>
+                    {order.shipping_address.postal_code && (
+                      <p>{order.shipping_address.postal_code}</p>
+                    )}
+                    <p>{order.shipping_address.country || "Nigeria"}</p>
+                  </>
                 )}
-                <p>{order.shipping_country || "Nigeria"}</p>
                 <p className="pt-2">
                   <span className="font-semibold text-gray-900">Email:</span>{" "}
-                  {order.shipping_email}
+                  {order.email}
                 </p>
-                {order.shipping_phone && (
+                {order.phone && (
                   <p>
                     <span className="font-semibold text-gray-900">Phone:</span>{" "}
-                    {order.shipping_phone}
+                    {order.phone}
                   </p>
                 )}
               </div>
@@ -367,16 +372,18 @@ export default function OrderDetailsPage() {
                   Payment Information
                 </h4>
                 <div className="text-[13px] sm:text-[14px] font-body text-gray-700">
-                  <p>
-                    <span className="font-semibold text-gray-900">Method:</span>{" "}
-                    {formatStatus(order.payment_method)}
-                  </p>
-                  {order.payment_reference && (
+                  {order.payment_method && (
+                    <p>
+                      <span className="font-semibold text-gray-900">Method:</span>{" "}
+                      {formatStatus(order.payment_method)}
+                    </p>
+                  )}
+                  {order.payments[0]?.reference && (
                     <p className="break-all">
                       <span className="font-semibold text-gray-900">
                         Reference:
                       </span>{" "}
-                      {order.payment_reference}
+                      {order.payments[0].reference}
                     </p>
                   )}
                 </div>

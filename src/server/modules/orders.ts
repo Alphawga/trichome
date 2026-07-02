@@ -7,7 +7,14 @@ import {
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, staffProcedure } from "../trpc";
+import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
+import {
+  checkoutRateLimited,
+  guestCheckoutRateLimited,
+  protectedProcedure,
+  publicProcedure,
+  staffProcedure,
+} from "../trpc";
 
 // Get user's orders
 export const getMyOrders = protectedProcedure
@@ -208,11 +215,28 @@ export const getOrderByNumber = protectedProcedure
         status_history: {
           orderBy: { created_at: "desc" },
         },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
       },
     });
 
     if (!order) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+    }
+
+    // Check if user has access to this order
+    if (
+      order.user_id !== ctx.user.id &&
+      ctx.user.role !== "ADMIN" &&
+      ctx.user.role !== "STAFF"
+    ) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
     }
 
     return order;
@@ -364,10 +388,11 @@ export const createOrder = protectedProcedure
   });
 
 // Create order with payment (after payment success)
-export const createOrderWithPayment = protectedProcedure
+export const createOrderWithPayment = checkoutRateLimited
   .input(
     z.object({
-      // Payment response from Monnify
+      // Client-reported payment info from the Paystack inline popup callback.
+      // paymentStatus/amountPaid are NOT trusted — verified server-side below.
       paymentResponse: z.object({
         paymentStatus: z.string(),
         transactionReference: z.string().optional(),
@@ -405,11 +430,9 @@ export const createOrderWithPayment = protectedProcedure
         discount: z.number().default(0),
         total: z.number(),
       }),
-      // Payment method (defaults to WALLET for Monnify)
-      payment_method: z.nativeEnum(PaymentMethod).default("WALLET"),
+      payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
-      // Optional promo code
       promo_code: z.string().optional(),
     }),
   )
@@ -425,11 +448,15 @@ export const createOrderWithPayment = protectedProcedure
       promo_code: _promo_code,
     } = input;
 
-    // Validate payment status
-    if (paymentResponse.paymentStatus !== "PAID") {
+    // Verify the charge directly with Paystack — never trust client-reported status
+    const verifiedPayment = await verifyPaystackTransaction(
+      paymentResponse.paymentReference,
+    );
+
+    if (verifiedPayment.status !== "success") {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Payment not completed. Status: ${paymentResponse.paymentStatus}`,
+        message: `Payment not completed. Status: ${verifiedPayment.status}`,
       });
     }
 
@@ -458,11 +485,9 @@ export const createOrderWithPayment = protectedProcedure
       }
     }
 
-    // Validate payment amount matches order total
+    // Validate the verified Paystack amount (kobo) matches the order total
     const expectedTotal = totals.total;
-    const paidAmount = paymentResponse.amountPaid
-      ? parseFloat(paymentResponse.amountPaid)
-      : expectedTotal;
+    const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
     if (Math.abs(paidAmount - expectedTotal) > 0.01) {
@@ -705,6 +730,33 @@ export const createOrderWithPayment = protectedProcedure
       console.error("Failed to send order confirmation email:", error);
     }
 
+    // Notify staff/admin of the new order (fire and forget)
+    try {
+      const { notifyNewOrder } = await import(
+        "@/lib/notifications/notify-new-order"
+      );
+      const baseUrl =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+
+      await notifyNewOrder({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        orderDate: order.created_at,
+        customerName:
+          order.first_name && order.last_name
+            ? `${order.first_name} ${order.last_name}`
+            : order.email,
+        customerEmail: order.email,
+        total: Number(order.total),
+        itemCount: order.items.length,
+        orderUrl: `${baseUrl}/admin/orders/${order.id}`,
+      });
+    } catch (error) {
+      console.error("Failed to send new order notification:", error);
+    }
+
     return {
       order,
       orderNumber: order.order_number,
@@ -713,10 +765,11 @@ export const createOrderWithPayment = protectedProcedure
   });
 
 // Create guest order with payment (for unauthenticated users)
-export const createGuestOrderWithPayment = publicProcedure
+export const createGuestOrderWithPayment = guestCheckoutRateLimited
   .input(
     z.object({
-      // Payment response from Monnify
+      // Client-reported payment info from the Paystack inline popup callback.
+      // paymentStatus/amountPaid are NOT trusted — verified server-side below.
       paymentResponse: z.object({
         paymentStatus: z.string(),
         transactionReference: z.string().optional(),
@@ -754,11 +807,9 @@ export const createGuestOrderWithPayment = publicProcedure
         discount: z.number().default(0),
         total: z.number(),
       }),
-      // Payment method (defaults to WALLET for Monnify)
-      payment_method: z.nativeEnum(PaymentMethod).default("WALLET"),
+      payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
-      // Optional promo code
       promo_code: z.string().optional(),
     }),
   )
@@ -774,11 +825,15 @@ export const createGuestOrderWithPayment = publicProcedure
       promo_code: _promo_code,
     } = input;
 
-    // Validate payment status
-    if (paymentResponse.paymentStatus !== "PAID") {
+    // Verify the charge directly with Paystack — never trust client-reported status
+    const verifiedPayment = await verifyPaystackTransaction(
+      paymentResponse.paymentReference,
+    );
+
+    if (verifiedPayment.status !== "success") {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Payment not completed. Status: ${paymentResponse.paymentStatus}`,
+        message: `Payment not completed. Status: ${verifiedPayment.status}`,
       });
     }
 
@@ -807,11 +862,9 @@ export const createGuestOrderWithPayment = publicProcedure
       }
     }
 
-    // Validate payment amount matches order total
+    // Validate the verified Paystack amount (kobo) matches the order total
     const expectedTotal = totals.total;
-    const paidAmount = paymentResponse.amountPaid
-      ? parseFloat(paymentResponse.amountPaid)
-      : expectedTotal;
+    const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
     if (Math.abs(paidAmount - expectedTotal) > 0.01) {
@@ -974,6 +1027,33 @@ export const createGuestOrderWithPayment = publicProcedure
     } catch (error) {
       // Log error but don't fail order creation if email fails
       console.error("Failed to send order confirmation email:", error);
+    }
+
+    // Notify staff/admin of the new order (fire and forget)
+    try {
+      const { notifyNewOrder } = await import(
+        "@/lib/notifications/notify-new-order"
+      );
+      const baseUrl =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+
+      await notifyNewOrder({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        orderDate: order.created_at,
+        customerName:
+          order.first_name && order.last_name
+            ? `${order.first_name} ${order.last_name}`
+            : order.email,
+        customerEmail: order.email,
+        total: Number(order.total),
+        itemCount: order.items.length,
+        orderUrl: `${baseUrl}/admin/orders/${order.id}`,
+      });
+    } catch (error) {
+      console.error("Failed to send new order notification:", error);
     }
 
     return {

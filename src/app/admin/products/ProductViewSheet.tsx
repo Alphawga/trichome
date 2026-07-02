@@ -1,7 +1,7 @@
 "use client";
 
 import { ProductStatus } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 
 import {
   Sheet,

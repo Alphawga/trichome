@@ -25,7 +25,7 @@ export const addressFormSchema = z.object({
   city: z.string().min(1, "City is required"),
   state: z.string().optional(),
   postal_code: z.string().optional(),
-  country: z.string().default("Nigeria"),
+  country: z.string().min(1, "Country is required"),
 });
 
 export type AddressFormData = z.infer<typeof addressFormSchema>;
@@ -148,7 +148,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
         if (error instanceof z.ZodError) {
           setErrors((prev) => ({
             ...prev,
-            [field]: error.errors[0]?.message || "Invalid value",
+            [field]: error.issues[0]?.message || "Invalid value",
           }));
         }
       }
@@ -194,7 +194,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
         if (error instanceof z.ZodError) {
           const fieldErrors: Partial<Record<keyof AddressFormData, string>> =
             {};
-          error.errors.forEach((err) => {
+          error.issues.forEach((err) => {
             const field = err.path[0] as keyof AddressFormData;
             if (field) {
               fieldErrors[field] = err.message;
@@ -216,7 +216,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
         if (error instanceof z.ZodError) {
           const fieldErrors: Partial<Record<keyof AddressFormData, string>> =
             {};
-          error.errors.forEach((err) => {
+          error.issues.forEach((err) => {
             const field = err.path[0] as keyof AddressFormData;
             if (field) {
               fieldErrors[field] = err.message;
