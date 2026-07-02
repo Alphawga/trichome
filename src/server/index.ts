@@ -17,6 +17,7 @@ import * as promotionsModule from "./modules/promotions";
 import * as reviewsModule from "./modules/reviews";
 import * as searchModule from "./modules/search";
 import * as settingsModule from "./modules/settings";
+import * as shippingModule from "./modules/shipping";
 import * as trackingModule from "./modules/tracking";
 import * as usersModule from "./modules/users";
 import * as wishlistModule from "./modules/wishlist";
@@ -46,6 +47,7 @@ export const appRouter = router({
   ...loyaltyModule,
   ...settingsModule,
   ...notificationsModule,
+  ...shippingModule,
 
   // Health check
   healthCheck: publicProcedure.query(() => {

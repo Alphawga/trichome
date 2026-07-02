@@ -13,10 +13,6 @@ import { OrderCreationStatus } from "@/components/checkout/OrderCreationStatus";
 import { usePaymentHandler } from "@/components/checkout/PaymentHandler";
 import { SavedAddressesSelector } from "@/components/checkout/SavedAddressesSelector";
 import { OrderSummary } from "@/components/orders/OrderSummary";
-import {
-  calculateShipping,
-  getAvailableShippingMethods,
-} from "@/lib/shipping/calculate-shipping";
 import { getLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
 import { useAuth } from "../../contexts/auth-context";
@@ -36,6 +32,16 @@ const addressFormSchema = z.object({
 });
 
 type AddressFormData = z.infer<typeof addressFormSchema>;
+
+function getItemWeightKg(item: {
+  product: { weight?: number | Prisma.Decimal | null };
+}): number {
+  const rawWeight = item.product.weight;
+  return (
+    (rawWeight !== undefined && rawWeight !== null && Number(rawWeight)) ||
+    0.5
+  );
+}
 
 function CheckoutPageContent() {
   const searchParams = useSearchParams();
@@ -187,43 +193,76 @@ function CheckoutPageContent() {
 
 
 
-  const shippingCalculation = useMemo(() => {
-    const input = {
-      subtotal,
-      weight: cartItems.reduce((sum, item) => {
-        const rawWeight = (
-          item.product as { weight?: number | Prisma.Decimal | null }
-        ).weight;
-        const itemWeight =
-          (rawWeight !== undefined && rawWeight !== null && Number(rawWeight)) ||
-          0.5;
-        return sum + itemWeight * item.quantity;
-      }, 0),
-      state: formData.state,
-      city: formData.city,
-      postalCode: formData.postal_code,
-      country: formData.country || "Nigeria",
-    };
+  const cartWeightKg = useMemo(
+    () =>
+      cartItems.reduce(
+        (sum, item) => sum + getItemWeightKg(item) * item.quantity,
+        0,
+      ),
+    [cartItems],
+  );
 
-    return shippingMethod === "express"
-      ? require("@/lib/shipping/calculate-shipping").calculateExpressShipping(
-        input,
-      )
-      : calculateShipping(input);
+  // Debounce the address fields that drive the live shipping quote so we
+  // don't fire a request (and, once a carrier key is set, a real external
+  // API call) on every keystroke.
+  const [debouncedAddress, setDebouncedAddress] = useState({
+    state: formData.state,
+    city: formData.city,
+    postal_code: formData.postal_code,
+    country: formData.country,
+  });
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedAddress({
+        state: formData.state,
+        city: formData.city,
+        postal_code: formData.postal_code,
+        country: formData.country,
+      });
+    }, 500);
+    return () => clearTimeout(timeout);
   }, [
-    subtotal,
-    cartItems,
     formData.state,
     formData.city,
     formData.postal_code,
     formData.country,
-    shippingMethod,
   ]);
+
+  const shippingRateQuery = trpc.getShippingRate.useQuery(
+    {
+      state: debouncedAddress.state || "",
+      city: debouncedAddress.city,
+      postalCode: debouncedAddress.postal_code,
+      country: debouncedAddress.country || "Nigeria",
+      addressLine: formData.address_1,
+      contactName: `${formData.first_name} ${formData.last_name}`.trim(),
+      contactEmail: formData.email,
+      contactPhone: formData.phone,
+      weightKg: cartWeightKg,
+      subtotal,
+      items: cartItems.map((item) => ({
+        name: item.product.name,
+        unitWeightKg: getItemWeightKg(item),
+        unitAmount: Number(item.product.price as unknown as number),
+        quantity: item.quantity,
+      })),
+    },
+    {
+      enabled: Boolean(debouncedAddress.state && debouncedAddress.city),
+      staleTime: 60_000,
+    },
+  );
+
+  const shippingRates = shippingRateQuery.data?.rates ?? [];
+  const selectedRate = shippingRates.find(
+    (rate) => rate.method === shippingMethod,
+  );
 
   const shipping = appliedPromoCode?.isFreeShipping
     ? 0
-    : shippingCalculation.cost;
-  const tax = subtotal * 0.075;
+    : (selectedRate?.cost ?? 0);
+  const tax = 0; // Tax removed for now (business decision, 2026-07-02)
   const discount = appliedPromoCode?.discount || 0;
   const total = subtotal + shipping + tax - discount;
 
@@ -670,67 +709,62 @@ function CheckoutPageContent() {
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
                       Shipping Method
                     </h3>
-                    <div className="space-y-2">
-                      {getAvailableShippingMethods({
-                        subtotal,
-                        weight: cartItems.reduce((sum, item) => {
-                          const rawWeight = (
-                            item.product as {
-                              weight?: number | Prisma.Decimal | null;
-                            }
-                          ).weight;
-                          const itemWeight =
-                            (rawWeight !== undefined &&
-                              rawWeight !== null &&
-                              Number(rawWeight)) ||
-                            0.5;
-                          return sum + itemWeight * item.quantity;
-                        }, 0),
-                        state: formData.state,
-                        city: formData.city,
-                        postalCode: formData.postal_code,
-                        country: formData.country || "Nigeria",
-                      }).map((method) => (
-                        <label
-                          key={method.method}
-                          className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-all duration-150 ${shippingMethod === method.method
-                            ? "border-black bg-gray-50"
-                            : "border-gray-200 hover:border-gray-300"
-                            }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name="shippingMethod"
-                              value={method.method}
-                              checked={shippingMethod === method.method}
-                              onChange={(e) =>
-                                setShippingMethod(
-                                  e.target.value as "standard" | "express",
-                                )
-                              }
-                              className="w-4 h-4 text-black border-gray-200 focus:ring-black focus:ring-1"
-                            />
-                            <div>
-                              <div className="font-medium text-gray-900 text-sm font-body">
-                                {method.label}
+                    {shippingRateQuery.isLoading ? (
+                      <p className="text-sm text-gray-500 font-body">
+                        Calculating shipping...
+                      </p>
+                    ) : shippingRateQuery.isError ? (
+                      <p className="text-sm text-red-600 font-body">
+                        Couldn&apos;t calculate shipping. Please try again.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {shippingRates.map((rate) => (
+                          <label
+                            key={rate.method}
+                            className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-all duration-150 ${shippingMethod === rate.method
+                              ? "border-black bg-gray-50"
+                              : "border-gray-200 hover:border-gray-300"
+                              }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="shippingMethod"
+                                value={rate.method}
+                                checked={shippingMethod === rate.method}
+                                onChange={(e) =>
+                                  setShippingMethod(
+                                    e.target.value as "standard" | "express",
+                                  )
+                                }
+                                className="w-4 h-4 text-black border-gray-200 focus:ring-black focus:ring-1"
+                              />
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm font-body">
+                                  {rate.method === "standard"
+                                    ? "Standard"
+                                    : "Express"}{" "}
+                                  Delivery ({rate.estimatedDays}{" "}
+                                  {rate.estimatedDays === 1 ? "day" : "days"})
+                                </div>
+                                {rate.cost === 0 &&
+                                  rate.method === "standard" && (
+                                    <div className="text-xs text-[#407029] font-body">
+                                      Free shipping on orders over ₦50,000
+                                    </div>
+                                  )}
                               </div>
-                              {shippingCalculation.isFree &&
-                                method.method === "standard" && (
-                                  <div className="text-xs text-[#407029] font-body">
-                                    Free shipping on orders over ₦50,000
-                                  </div>
-                                )}
                             </div>
-                          </div>
-                          <div className="text-sm font-semibold text-gray-900 font-body">
-                            {method.cost === 0
-                              ? "Free"
-                              : `₦${method.cost.toLocaleString()}`}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                            <div className="text-sm font-semibold text-gray-900 font-body">
+                              {rate.cost === 0
+                                ? "Free"
+                                : `₦${rate.cost.toLocaleString()}`}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

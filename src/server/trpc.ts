@@ -101,3 +101,13 @@ export const checkoutRateLimited = protectedProcedure.use(
     return next();
   },
 );
+
+// Shipping quote - unauthenticated (guest checkout needs it too), rate limited
+// by IP. More generous than checkout limiters since this fires on every
+// address-field change rather than once on submit.
+export const shippingQuoteRateLimited = publicProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("shippingQuote", ctx.ip, 30, 60);
+    return next();
+  },
+);
