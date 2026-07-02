@@ -9,6 +9,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { type Column, DataTable } from "@/components/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ import {
   getRoleConfig,
   type RoleConfig,
 } from "@/lib/permissions";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { trpc } from "@/utils/trpc";
 import { UserFormSheet } from "./UserFormSheet";
 import { PermissionAssignmentSheet } from "./PermissionAssignmentSheet";
@@ -51,18 +53,6 @@ type AdminUser = Pick<
 >;
 
 
-interface UserRowProps {
-  user: AdminUser;
-  onView: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onManagePermissions: (id: string, role: UserRole) => void;
-  // Permission flags for conditional rendering
-  canEdit: boolean;
-  canDelete: boolean;
-  canManagePermissions: boolean;
-}
-
 interface RoleCardProps {
   role: RoleConfig;
   userCount: number;
@@ -70,131 +60,14 @@ interface RoleCardProps {
   onViewUsers: (roleId: UserRole) => void;
 }
 
-const UserRow: React.FC<UserRowProps> = ({
-  user,
-  onView,
-  onEdit,
-  onDelete,
-  onManagePermissions,
-  canEdit,
-  canDelete,
-  canManagePermissions,
-}) => {
-  const roleConfig = ROLE_CONFIGS.find((r) => r.id === user.role);
-  const statusColors: Record<UserStatus, string> = {
-    ACTIVE: "bg-green-100 text-green-800",
-    INACTIVE: "bg-gray-100 text-gray-800",
-    SUSPENDED: "bg-red-100 text-red-800",
-    PENDING_VERIFICATION: "bg-yellow-100 text-yellow-800",
-  };
-
-  return (
-    <tr className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => onView(user.id)}>
-      <td className="p-4 flex items-center">
-        <div className="relative w-10 h-10 mr-4 flex-shrink-0">
-          {user.image ? (
-            <Image
-              src={user.image}
-              alt={
-                `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-                user.email
-              }
-              fill
-              className="rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-gray-500" />
-            </div>
-          )}
-        </div>
-        <div>
-          <span className="font-medium text-gray-900">
-            {user.first_name || user.last_name
-              ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
-              : "No Name"}
-          </span>
-          <p className="text-sm text-gray-500">{user.email}</p>
-        </div>
-      </td>
-      <td className="p-4">
-        <span
-          className="px-2 py-1 text-xs font-semibold rounded-full"
-          style={{
-            backgroundColor: roleConfig ? `${roleConfig.color}20` : "#e5e7eb",
-            color: roleConfig?.color || "#6b7280",
-          }}
-        >
-          {roleConfig?.name || user.role}
-        </span>
-      </td>
-      <td className="p-4">
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[user.status]}`}
-        >
-          {user.status.replace("_", " ")}
-        </span>
-      </td>
-      <td className="p-4 text-gray-600">
-        {user.last_login_at
-          ? new Date(user.last_login_at).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })
-          : "Never"}
-      </td>
-      <td className="p-4 text-gray-600">
-        {new Date(user.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })}
-      </td>
-      <td className="p-4" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <MoreVertical className="w-4 h-4 text-gray-500" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => onView(user.id)}>
-              <EyeIcon className="w-4 h-4 mr-2" />
-              View Details
-            </DropdownMenuItem>
-            {canEdit && (
-              <DropdownMenuItem onClick={() => onEdit(user.id)}>
-                <EditIcon className="w-4 h-4 mr-2" />
-                Edit User
-              </DropdownMenuItem>
-            )}
-            {canManagePermissions && (
-              <DropdownMenuItem onClick={() => onManagePermissions(user.id, user.role)}>
-                <ShieldIcon className="w-4 h-4 mr-2" />
-                Manage Permissions
-              </DropdownMenuItem>
-            )}
-            {canDelete && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDelete(user.id)}
-                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                >
-                  <TrashIcon className="w-4 h-4 mr-2" />
-                  Delete User
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </td>
-    </tr>
-  );
+const userStatusVariant: Record<
+  UserStatus,
+  "success" | "neutral" | "danger" | "warning"
+> = {
+  ACTIVE: "success",
+  INACTIVE: "neutral",
+  SUSPENDED: "danger",
+  PENDING_VERIFICATION: "warning",
 };
 
 const RoleCard: React.FC<RoleCardProps> = ({
@@ -371,6 +244,148 @@ export default function AdminPermissionsPage() {
     setPermissionSheetOpen(true);
   };
 
+  const userColumns: Column<AdminUser>[] = [
+    {
+      header: "User",
+      cell: (user) => (
+        <div className="flex items-center">
+          <div className="relative w-10 h-10 mr-4 flex-shrink-0">
+            {user.image ? (
+              <Image
+                src={user.image}
+                alt={
+                  `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+                  user.email
+                }
+                fill
+                className="rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 text-gray-500" />
+              </div>
+            )}
+          </div>
+          <div>
+            <span className="font-medium text-gray-900">
+              {user.first_name || user.last_name
+                ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+                : "No Name"}
+            </span>
+            <p className="text-sm text-gray-500">{user.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Role",
+      cell: (user) => {
+        const roleConfig = ROLE_CONFIGS.find((r) => r.id === user.role);
+        return (
+          <span
+            className="px-2 py-1 text-xs font-semibold rounded-full"
+            style={{
+              backgroundColor: roleConfig
+                ? `${roleConfig.color}20`
+                : "#e5e7eb",
+              color: roleConfig?.color || "#6b7280",
+            }}
+          >
+            {roleConfig?.name || user.role}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Status",
+      cell: (user) => (
+        <StatusBadge variant={userStatusVariant[user.status]}>
+          {user.status.replace("_", " ")}
+        </StatusBadge>
+      ),
+    },
+    {
+      header: "Last Login",
+      cell: (user) => (
+        <span className="text-gray-600">
+          {user.last_login_at
+            ? new Date(user.last_login_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "Never"}
+        </span>
+      ),
+    },
+    {
+      header: "Join Date",
+      cell: (user) => (
+        <span className="text-gray-600">
+          {new Date(user.created_at).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+      ),
+    },
+    {
+      header: "Actions",
+      cell: (user) => (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <MoreVertical className="w-4 h-4 text-gray-500" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenuItem onClick={() => handleViewUser(user.id)}>
+                <EyeIcon className="w-4 h-4 mr-2" />
+                View Details
+              </DropdownMenuItem>
+              {canEditUsers && (
+                <DropdownMenuItem onClick={() => handleEditUser(user.id)}>
+                  <EditIcon className="w-4 h-4 mr-2" />
+                  Edit User
+                </DropdownMenuItem>
+              )}
+              {canManageUserPermissions && (
+                <DropdownMenuItem
+                  onClick={() => handleManagePermissions(user.id, user.role)}
+                >
+                  <ShieldIcon className="w-4 h-4 mr-2" />
+                  Manage Permissions
+                </DropdownMenuItem>
+              )}
+              {canDeleteUsers && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Delete User
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ),
+    },
+  ];
+
   const roles: Array<UserRole | "All"> = ["All", "ADMIN", "STAFF", "CUSTOMER"];
   const statuses: Array<UserStatus | "All"> = [
     "All",
@@ -526,61 +541,14 @@ export default function AdminPermissionsPage() {
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded-lg border overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    User
-                  </th>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    Role
-                  </th>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    Status
-                  </th>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    Last Login
-                  </th>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    Join Date
-                  </th>
-                  <th className="p-4 font-semibold text-sm text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersQuery.isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-500">
-                      Loading users...
-                    </td>
-                  </tr>
-                ) : users.length > 0 ? (
-                  users.map((user) => (
-                    <UserRow
-                      key={user.id}
-                      user={user}
-                      onView={handleViewUser}
-                      onEdit={handleEditUser}
-                      onDelete={handleDeleteUser}
-                      onManagePermissions={handleManagePermissions}
-                      canEdit={canEditUsers}
-                      canDelete={canDeleteUsers}
-                      canManagePermissions={canManageUserPermissions}
-                    />
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-500">
-                      No users found matching your filters
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={userColumns}
+            data={users}
+            isLoading={usersQuery.isLoading}
+            keyExtractor={(user) => user.id}
+            onRowClick={(user) => handleViewUser(user.id)}
+            emptyMessage="No users found matching your filters"
+          />
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -295,20 +296,21 @@ export default function AdminBrandsPage() {
       {
         header: "Status",
         cell: (brand) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${brand.status === "ACTIVE"
-              ? "bg-green-100 text-green-800"
-              : brand.status === "DRAFT"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-red-100 text-red-800"
-              }`}
+          <StatusBadge
+            variant={
+              brand.status === "ACTIVE"
+                ? "success"
+                : brand.status === "DRAFT"
+                  ? "warning"
+                  : "danger"
+            }
           >
             {brand.status === "ACTIVE"
               ? "Active"
               : brand.status === "DRAFT"
                 ? "Draft"
                 : "Inactive"}
-          </span>
+          </StatusBadge>
         ),
       },
       {

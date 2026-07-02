@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,16 +138,17 @@ export default function AdminCategoriesPage() {
       {
         header: "Status",
         cell: (category) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${category.status === "ACTIVE"
-              ? "bg-green-100 text-green-800"
-              : category.status === "DRAFT"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-red-100 text-red-800"
-              }`}
+          <StatusBadge
+            variant={
+              category.status === "ACTIVE"
+                ? "success"
+                : category.status === "DRAFT"
+                  ? "warning"
+                  : "danger"
+            }
           >
             {category.status}
-          </span>
+          </StatusBadge>
         ),
       },
       {

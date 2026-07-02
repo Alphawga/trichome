@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   EditIcon,
   ExportIcon,
@@ -341,16 +342,17 @@ export default function AdminProductsPage() {
       {
         header: "Status",
         cell: (product) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${product.statusDisplay === "Active"
-              ? "bg-green-100 text-green-800"
-              : product.statusDisplay === "Draft"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-red-100 text-red-800"
-              }`}
+          <StatusBadge
+            variant={
+              product.statusDisplay === "Active"
+                ? "success"
+                : product.statusDisplay === "Draft"
+                  ? "warning"
+                  : "danger"
+            }
           >
             {product.statusDisplay}
-          </span>
+          </StatusBadge>
         ),
       },
       {

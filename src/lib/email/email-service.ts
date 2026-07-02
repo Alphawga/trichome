@@ -2,15 +2,8 @@
  * Email Service
  *
  * Centralized email service for sending transactional emails.
- * Currently logs emails for development. In production, integrate with an email service provider.
- *
- * Supported providers (to be configured):
- * - SendGrid
- * - AWS SES
- * - Resend
- * - Nodemailer (SMTP)
- *
- * TODO: Configure email service provider in production
+ * Uses Resend when RESEND_API_KEY is set, falls back to SMTP (Nodemailer),
+ * and logs to console in development when neither is configured.
  */
 
 export interface EmailOptions {
@@ -55,6 +48,60 @@ class DevelopmentEmailService implements EmailService {
       success: true,
       messageId: `dev-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
+  }
+}
+
+/**
+ * Production email service using Resend
+ */
+class ResendEmailService implements EmailService {
+  async send(options: EmailOptions): Promise<EmailResult> {
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
+      console.warn(
+        "⚠️ RESEND_API_KEY not configured. Falling back to development mode (console log).",
+      );
+      const devService = new DevelopmentEmailService();
+      return devService.send(options);
+    }
+
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(apiKey);
+
+      const result = await resend.emails.send({
+        from: options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
+        to: Array.isArray(options.to) ? options.to : [options.to],
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        replyTo: options.replyTo,
+        cc: options.cc,
+        bcc: options.bcc,
+      });
+
+      if (result.error) {
+        console.error("❌ Email sending failed:", result.error);
+        return {
+          success: false,
+          error: result.error.message,
+        };
+      }
+
+      console.log("✅ Email sent successfully:", result.data?.id);
+
+      return {
+        success: true,
+        messageId: result.data?.id,
+      };
+    } catch (error) {
+      console.error("❌ Email sending failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to send email",
+      };
+    }
   }
 }
 
@@ -137,8 +184,13 @@ class ProductionEmailService implements EmailService {
  */
 function getEmailService(): EmailService {
   const isProduction = process.env.NODE_ENV === "production";
+
+  // Resend takes priority when configured (even in dev for testing)
+  if (process.env.RESEND_API_KEY) {
+    return new ResendEmailService();
+  }
+
   const hasEmailProvider = !!(
-    process.env.RESEND_API_KEY ||
     process.env.SENDGRID_API_KEY ||
     process.env.AWS_SES_REGION ||
     process.env.SMTP_HOST ||

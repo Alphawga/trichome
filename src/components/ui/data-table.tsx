@@ -2,6 +2,17 @@
 
 import type React from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
 export interface Column<T> {
   header: string;
   accessor?: keyof T;
@@ -26,6 +37,7 @@ export interface DataTableProps<T> {
   loadingRows?: number;
   keyExtractor: (item: T) => string;
   rowClassName?: string;
+  onRowClick?: (item: T) => void;
   // Pagination props
   pagination?: PaginationInfo;
   onPageChange?: (page: number) => void;
@@ -41,26 +53,25 @@ export function DataTable<T>({
   loadingRows = 5,
   keyExtractor,
   rowClassName = "border-b last:border-0 hover:bg-gray-50",
+  onRowClick,
   pagination,
   onPageChange,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border overflow-x-auto">
-        <div className="p-8 text-center">
-          <div className="animate-pulse space-y-4">
-            {Array.from({ length: loadingRows }, (_, i) => `row-${i}`).map(
-              (key) => (
-                <div key={key} className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gray-200 rounded"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
+      <div className="bg-card rounded-lg border overflow-x-auto">
+        <div className="p-8 space-y-4">
+          {Array.from({ length: loadingRows }, (_, i) => `row-${i}`).map(
+            (key) => (
+              <div key={key} className="flex items-center space-x-4">
+                <Skeleton className="w-12 h-12 rounded" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
-              ),
-            )}
-          </div>
+              </div>
+            ),
+          )}
         </div>
       </div>
     );
@@ -68,7 +79,7 @@ export function DataTable<T>({
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg border overflow-x-auto">
+      <div className="bg-card rounded-lg border overflow-x-auto">
         <div className="p-8 text-center text-red-600">
           <p>Error loading data</p>
           {onRetry && (
@@ -166,10 +177,11 @@ export function DataTable<T>({
                   key={pageNum}
                   type="button"
                   onClick={() => onPageChange(pageNum as number)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${page === pageNum
-                      ? "bg-[#38761d] text-white"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    page === pageNum
+                      ? "bg-primary text-primary-foreground"
                       : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-                    }`}
+                  }`}
                 >
                   {pageNum}
                 </button>
@@ -192,51 +204,58 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
+        <Table>
+          <TableHeader className="bg-gray-50">
+            <TableRow className="hover:bg-gray-50">
               {columns.map((column) => (
-                <th
+                <TableHead
                   key={column.header}
-                  className={`p-4 font-semibold text-sm text-gray-700 ${column.className || ""}`}
+                  className={cn(
+                    "p-4 h-auto font-semibold text-sm text-gray-700 whitespace-normal",
+                    column.className,
+                  )}
                 >
                   {column.header}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {data.length > 0 ? (
               data.map((item) => (
-                <tr key={keyExtractor(item)} className={rowClassName}>
+                <TableRow
+                  key={keyExtractor(item)}
+                  className={cn(rowClassName, onRowClick && "cursor-pointer")}
+                  onClick={onRowClick ? () => onRowClick(item) : undefined}
+                >
                   {columns.map((column) => (
-                    <td
+                    <TableCell
                       key={column.header}
-                      className={`p-4 ${column.className || ""}`}
+                      className={cn("p-4 whitespace-normal", column.className)}
                     >
                       {column.cell
                         ? column.cell(item)
                         : column.accessor
                           ? String(item[column.accessor])
                           : null}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td
+              <TableRow className="hover:bg-transparent">
+                <TableCell
                   colSpan={columns.length}
                   className="p-8 text-center text-gray-500"
                 >
                   {emptyMessage}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {renderPagination()}
     </div>

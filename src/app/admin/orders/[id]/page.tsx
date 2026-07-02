@@ -6,6 +6,7 @@ import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { type Column, DataTable } from "@/components/ui/data-table";
 import { trpc } from "@/utils/trpc";
 
 export default function OrderViewPage() {
@@ -203,6 +204,64 @@ export default function OrderViewPage() {
     ? `${order.shipping_address.address_1}${order.shipping_address.address_2 ? `, ${order.shipping_address.address_2}` : ""}, ${order.shipping_address.city}, ${order.shipping_address.state}, ${order.shipping_address.country}`
     : "No address provided";
 
+  const itemColumns: Column<(typeof order.items)[number]>[] = [
+    {
+      header: "Product",
+      className: "p-2",
+      cell: (item) => (
+        <div className="flex items-center gap-3">
+          {item.product?.images?.[0] && (
+            <div className="relative w-12 h-12 shrink-0">
+              <Image
+                src={item.product.images[0].url}
+                alt={item.product_name}
+                fill
+                className="rounded-md object-cover"
+              />
+            </div>
+          )}
+          <div>
+            <p className="font-medium">{item.product_name}</p>
+            {item.product && (
+              <Link
+                href={`/products/${item.product.id}`}
+                className="text-sm text-primary hover:underline"
+              >
+                View Product
+              </Link>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "SKU",
+      className: "p-2",
+      cell: (item) => (
+        <span className="text-sm text-gray-500">{item.product_sku}</span>
+      ),
+    },
+    {
+      header: "Quantity",
+      className: "p-2",
+      cell: (item) => item.quantity,
+    },
+    {
+      header: "Price",
+      className: "p-2",
+      cell: (item) => `₦${Number(item.price).toLocaleString()}`,
+    },
+    {
+      header: "Total",
+      className: "p-2 text-right",
+      cell: (item) => (
+        <span className="font-medium">
+          ₦{Number(item.total).toLocaleString()}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <div className="flex items-center mb-6">
@@ -230,64 +289,12 @@ export default function OrderViewPage() {
             <h2 className="text-lg font-bold mb-4">
               Items in Order ({order.items.length})
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-2 font-semibold text-sm">Product</th>
-                    <th className="p-2 font-semibold text-sm">SKU</th>
-                    <th className="p-2 font-semibold text-sm">Quantity</th>
-                    <th className="p-2 font-semibold text-sm">Price</th>
-                    <th className="p-2 font-semibold text-sm text-right">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items.map((item) => (
-                    <tr key={item.id} className="border-b last:border-0">
-                      <td className="p-2">
-                        <div className="flex items-center gap-3">
-                          {item.product?.images?.[0] && (
-                            <div className="relative w-12 h-12 shrink-0">
-                              <Image
-                                src={item.product.images[0].url}
-                                alt={item.product_name}
-                                fill
-                                className="rounded-md object-cover"
-                              />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium">{item.product_name}</p>
-                            {item.product && (
-                              <Link
-                                href={`/products/${item.product.id}`}
-                                className="text-sm text-[#40702A] hover:underline"
-                              >
-                                View Product
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-2">
-                        <span className="text-sm text-gray-500">
-                          {item.product_sku}
-                        </span>
-                      </td>
-                      <td className="p-2">{item.quantity}</td>
-                      <td className="p-2">
-                        ₦{Number(item.price).toLocaleString()}
-                      </td>
-                      <td className="p-2 text-right font-medium">
-                        ₦{Number(item.total).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={itemColumns}
+              data={order.items}
+              keyExtractor={(item) => item.id}
+              rowClassName="border-b last:border-0 hover:bg-transparent"
+            />
             <div className="text-right mt-4 pr-2 border-t pt-4">
               <p className="text-gray-600">
                 Subtotal:{" "}

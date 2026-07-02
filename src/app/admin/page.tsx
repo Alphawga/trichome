@@ -5,6 +5,8 @@ import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
+import { type Column, DataTable } from "@/components/ui/data-table";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -17,6 +19,7 @@ import {
   SearchIcon,
   ViewAllArrowIcon,
 } from "@/components/ui/icons";
+import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
 import { trpc } from "@/utils/trpc";
 import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 
@@ -46,10 +49,6 @@ interface ViewAllCardProps {
   href: string;
 }
 
-interface ProductRowProps {
-  product: AdminProduct;
-}
-
 interface RecentOrder {
   id: string;
   orderNumber: string;
@@ -64,7 +63,36 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
   const isPositive = trendValue >= 0;
 
   return (
-    <div className="bg-white p-6 rounded-lg border border-gray-200">
+    <Card>
+      <CardContent>
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="text-3xl font-bold mt-2">{value}</p>
+          </div>
+          <div className="text-gray-400">{icon}</div>
+        </div>
+        <div className="flex items-center text-sm mt-4">
+          <span
+            className={`flex items-center mr-2 ${isPositive ? "text-green-600" : "text-red-600"}`}
+          >
+            {isPositive ? (
+              <ArrowUpIcon className="w-4 h-4" />
+            ) : (
+              <ArrowDownIcon className="w-4 h-4" />
+            )}
+            {Math.abs(trendValue)}%
+          </span>
+          <span className="text-gray-500">Since last month</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon, href }) => (
+  <Card>
+    <CardContent>
       <div className="flex justify-between items-start">
         <div>
           <p className="text-sm text-gray-500">{title}</p>
@@ -72,84 +100,29 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, trend, icon }) => {
         </div>
         <div className="text-gray-400">{icon}</div>
       </div>
-      <div className="flex items-center text-sm mt-4">
-        <span
-          className={`flex items-center mr-2 ${isPositive ? "text-green-600" : "text-red-600"}`}
-        >
-          {isPositive ? (
-            <ArrowUpIcon className="w-4 h-4" />
-          ) : (
-            <ArrowDownIcon className="w-4 h-4" />
-          )}
-          {Math.abs(trendValue)}%
-        </span>
-        <span className="text-gray-500">Since last month</span>
-      </div>
-    </div>
-  );
-};
-
-const ViewAllCard: React.FC<ViewAllCardProps> = ({ title, value, icon, href }) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-200">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-3xl font-bold mt-2">{value}</p>
-      </div>
-      <div className="text-gray-400">{icon}</div>
-    </div>
-    <Link
-      href={href}
-      className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800 transition-colors"
-    >
-      View all <ViewAllArrowIcon className="ml-1" />
-    </Link>
-  </div>
-);
-
-const ProductRow: React.FC<ProductRowProps> = ({ product }) => (
-  <tr className="border-b last:border-0 hover:bg-gray-50">
-    <td className="p-4 flex items-center">
-      <div className="relative w-10 h-10 mr-4 flex-shrink-0">
-        <Image
-          src={product.imageUrl}
-          alt={product.name}
-          fill
-          className="rounded-md object-cover"
-        />
-      </div>
-      <span className="font-medium">{product.name}</span>
-    </td>
-    <td className="p-4 text-gray-600">{product.category}</td>
-    <td className="p-4 text-gray-600">₦{product.price.toLocaleString()}</td>
-    <td className="p-4 text-gray-600">{product.stock}pcs</td>
-    <td className="p-4">
-      <span
-        className={`px-2 py-1 text-xs font-semibold rounded-full ${product.status === "In stock"
-            ? "bg-green-100 text-green-800"
-            : "bg-red-100 text-red-800"
-          }`}
+      <Link
+        href={href}
+        className="flex items-center text-sm mt-4 text-gray-500 hover:text-gray-800 transition-colors"
       >
-        {product.status}
-      </span>
-    </td>
-  </tr>
+        View all <ViewAllArrowIcon className="ml-1" />
+      </Link>
+    </CardContent>
+  </Card>
 );
 
-const getStatusColor = (status: string) => {
+const getOrderStatusVariant = (status: string): StatusVariant => {
   switch (status) {
     case "PENDING":
-      return "bg-yellow-100 text-yellow-800";
+      return "warning";
     case "PROCESSING":
-      return "bg-blue-100 text-blue-800";
     case "SHIPPED":
-      return "bg-purple-100 text-purple-800";
+      return "info";
     case "DELIVERED":
-      return "bg-green-100 text-green-800";
+      return "success";
     case "CANCELLED":
-      return "bg-red-100 text-red-800";
+      return "danger";
     default:
-      return "bg-gray-100 text-gray-800";
+      return "neutral";
   }
 };
 
@@ -213,6 +186,93 @@ export default function AdminDashboard() {
 
     exportToCSV(topProducts, columns, `top-products-${new Date().toISOString().split("T")[0]}`);
   };
+
+  const recentOrderColumns: Column<RecentOrder>[] = [
+    {
+      header: "Order ID",
+      cell: (order) => (
+        <Link
+          href={`/admin/orders?search=${order.orderNumber}`}
+          className="text-primary hover:underline font-medium"
+        >
+          {order.orderNumber}
+        </Link>
+      ),
+    },
+    {
+      header: "Customer",
+      cell: (order) => (
+        <span className="text-gray-600">{order.customerName}</span>
+      ),
+    },
+    {
+      header: "Total",
+      cell: (order) => (
+        <span className="font-medium">₦{order.total.toLocaleString()}</span>
+      ),
+    },
+    {
+      header: "Status",
+      cell: (order) => (
+        <StatusBadge variant={getOrderStatusVariant(order.status)}>
+          {order.status}
+        </StatusBadge>
+      ),
+    },
+    {
+      header: "Date",
+      cell: (order) => <span className="text-gray-600">{order.date}</span>,
+    },
+  ];
+
+  const topProductColumns: Column<AdminProduct>[] = [
+    {
+      header: "Product",
+      cell: (product) => (
+        <div className="flex items-center">
+          <div className="relative w-10 h-10 mr-4 flex-shrink-0">
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="rounded-md object-cover"
+            />
+          </div>
+          <span className="font-medium">{product.name}</span>
+        </div>
+      ),
+    },
+    {
+      header: "Category",
+      cell: (product) => (
+        <span className="text-gray-600">{product.category}</span>
+      ),
+    },
+    {
+      header: "Price",
+      cell: (product) => (
+        <span className="text-gray-600">
+          ₦{product.price.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      header: "Stock",
+      cell: (product) => (
+        <span className="text-gray-600">{product.stock}pcs</span>
+      ),
+    },
+    {
+      header: "Status",
+      cell: (product) => (
+        <StatusBadge
+          variant={product.status === "In stock" ? "success" : "danger"}
+        >
+          {product.status}
+        </StatusBadge>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -279,63 +339,18 @@ export default function AdminDashboard() {
           <h2 className="text-xl font-bold">Recent Orders</h2>
           <Link
             href="/admin/orders"
-            className="flex items-center text-sm text-[#38761d] hover:text-[#2d5a16] font-medium transition-colors"
+            className="flex items-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
           >
             View all orders <ViewAllArrowIcon className="ml-1" />
           </Link>
         </div>
-        <div className="bg-white rounded-lg border overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="p-4 font-semibold text-sm text-gray-700">Order ID</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Customer</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Total</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Status</th>
-                <th className="p-4 font-semibold text-sm text-gray-700">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrdersQuery.isLoading ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-gray-600">Loading orders...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : recentOrders.length > 0 ? (
-                recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="p-4">
-                      <Link
-                        href={`/admin/orders?search=${order.orderNumber}`}
-                        className="text-[#38761d] hover:underline font-medium"
-                      >
-                        {order.orderNumber}
-                      </Link>
-                    </td>
-                    <td className="p-4 text-gray-600">{order.customerName}</td>
-                    <td className="p-4 font-medium">₦{order.total.toLocaleString()}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">{order.date}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    No orders yet. Orders will appear here when customers place them.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={recentOrderColumns}
+          data={recentOrders}
+          isLoading={recentOrdersQuery.isLoading}
+          keyExtractor={(order) => order.id}
+          emptyMessage="No orders yet. Orders will appear here when customers place them."
+        />
       </div>
 
       {/* Top Products Section */}
@@ -364,7 +379,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={handleExportCSV}
-              className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg bg-[#38761d] text-white hover:bg-opacity-90 font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors"
             >
               <ExportIcon /> Export CSV
             </button>
@@ -372,57 +387,17 @@ export default function AdminDashboard() {
         </div>
 
         {/* Products Table */}
-        <div className="bg-white rounded-lg border overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="p-4 font-semibold text-sm text-gray-700">
-                  Product
-                </th>
-                <th className="p-4 font-semibold text-sm text-gray-700">
-                  Category
-                </th>
-                <th className="p-4 font-semibold text-sm text-gray-700">
-                  Price
-                </th>
-                <th className="p-4 font-semibold text-sm text-gray-700">
-                  Stock
-                </th>
-                <th className="p-4 font-semibold text-sm text-gray-700">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {topProductsQuery.isLoading ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="w-6 h-6 border-2 border-[#38761d] border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-gray-600">Loading products...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
-                  <ProductRow key={product.id} product={product} />
-                ))
-              ) : topProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    No products available yet. Start by adding some products!
-                  </td>
-                </tr>
-              ) : (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    No products found matching "{searchTerm}"
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={topProductColumns}
+          data={filteredProducts}
+          isLoading={topProductsQuery.isLoading}
+          keyExtractor={(product) => product.id}
+          emptyMessage={
+            topProducts.length === 0
+              ? "No products available yet. Start by adding some products!"
+              : `No products found matching "${searchTerm}"`
+          }
+        />
 
         {filteredProducts.length > 10 && (
           <div className="mt-4 flex justify-center">
