@@ -215,13 +215,13 @@ export const Footer: React.FC = () => {
                 Contact us
               </p>
               <p className="text-white/80 text-[14px] mb-1 font-body underline">
-                <a href="mailto:support@trichome.com" className="hover:text-white transition-colors">
-                  support@trichome.com
+                <a href="mailto:support@trichomesshop.com" className="hover:text-white transition-colors">
+                  support@trichomesshop.com
                 </a>
               </p>
               <p className="text-white/80 text-[14px] font-body underline">
-                <a href="tel:+2341234567890" className="hover:text-white transition-colors">
-                  +234 123 456 7890
+                <a href="tel:+2348087098720" className="hover:text-white transition-colors">
+                  +234 808 709 8720
                 </a>
               </p>
             </div>
@@ -252,6 +252,12 @@ export const Footer: React.FC = () => {
                 className="hover:text-white transition-colors duration-150 font-body underline"
               >
                 Return policy
+              </Link>
+              <Link
+                href="/shipping"
+                className="hover:text-white transition-colors duration-150 font-body underline"
+              >
+                Shipping policy
               </Link>
             </div>
           </div>

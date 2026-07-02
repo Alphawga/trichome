@@ -5,7 +5,7 @@ import type {
   Product,
   ProductImage,
 } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";

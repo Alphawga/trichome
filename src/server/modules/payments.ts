@@ -1,6 +1,7 @@
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { refundPaystackTransaction } from "@/lib/webhooks/paystack";
 import { staffProcedure } from "../trpc";
 
 // Get all payments (staff/admin)
@@ -171,6 +172,30 @@ export const processRefund = staffProcedure
         code: "BAD_REQUEST",
         message: "Refund amount cannot exceed payment amount",
       });
+    }
+
+    if (payment.payment_method === "PAYSTACK") {
+      if (!payment.reference) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Payment has no Paystack reference to refund",
+        });
+      }
+
+      try {
+        await refundPaystackTransaction(
+          payment.reference,
+          Math.round(refundAmount * 100),
+        );
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message:
+            error instanceof Error
+              ? `Paystack refund failed: ${error.message}`
+              : "Paystack refund failed",
+        });
+      }
     }
 
     // Update payment status

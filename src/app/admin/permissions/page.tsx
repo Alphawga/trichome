@@ -2,7 +2,7 @@
 
 import type { User, UserRole, UserStatus } from "@prisma/client";
 import { MoreVertical } from "lucide-react";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";

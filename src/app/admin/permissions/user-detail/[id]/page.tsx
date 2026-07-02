@@ -2,7 +2,7 @@
 
 import type { UserRole, UserStatus } from "@prisma/client";
 import { ArrowLeft, Mail, Phone, Calendar, Clock, Shield, User } from "lucide-react";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";

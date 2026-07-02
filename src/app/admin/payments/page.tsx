@@ -1,6 +1,7 @@
 "use client";
 
 import type { PaymentMethod, PaymentStatus } from "@prisma/client";
+import type { Decimal } from "@prisma/client/runtime/library";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
@@ -28,7 +29,7 @@ type PaymentWithRelations = {
   order_id: string;
   payment_method: PaymentMethod;
   status: PaymentStatus;
-  amount: number;
+  amount: Decimal;
   currency: string;
   transaction_id: string | null;
   reference: string | null;
@@ -40,7 +41,7 @@ type PaymentWithRelations = {
     email: string;
     first_name: string;
     last_name: string;
-    total: number;
+    total: Decimal;
   };
 };
 

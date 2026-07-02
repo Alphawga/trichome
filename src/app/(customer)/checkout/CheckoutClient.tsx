@@ -32,7 +32,7 @@ const addressFormSchema = z.object({
   city: z.string().min(1, "City is required"),
   state: z.string().optional(),
   postal_code: z.string().optional(),
-  country: z.string().default("Nigeria"),
+  country: z.string().min(1, "Country is required"),
 });
 
 type AddressFormData = z.infer<typeof addressFormSchema>;

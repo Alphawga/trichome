@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import type React from "react";
 import { useState } from "react";
 import { HeartIcon, MinusIcon, PlusIcon, CompareIcon } from "../ui/icons";

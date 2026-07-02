@@ -250,6 +250,7 @@ model Order {
   shipping_address    Address?             @relation(fields: [shipping_address_id], references: [id])
   user                User?                @relation(fields: [user_id], references: [id])
   payments            Payment[]
+  notifications       Notification[]
 
   @@index([order_number])
   @@index([user_id])
@@ -312,6 +313,33 @@ model OrderStatusHistory {
   @@index([order_id])
   @@index([created_at])
   @@map("order_status_history")
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  type       String
+  title      String
+  message    String
+  order_id   String?
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+  order      Order?   @relation(fields: [order_id], references: [id], onDelete: SetNull)
+
+  @@index([read])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+model RateLimit {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  count      Int      @default(1)
+  expires_at DateTime
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([expires_at])
+  @@map("rate_limits")
 }
 
 model Newsletter {

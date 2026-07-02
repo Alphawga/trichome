@@ -40,8 +40,9 @@ export const getOrderTracking = publicProcedure
     }
 
     // For authenticated users, verify ownership
-    if (order.user_id && ctx.user?.id) {
-      if (order.user_id !== ctx.user.id) {
+    const sessionUserId = ctx.session?.user?.id;
+    if (order.user_id && sessionUserId) {
+      if (order.user_id !== sessionUserId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have access to this order",

@@ -111,7 +111,7 @@ export function useGuestCheckout() {
           discount: input.totals.discount || 0,
           total: input.totals.total,
         },
-        payment_method: input.payment_method || "WALLET",
+        payment_method: input.payment_method || "PAYSTACK",
         currency: input.currency || "NGN",
         notes: input.notes,
         promo_code: input.promo_code,

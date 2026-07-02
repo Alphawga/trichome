@@ -25,6 +25,9 @@ export { generateShippingUpdateEmail } from "./templates/shipping-update";
 export type { WelcomeEmailData } from "./templates/welcome-email";
 // Welcome email
 export { generateWelcomeEmail } from "./templates/welcome-email";
+export type { NewOrderNotificationEmailData } from "./templates/new-order-notification";
+// New order notification email (admin/staff facing)
+export { generateNewOrderNotificationEmail } from "./templates/new-order-notification";
 export type { NewsletterWelcomeEmailData } from "./templates/newsletter-welcome";
 // Newsletter welcome email
 export { generateNewsletterWelcomeEmail } from "./templates/newsletter-welcome";
@@ -112,6 +115,28 @@ export async function sendWelcomeEmail(
 }
 
 /**
+ * Helper function to send new order notification email to staff/admin
+ */
+export async function sendNewOrderNotificationEmail(
+  recipients: string[],
+  data: import("./templates/new-order-notification").NewOrderNotificationEmailData,
+): Promise<import("./email-service").EmailResult> {
+  const { generateNewOrderNotificationEmail } = await import(
+    "./templates/new-order-notification"
+  );
+  const { sendEmail } = await import("./email-service");
+
+  const emailContent = generateNewOrderNotificationEmail(data);
+
+  return sendEmail({
+    to: recipients,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    text: emailContent.text,
+  });
+}
+
+/**
  * Helper function to send newsletter welcome email
  */
 export async function sendNewsletterWelcomeEmail(
@@ -131,4 +156,3 @@ export async function sendNewsletterWelcomeEmail(
     text: emailContent.text,
   });
 }
-

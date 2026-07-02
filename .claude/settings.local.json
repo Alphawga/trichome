@@ -1,9 +1,44 @@
 {
   "permissions": {
     "allow": [
-      "Bash(rm src/server/routers/product-router.ts src/server/routers/user-router.ts src/server/routers/order-router.ts)"
+      "Bash(rm src/server/routers/product-router.ts src/server/routers/user-router.ts src/server/routers/order-router.ts)",
+      "Bash(sed -n '63,130p' /Users/alpha/trichome/src/server/modules/content.ts)",
+      "Bash(sed -n '87,130p' /Users/alpha/trichome/src/server/modules/categories.ts)",
+      "Bash(timeout 15 pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(grep \"^enum\\\\|^  [A-Z_]* *$\")",
+      "Bash(awk '/^enum/{print; f=1; next} f && /^}/{print; f=0} f' prisma/schema.prisma)"
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/alpha/trichome/.claude/hooks/edit-check.sh",
+            "timeout": 15,
+            "statusMessage": "edit-check"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/alpha/trichome/.claude/hooks/learning-checkpoint.sh",
+            "timeout": 15,
+            "statusMessage": "learning-checkpoint"
+          }
+        ]
+      }
+    ]
   }
 }

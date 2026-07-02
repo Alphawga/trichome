@@ -55,7 +55,7 @@ export default function AdminSettingsPage() {
 
   settings.forEach((setting) => {
     const key = setting.key.toLowerCase();
-    if (key.startsWith("payment_") || key.startsWith("paystack_") || key.startsWith("monnify_")) {
+    if (key.startsWith("payment_") || key.startsWith("paystack_")) {
       groupedSettings.payment.push(setting);
     } else if (key.startsWith("shipping_") || key.startsWith("delivery_")) {
       groupedSettings.shipping.push(setting);

@@ -687,7 +687,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
             </div>
 
             {/* Center: Logo - Absolute Centered - Bigger on Mobile */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex justify-center">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex justify-center">
               <Link
                 href="/"
                 className="flex items-center group"
@@ -696,9 +696,9 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                 <Image
                   src="/T3.png"
                   alt="Trichomes Logo"
-                  width={120}
-                  height={80}
-                  className="w-[120px] h-[120px] sm:w-[180px] sm:h-[135px] lg:w-[140px] lg:h-[110px] object-contain mt-3 transition-transform duration-300 group-hover:scale-105"
+                  width={202}
+                  height={79}
+                  className="h-12 w-auto sm:h-16 object-contain transition-transform duration-300 group-hover:scale-105"
                 />
               </Link>
             </div>
@@ -1230,8 +1230,8 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
       )}
 
       {/* Desktop Navigation */}
-      <nav className="border-b border-gray-200 hidden md:block mx-auto w-full">
-        <div className="w-full px-4 sm:px-6 lg:px-8 flex justify-center items-center h-14 space-x-20">
+      <nav className="border-b border-gray-200 hidden lg:block mx-auto w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 min-h-14 py-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16">
           <NavLink
             href="/about"
             hasDropdown

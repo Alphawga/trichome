@@ -1,7 +1,7 @@
 "use client";
 
 import type { Brand, ProductStatus } from "@prisma/client";
-import Image from "next/image";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
