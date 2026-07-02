@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -314,20 +315,21 @@ export default function AdminReviewsPage() {
       {
         header: "Status",
         cell: (review) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${review.status === "APPROVED"
-                ? "bg-green-100 text-green-800"
+          <StatusBadge
+            variant={
+              review.status === "APPROVED"
+                ? "success"
                 : review.status === "PENDING"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}
+                  ? "warning"
+                  : "danger"
+            }
           >
             {review.status === "APPROVED"
               ? "Approved"
               : review.status === "PENDING"
                 ? "Pending"
                 : "Rejected"}
-          </span>
+          </StatusBadge>
         ),
       },
       {

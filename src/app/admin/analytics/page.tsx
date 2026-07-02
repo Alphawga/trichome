@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { type Column, DataTable } from "@/components/ui/data-table";
 import { trpc } from "@/utils/trpc";
 
 type DateRange = "today" | "week" | "month" | "year" | "custom";
@@ -71,6 +72,32 @@ export default function AdminAnalyticsPage() {
 
   const analytics = analyticsQuery.data || [];
   const summary = summaryQuery.data;
+
+  const analyticsColumns: Column<(typeof analytics)[number]>[] = [
+    {
+      header: "Date",
+      cell: (item) => new Date(item.date).toLocaleDateString(),
+    },
+    { header: "Visitors", cell: (item) => item.visitors },
+    { header: "Page Views", cell: (item) => item.page_views },
+    { header: "Orders", cell: (item) => item.orders },
+    {
+      header: "Revenue",
+      cell: (item) => (
+        <span className="font-medium">
+          ₦{Number(item.revenue).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      header: "Conversion Rate",
+      cell: (item) => `${(Number(item.conversion_rate) * 100).toFixed(2)}%`,
+    },
+    {
+      header: "Bounce Rate",
+      cell: (item) => `${(Number(item.bounce_rate) * 100).toFixed(2)}%`,
+    },
+  ];
 
   // Calculate chart data
   const chartData = analytics.map((item) => ({
@@ -377,58 +404,13 @@ export default function AdminAnalyticsPage() {
 
       {/* Data Table */}
       {analytics.length > 0 && (
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div>
           <h3 className="text-lg font-semibold mb-4">Daily Analytics</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Date
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Visitors
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Page Views
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Orders
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Revenue
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Conversion Rate
-                  </th>
-                  <th className="p-3 font-semibold text-sm text-gray-700">
-                    Bounce Rate
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {analytics.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="p-3">
-                      {new Date(item.date).toLocaleDateString()}
-                    </td>
-                    <td className="p-3">{item.visitors}</td>
-                    <td className="p-3">{item.page_views}</td>
-                    <td className="p-3">{item.orders}</td>
-                    <td className="p-3 font-medium">
-                      ₦{Number(item.revenue).toLocaleString()}
-                    </td>
-                    <td className="p-3">
-                      {(Number(item.conversion_rate) * 100).toFixed(2)}%
-                    </td>
-                    <td className="p-3">
-                      {(Number(item.bounce_rate) * 100).toFixed(2)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={analyticsColumns}
+            data={analytics}
+            keyExtractor={(item) => item.id}
+          />
         </div>
       )}
     </div>

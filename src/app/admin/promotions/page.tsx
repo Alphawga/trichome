@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -340,18 +341,19 @@ export default function AdminPromotionsPage() {
       {
         header: "Status",
         cell: (promotion) => {
-          const statusColors = {
-            ACTIVE: "bg-green-100 text-green-800",
-            INACTIVE: "bg-gray-100 text-gray-800",
-            EXPIRED: "bg-red-100 text-red-800",
-            SCHEDULED: "bg-blue-100 text-blue-800",
+          const statusVariants: Record<
+            typeof promotion.status,
+            "success" | "neutral" | "danger" | "info"
+          > = {
+            ACTIVE: "success",
+            INACTIVE: "neutral",
+            EXPIRED: "danger",
+            SCHEDULED: "info",
           };
           return (
-            <span
-              className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[promotion.status]}`}
-            >
+            <StatusBadge variant={statusVariants[promotion.status]}>
               {promotion.status}
-            </span>
+            </StatusBadge>
           );
         },
       },

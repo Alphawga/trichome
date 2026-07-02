@@ -14,6 +14,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -328,37 +329,39 @@ export default function AdminOrdersPage() {
     {
       header: "Order Status",
       cell: (order) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${order.status === "Delivered"
-            ? "bg-green-100 text-green-800"
-            : order.status === "Shipped"
-              ? "bg-blue-100 text-blue-800"
-              : order.status === "Processing"
-                ? "bg-yellow-100 text-yellow-800"
-                : order.status === "Pending"
-                  ? "bg-gray-100 text-gray-800"
-                  : "bg-red-100 text-red-800"
-            }`}
+        <StatusBadge
+          variant={
+            order.status === "Delivered"
+              ? "success"
+              : order.status === "Shipped"
+                ? "info"
+                : order.status === "Processing"
+                  ? "warning"
+                  : order.status === "Pending"
+                    ? "neutral"
+                    : "danger"
+          }
         >
           {order.status}
-        </span>
+        </StatusBadge>
       ),
     },
     {
       header: "Payment",
       cell: (order) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${order.paymentStatus === "Paid"
-            ? "bg-green-100 text-green-800"
-            : order.paymentStatus === "Pending"
-              ? "bg-yellow-100 text-yellow-800"
-              : order.paymentStatus === "Failed"
-                ? "bg-red-100 text-red-800"
-                : "bg-gray-100 text-gray-800"
-            }`}
+        <StatusBadge
+          variant={
+            order.paymentStatus === "Paid"
+              ? "success"
+              : order.paymentStatus === "Pending"
+                ? "warning"
+                : order.paymentStatus === "Failed"
+                  ? "danger"
+                  : "neutral"
+          }
         >
           {order.paymentStatus}
-        </span>
+        </StatusBadge>
       ),
     },
     {

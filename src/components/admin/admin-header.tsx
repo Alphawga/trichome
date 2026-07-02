@@ -5,9 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { trpc } from "@/utils/trpc";
 import { ChevronDownIcon } from "../ui/icons";
 
@@ -16,10 +22,7 @@ interface AdminHeaderProps {
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -50,32 +53,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   const unreadCount = unreadCountQuery.data ?? 0;
   const notifications = notificationsQuery.data ?? [];
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setDropdownOpen(false);
-      }
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target as Node)
-      ) {
-        setNotificationsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   const handleExitAdmin = () => {
     if (onExitAdmin) {
       onExitAdmin();
     }
-    setDropdownOpen(false);
   };
 
   const handleLogout = async () => {
@@ -83,7 +64,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
       router.push("/auth/signin");
       toast.success("Logged out successfully");
       await logout();
-      setDropdownOpen(false);
     } catch (error) {
       toast.error("Failed to logout");
       console.error("Logout error:", error);
@@ -93,9 +73,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
   // Get user's initials for avatar
   const getUserInitials = () => {
     if (!user) return "A";
-    const firstInitial = user.first_name ? Array.from(user.first_name)[0]?.toUpperCase() : "";
-    const lastInitial = user.last_name ? Array.from(user.last_name)[0]?.toUpperCase() : "";
-    return firstInitial + lastInitial || (user.email ? Array.from(user.email)[0]?.toUpperCase() : "");
+    const firstInitial = user.first_name
+      ? Array.from(user.first_name)[0]?.toUpperCase()
+      : "";
+    const lastInitial = user.last_name
+      ? Array.from(user.last_name)[0]?.toUpperCase()
+      : "";
+    return (
+      firstInitial + lastInitial ||
+      (user.email ? Array.from(user.email)[0]?.toUpperCase() : "")
+    );
   };
 
   // Get user's display name
@@ -126,64 +113,64 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
 
       <div className="ml-auto flex items-center space-x-4">
         {/* Notifications */}
-        <div className="relative" ref={notificationsRef}>
-          <button
-            type="button"
-            className="p-2 text-gray-400 hover:text-gray-600 relative"
-            onClick={() => setNotificationsOpen(!notificationsOpen)}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <DropdownMenu
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        >
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="p-2 text-gray-400 hover:text-gray-600 relative"
             >
-              <title>Notifications</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </button>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Notifications</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 p-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <p className="text-sm font-medium text-gray-900">Notifications</p>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => markAllAsReadMutation.mutate()}
+                  disabled={markAllAsReadMutation.isPending}
+                  className="text-xs text-primary hover:underline disabled:opacity-50"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
 
-          {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">
-                  Notifications
-                </p>
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
-                    className="text-xs text-[#38761d] hover:underline disabled:opacity-50"
-                  >
-                    Mark all as read
-                  </button>
-                )}
-              </div>
-
-              <div className="max-h-96 overflow-y-auto">
-                {notificationsQuery.isLoading ? (
-                  <div className="px-4 py-6 text-center text-sm text-gray-500">
-                    Loading...
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-gray-500">
-                    No notifications yet
-                  </div>
-                ) : (
-                  notifications.map((notification) => (
+            <div className="max-h-96 overflow-y-auto">
+              {notificationsQuery.isLoading ? (
+                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                  Loading...
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                  No notifications yet
+                </div>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem key={notification.id} asChild>
                     <Link
-                      key={notification.id}
                       href={
                         notification.order
                           ? `/admin/orders/${notification.order.id}`
@@ -193,21 +180,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
                         if (!notification.read) {
                           markAsReadMutation.mutate({ id: notification.id });
                         }
-                        setNotificationsOpen(false);
                       }}
-                      className={`block px-4 py-3 text-sm border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                      className={`block px-4 py-3 text-sm border-b border-gray-50 rounded-none ${
                         notification.read ? "bg-white" : "bg-green-50"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 w-full">
                         <p className="font-medium text-gray-900">
                           {notification.title}
                         </p>
                         {!notification.read && (
-                          <span className="w-2 h-2 rounded-full bg-[#38761d] mt-1.5 flex-shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-gray-600 mt-0.5">
+                      <p className="text-gray-600 mt-0.5 whitespace-normal">
                         {notification.message}
                       </p>
                       <p className="text-gray-400 text-xs mt-1">
@@ -219,51 +205,50 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
                         )}
                       </p>
                     </Link>
-                  ))
-                )}
-              </div>
+                  </DropdownMenuItem>
+                ))
+              )}
             </div>
-          )}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User Menu */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {getUserInitials()}
-              </span>
-            </div>
-            <span className="font-medium hidden sm:block">
-              {getUserDisplayName()}
-            </span>
-            <ChevronDownIcon />
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">
-                  {getUserDisplayName()}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {user?.email || "admin@trichomes.com"}
-                </p>
-                {user?.role && (
-                  <p className="text-xs text-gray-400 mt-1 capitalize">
-                    {user.role.toLowerCase()}
-                  </p>
-                )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {getUserInitials()}
+                </span>
               </div>
+              <span className="font-medium hidden sm:block">
+                {getUserDisplayName()}
+              </span>
+              <ChevronDownIcon />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 p-0">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <p className="text-sm font-medium text-gray-900">
+                {getUserDisplayName()}
+              </p>
+              <p className="text-sm text-gray-500">
+                {user?.email || "admin@trichomes.com"}
+              </p>
+              {user?.role && (
+                <p className="text-xs text-gray-400 mt-1 capitalize">
+                  {user.role.toLowerCase()}
+                </p>
+              )}
+            </div>
 
+            <DropdownMenuItem asChild>
               <Link
                 href="/admin/profile"
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                onClick={() => setDropdownOpen(false)}
+                className="flex items-center px-4 py-2 text-sm text-gray-700 rounded-none"
               >
                 <svg
                   className="w-4 h-4 mr-3"
@@ -281,11 +266,33 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
                 </svg>
                 Profile Settings
               </Link>
+            </DropdownMenuItem>
 
-              <button
-                type="button"
-                onClick={handleExitAdmin}
-                className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            <DropdownMenuItem
+              onClick={handleExitAdmin}
+              className="px-4 py-2 text-sm text-gray-700"
+            >
+              <svg
+                className="w-4 h-4 mr-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Back to store</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+              Back to Store
+            </DropdownMenuItem>
+
+            <div className="border-t border-gray-100 mt-1">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm text-red-600 focus:text-red-600 focus:bg-red-50"
               >
                 <svg
                   className="w-4 h-4 mr-3"
@@ -293,43 +300,19 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onExitAdmin }) => {
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <title>Back to store</title>
+                  <title>Logout</title>
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                Back to Store
-              </button>
-
-              <div className="border-t border-gray-100 mt-1">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Logout</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
-                  Logout
-                </button>
-              </div>
+                Logout
+              </DropdownMenuItem>
             </div>
-          )}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

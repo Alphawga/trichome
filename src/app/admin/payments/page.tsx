@@ -5,6 +5,7 @@ import type { Decimal } from "@prisma/client/runtime/library";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -187,19 +188,19 @@ export default function AdminPaymentsPage() {
       {
         header: "Status",
         cell: (payment) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+          <StatusBadge
+            variant={
               payment.status === "COMPLETED"
-                ? "bg-green-100 text-green-800"
+                ? "success"
                 : payment.status === "PENDING"
-                  ? "bg-yellow-100 text-yellow-800"
+                  ? "warning"
                   : payment.status === "FAILED"
-                    ? "bg-red-100 text-red-800"
+                    ? "danger"
                     : payment.status === "REFUNDED" ||
                         payment.status === "PARTIALLY_REFUNDED"
-                      ? "bg-orange-100 text-orange-800"
-                      : "bg-gray-100 text-gray-800"
-            }`}
+                      ? "info"
+                      : "neutral"
+            }
           >
             {payment.status === "COMPLETED"
               ? "Completed"
@@ -212,7 +213,7 @@ export default function AdminPaymentsPage() {
                     : payment.status === "PARTIALLY_REFUNDED"
                       ? "Partially Refunded"
                       : payment.status}
-          </span>
+          </StatusBadge>
         ),
       },
       {

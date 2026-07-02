@@ -79,7 +79,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 type="button"
                 onClick={() => onNavigate(item.path)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left font-medium transition-colors ${isActive(item.path)
-                  ? "bg-green-100 text-[#38761d]"
+                  ? "bg-primary/10 text-primary"
                   : "text-gray-600 hover:bg-gray-100"
                   }`}
               >

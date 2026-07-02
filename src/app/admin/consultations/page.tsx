@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -344,20 +345,21 @@ export default function AdminConsultationsPage() {
       {
         header: "Status",
         cell: (consultation) => (
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${consultation.status === "COMPLETED"
-              ? "bg-green-100 text-green-800"
-              : consultation.status === "CONFIRMED"
-                ? "bg-blue-100 text-blue-800"
-                : consultation.status === "PENDING"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : consultation.status === "CANCELLED"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-              }`}
+          <StatusBadge
+            variant={
+              consultation.status === "COMPLETED"
+                ? "success"
+                : consultation.status === "CONFIRMED"
+                  ? "info"
+                  : consultation.status === "PENDING"
+                    ? "warning"
+                    : consultation.status === "CANCELLED"
+                      ? "danger"
+                      : "neutral"
+            }
           >
             {consultationStatusLabels[consultation.status]}
-          </span>
+          </StatusBadge>
         ),
       },
       {

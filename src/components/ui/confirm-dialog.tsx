@@ -65,7 +65,7 @@ export function ConfirmDialog({
         },
         default: {
             icon: "bg-blue-100 text-blue-600",
-            button: "bg-[#38761d] hover:bg-[#2d5f17] focus:ring-green-500",
+            button: "bg-primary hover:bg-primary/90 focus:ring-primary/50",
         },
     };
 
