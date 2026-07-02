@@ -38,6 +38,10 @@ if grep -qE '"(sk|pk)_(live|test)_[A-Za-z0-9]+"' "$f"; then
   findings+=("Hardcoded Paystack API key literal — use process.env.PAYSTACK_SECRET_KEY / process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY instead (never hardcode secrets).")
 fi
 
+if grep -qE '"sb_(prod|sandbox)_[A-Za-z0-9]+"' "$f"; then
+  findings+=("Hardcoded Shipbubble API key literal — use process.env.SHIPBUBBLE_API_KEY instead (never hardcode secrets).")
+fi
+
 [ ${#findings[@]} -eq 0 ] && exit 0
 
 msg="edit-check on $(basename "$f"):"

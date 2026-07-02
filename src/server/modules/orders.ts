@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
   checkoutRateLimited,
@@ -15,6 +16,85 @@ import {
   publicProcedure,
   staffProcedure,
 } from "../trpc";
+
+interface OrderAddressInput {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  address_1: string;
+  city: string;
+  state?: string;
+  postal_code?: string;
+  country: string;
+}
+
+interface OrderItemInput {
+  product_id: string;
+  quantity: number;
+}
+
+interface OrderProduct {
+  id: string;
+  name: string;
+  price: Prisma.Decimal;
+  weight: Prisma.Decimal | null;
+}
+
+/**
+ * Authoritative, server-side shipping cost — never trust the client-reported
+ * `totals.shipping`. Since the client didn't tell us which method (standard
+ * vs express) it charged for, we match the client-reported cost against the
+ * two real server-computed rates to recover the intended method; a
+ * fraudulent/zeroed client value won't match either and falls back to the
+ * cheaper rate, which correctly fails the payment-amount check below.
+ */
+async function computeServerShippingCost(
+  address: OrderAddressInput,
+  orderItems: OrderItemInput[],
+  products: OrderProduct[],
+  subtotal: number,
+  clientReportedShipping: number,
+): Promise<number> {
+  const weightKg = orderItems.reduce((sum, item) => {
+    const product = products.find((p) => p.id === item.product_id);
+    const unitWeightKg = product?.weight ? Number(product.weight) : 0.5;
+    return sum + unitWeightKg * item.quantity;
+  }, 0);
+
+  const rates = await getShippingRates({
+    destination: {
+      state: address.state || "",
+      city: address.city,
+      postalCode: address.postal_code,
+      country: address.country,
+      addressLine: address.address_1,
+      contactName: `${address.first_name} ${address.last_name}`.trim(),
+      contactEmail: address.email,
+      contactPhone: address.phone,
+    },
+    weightKg,
+    subtotal,
+    items: orderItems.map((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      return {
+        name: product?.name ?? "Item",
+        unitWeightKg: product?.weight ? Number(product.weight) : 0.5,
+        unitAmount: product ? Number(product.price) : 0,
+        quantity: item.quantity,
+      };
+    }),
+  });
+
+  const closest = rates.reduce((closest, rate) =>
+    Math.abs(rate.cost - clientReportedShipping) <
+    Math.abs(closest.cost - clientReportedShipping)
+      ? rate
+      : closest,
+  );
+
+  return closest.cost;
+}
 
 // Get user's orders
 export const getMyOrders = protectedProcedure
@@ -485,8 +565,22 @@ export const createOrderWithPayment = checkoutRateLimited
       }
     }
 
-    // Validate the verified Paystack amount (kobo) matches the order total
-    const expectedTotal = totals.total;
+    // Recompute shipping server-side — never trust totals.shipping/totals.total
+    const serverShippingCost = await computeServerShippingCost(
+      address,
+      orderItems,
+      products,
+      totals.subtotal,
+      totals.shipping,
+    );
+    // Tax removed for now (business decision, 2026-07-02) — never trust
+    // totals.tax from the client, same reasoning as shipping above.
+    const serverTax = 0;
+    const serverTotal =
+      totals.subtotal + serverShippingCost + serverTax - totals.discount;
+
+    // Validate the verified Paystack amount (kobo) matches the server-computed total
+    const expectedTotal = serverTotal;
     const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
@@ -581,10 +675,10 @@ export const createOrderWithPayment = checkoutRateLimited
         shipping_address_id: shippingAddress.id,
         notes,
         subtotal: totals.subtotal,
-        shipping_cost: totals.shipping,
-        tax: totals.tax,
+        shipping_cost: serverShippingCost,
+        tax: serverTax,
         discount: totals.discount,
-        total: totals.total,
+        total: serverTotal,
         payment_status: "COMPLETED", // Payment is already completed
         status: "PENDING", // Order status starts as PENDING
         items: {
@@ -862,8 +956,22 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       }
     }
 
-    // Validate the verified Paystack amount (kobo) matches the order total
-    const expectedTotal = totals.total;
+    // Recompute shipping server-side — never trust totals.shipping/totals.total
+    const serverShippingCost = await computeServerShippingCost(
+      address,
+      orderItems,
+      products,
+      totals.subtotal,
+      totals.shipping,
+    );
+    // Tax removed for now (business decision, 2026-07-02) — never trust
+    // totals.tax from the client, same reasoning as shipping above.
+    const serverTax = 0;
+    const serverTotal =
+      totals.subtotal + serverShippingCost + serverTax - totals.discount;
+
+    // Validate the verified Paystack amount (kobo) matches the server-computed total
+    const expectedTotal = serverTotal;
     const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
@@ -896,10 +1004,10 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         shipping_address_id: undefined, // Guest orders don't have a shipping_address_id
         notes,
         subtotal: totals.subtotal,
-        shipping_cost: totals.shipping,
-        tax: totals.tax,
+        shipping_cost: serverShippingCost,
+        tax: serverTax,
         discount: totals.discount,
-        total: totals.total,
+        total: serverTotal,
         payment_status: "COMPLETED",
         status: "PENDING",
         items: {

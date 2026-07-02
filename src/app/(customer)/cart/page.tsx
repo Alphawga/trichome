@@ -138,8 +138,9 @@ export default function CartPage() {
     }, 0);
   }, [cartItems]);
 
-  const shipping = subtotal > 0 ? 4500.0 : 0;
-  const total = subtotal + shipping;
+  // Real shipping cost depends on the delivery address, which isn't known
+  // yet on the cart page — it's calculated at checkout instead.
+  const total = subtotal;
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -451,7 +452,8 @@ export default function CartPage() {
                   },
                 }))}
                 subtotal={subtotal}
-                shipping={shipping}
+                shipping={0}
+                shippingNote="Calculated at checkout"
                 tax={0}
                 discount={0}
                 total={total}

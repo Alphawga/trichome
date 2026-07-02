@@ -21,6 +21,8 @@ interface OrderSummaryProps {
   subtotal: number;
   /** Shipping cost */
   shipping: number;
+  /** If set, shows this text instead of a shipping amount (e.g. "Calculated at checkout") */
+  shippingNote?: string;
   /** Tax amount */
   tax: number;
   /** Discount amount (optional) */
@@ -46,6 +48,7 @@ export function OrderSummary({
   items,
   subtotal,
   shipping,
+  shippingNote,
   tax,
   discount = 0,
   total,
@@ -124,9 +127,11 @@ export function OrderSummary({
         <div className="flex justify-between text-[14px] sm:text-[15px]">
           <span>Shipping</span>
           <span className="font-semibold text-trichomes-forest">
-            {shipping === 0
-              ? "Free"
-              : `₦${shipping.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+            {shippingNote
+              ? shippingNote
+              : shipping === 0
+                ? "Free"
+                : `₦${shipping.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
           </span>
         </div>
 
