@@ -81,11 +81,18 @@ async function validateReceiverAddress(
     },
   );
 
+  const responseBody = await response.json();
+
   if (!response.ok) {
+    console.error(
+      "Shipbubble address validation failed:",
+      response.status,
+      responseBody,
+    );
     throw new Error(`Shipbubble address validation failed: ${response.status}`);
   }
 
-  const body: { data?: ShipbubbleAddressData } = await response.json();
+  const body: { data?: ShipbubbleAddressData } = responseBody;
   if (!body.data?.address_code) {
     throw new Error("Shipbubble address validation returned no address_code");
   }
@@ -106,31 +113,40 @@ async function fetchRates(
   receiverAddressCode: number,
   input: ShippingQuoteInput,
 ): Promise<ShipbubbleRatesData> {
+  const requestBody = {
+    sender_address_code: Number(process.env.SHIPBUBBLE_SENDER_ADDRESS_CODE),
+    reciever_address_code: receiverAddressCode,
+    pickup_date: nextBusinessDay(),
+    category_id: Number(process.env.SHIPBUBBLE_CATEGORY_ID),
+    package_items: input.items.map((item) => ({
+      name: item.name,
+      description: item.name,
+      unit_weight: item.unitWeightKg,
+      unit_amount: item.unitAmount,
+      quantity: item.quantity,
+    })),
+    package_dimension: DEFAULT_PACKAGE_DIMENSION,
+  };
+
   const response = await fetch(`${SHIPBUBBLE_BASE_URL}/shipping/fetch_rates`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({
-      sender_address_code: Number(process.env.SHIPBUBBLE_SENDER_ADDRESS_CODE),
-      reciever_address_code: receiverAddressCode,
-      pickup_date: nextBusinessDay(),
-      category_id: Number(process.env.SHIPBUBBLE_CATEGORY_ID),
-      package_items: input.items.map((item) => ({
-        name: item.name,
-        description: item.name,
-        unit_weight: item.unitWeightKg,
-        unit_amount: item.unitAmount,
-        quantity: item.quantity,
-      })),
-      package_dimension: DEFAULT_PACKAGE_DIMENSION,
-    }),
+    body: JSON.stringify(requestBody),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
+  const responseBody = await response.json();
+
   if (!response.ok) {
+    console.error(
+      "Shipbubble fetch_rates failed:",
+      response.status,
+      responseBody,
+    );
     throw new Error(`Shipbubble fetch_rates failed: ${response.status}`);
   }
 
-  const body: { data?: ShipbubbleRatesData } = await response.json();
+  const body: { data?: ShipbubbleRatesData } = responseBody;
   if (!body.data?.couriers?.length) {
     throw new Error("Shipbubble fetch_rates returned no couriers");
   }
