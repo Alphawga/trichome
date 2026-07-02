@@ -22,23 +22,14 @@ import { trpc } from "@/utils/trpc";
 export function useCartSync() {
   const utils = trpc.useUtils();
 
-  const addToCartMutation = trpc.addToCart.useMutation({
-    onSuccess: () => {
-      utils.getCart.invalidate();
-    },
-  });
-
-  const updateCartItemMutation = trpc.updateCartItem.useMutation({
-    onSuccess: () => {
-      utils.getCart.invalidate();
-    },
-  });
+  const mergeCartMutation = trpc.mergeCart.useMutation();
 
   /**
    * Sync localStorage cart with database cart
    * Called after user logs in
    */
   const syncCart = useCallback(async (): Promise<CartSyncResult | null> => {
+    let loadingToastId: string | number | undefined;
     try {
       // Get localStorage cart
       const localCart = getLocalCart();
@@ -64,27 +55,30 @@ export function useCartSync() {
         return null;
       }
 
-      // Add new items from localStorage
-      for (const item of toAdd) {
-        await addToCartMutation.mutateAsync({
+      loadingToastId = toast.loading("Syncing your cart...");
+
+      // Merge all adds/updates in a single round trip
+      await mergeCartMutation.mutateAsync({
+        toAdd: toAdd.map((item) => ({
           product_id: item.product_id,
           quantity: item.quantity,
-        });
-      }
-
-      // Update existing items with maximum quantities
-      for (const item of toUpdate) {
-        await updateCartItemMutation.mutateAsync({
+        })),
+        toUpdate: toUpdate.map((item) => ({
           id: item.cartItemId,
           quantity: item.quantity,
-        });
-      }
+        })),
+      });
 
       // Calculate sync statistics
       const stats = calculateSyncStats(toAdd, toUpdate, conflicts);
 
       // Clear localStorage after successful sync
       clearLocalCart();
+
+      // Invalidate cart query to refresh UI
+      await utils.getCart.invalidate();
+
+      toast.dismiss(loadingToastId);
 
       // Show notification
       if (stats.mergedCount > 0) {
@@ -100,11 +94,9 @@ export function useCartSync() {
         }
       }
 
-      // Invalidate cart query to refresh UI
-      await utils.getCart.invalidate();
-
       return stats;
     } catch (error) {
+      if (loadingToastId !== undefined) toast.dismiss(loadingToastId);
       console.error("Cart sync error:", error);
       toast.error("Failed to sync cart", {
         description:
@@ -114,10 +106,10 @@ export function useCartSync() {
       });
       return null;
     }
-  }, [addToCartMutation, updateCartItemMutation, utils]);
+  }, [mergeCartMutation, utils]);
 
   return {
     syncCart,
-    isSyncing: addToCartMutation.isPending || updateCartItemMutation.isPending,
+    isSyncing: mergeCartMutation.isPending,
   };
 }

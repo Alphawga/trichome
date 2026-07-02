@@ -140,14 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = isAdminRole(user?.role);
   const isStaff = isStaffOrAdmin(user?.role);
 
-  // Debug logging for permissions
-  if (user?.role) {
-    const { ROLE_PERMISSIONS } = require("@/lib/permissions");
-    console.log("AUTH CONTEXT - User:", user?.email, "Role:", user?.role);
-    console.log("AUTH CONTEXT - Permissions for role:", ROLE_PERMISSIONS[user.role]);
-    console.log("AUTH CONTEXT - isAdmin:", isAdmin, "isStaff:", isStaff);
-  }
-
   const hasPermission = useCallback(
     (permission: Permission) => hasRolePermission(user?.role, permission),
     [user?.role]

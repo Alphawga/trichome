@@ -168,6 +168,118 @@ export const updateCartItem = protectedProcedure
     return { cartItem: updatedItem, message: "Cart item updated" };
   });
 
+// Merge a guest (localStorage) cart into the authenticated user's cart in one round trip
+export const mergeCart = protectedProcedure
+  .input(
+    z.object({
+      toAdd: z.array(
+        z.object({
+          product_id: z.string(),
+          quantity: z.number().int().min(1),
+        }),
+      ),
+      toUpdate: z.array(
+        z.object({
+          id: z.string(),
+          quantity: z.number().int().min(1),
+        }),
+      ),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const addProductIds = input.toAdd.map((item) => item.product_id);
+    const updateIds = input.toUpdate.map((item) => item.id);
+
+    const [addProducts, updateItems] = await Promise.all([
+      addProductIds.length
+        ? ctx.prisma.product.findMany({
+            where: { id: { in: addProductIds } },
+          })
+        : Promise.resolve([]),
+      updateIds.length
+        ? ctx.prisma.cartItem.findMany({
+            where: { id: { in: updateIds } },
+            include: { product: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const productMap = new Map(
+      addProducts.map((product) => [product.id, product]),
+    );
+    const cartItemMap = new Map(updateItems.map((item) => [item.id, item]));
+
+    for (const item of input.toAdd) {
+      const product = productMap.get(item.product_id);
+      if (!product) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Product not found",
+        });
+      }
+      if (product.status !== "ACTIVE") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Product is not available",
+        });
+      }
+      if (product.track_quantity && product.quantity < item.quantity) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Insufficient stock",
+        });
+      }
+    }
+
+    for (const item of input.toUpdate) {
+      const cartItem = cartItemMap.get(item.id);
+      if (!cartItem || cartItem.user_id !== ctx.user.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cart item not found",
+        });
+      }
+      if (
+        cartItem.product.track_quantity &&
+        cartItem.product.quantity < item.quantity
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Insufficient stock",
+        });
+      }
+    }
+
+    await ctx.prisma.$transaction([
+      ...input.toAdd.map((item) =>
+        ctx.prisma.cartItem.upsert({
+          where: {
+            user_id_product_id: {
+              user_id: ctx.user.id,
+              product_id: item.product_id,
+            },
+          },
+          create: {
+            user_id: ctx.user.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+          },
+          update: {
+            quantity: item.quantity,
+          },
+        }),
+      ),
+      ...input.toUpdate.map((item) =>
+        ctx.prisma.cartItem.update({
+          where: { id: item.id },
+          data: { quantity: item.quantity },
+        }),
+      ),
+    ]);
+
+    return { message: "Cart merged successfully" };
+  });
+
 // Remove item from cart
 export const removeFromCart = protectedProcedure
   .input(z.object({ id: z.string() }))

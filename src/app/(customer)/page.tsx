@@ -8,7 +8,7 @@ import { HomePageClient } from "./HomePageClient";
 
 export const metadata: Metadata = {
   title: "Home",
-  description: SITE_DESCRIPTION,
+  description: `${SITE_DESCRIPTION} Visit our store in Akure, Ondo State.`,
   alternates: {
     canonical: SITE_URL,
   },

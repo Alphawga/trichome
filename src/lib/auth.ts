@@ -49,7 +49,6 @@ export const authOptions: NextAuthOptions = {
             last_name: nameParts.slice(1).join(" ") || null,
           },
         });
-        console.log("🆕 createUser triggered:", user);
       } catch (error) {
         console.error("Error updating new user role/status:", error);
       }
@@ -176,8 +175,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      console.log("SIGN IN STARTED", { user, account, profile });
+    async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
 
@@ -245,13 +243,10 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (dbUser) {
-          console.log("JWT CALLBACK - dbUser found:", { id: dbUser.id, role: dbUser.role, email: dbUser.email });
           token.email = dbUser.email;
           token.role = dbUser.role;
           token.first_name = dbUser.first_name;
           token.last_name = dbUser.last_name;
-        } else {
-          console.log("JWT CALLBACK - NO dbUser found for token.sub:", token.sub);
         }
       }
 

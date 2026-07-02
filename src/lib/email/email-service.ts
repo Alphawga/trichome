@@ -46,32 +46,7 @@ class DevelopmentEmailService implements EmailService {
       ? options.to.join(", ")
       : options.to;
 
-    console.log("=".repeat(80));
-    console.log("📧 EMAIL NOTIFICATION");
-    console.log("=".repeat(80));
-    console.log("To:", recipients);
-    console.log("Subject:", options.subject);
-    if (options.from) console.log("From:", options.from);
-    if (options.replyTo) console.log("Reply-To:", options.replyTo);
-    if (options.cc)
-      console.log(
-        "CC:",
-        Array.isArray(options.cc) ? options.cc.join(", ") : options.cc,
-      );
-    if (options.bcc)
-      console.log(
-        "BCC:",
-        Array.isArray(options.bcc) ? options.bcc.join(", ") : options.bcc,
-      );
-    console.log("=".repeat(80));
-    console.log("\n📄 HTML Content:");
-    console.log(options.html);
-    if (options.text) {
-      console.log("\n📄 Text Content:");
-      console.log(options.text);
-    }
-    console.log("=".repeat(80));
-    console.log("");
+    console.log(`[dev-email] → ${recipients}: ${options.subject}`);
 
     // Simulate email sending
     await new Promise((resolve) => setTimeout(resolve, 100));
