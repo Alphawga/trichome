@@ -18,15 +18,6 @@ export function CartSyncHandler() {
   const previousAuthStateRef = useRef(false);
 
   useEffect(() => {
-    // Debug logging
-    console.log("CartSyncHandler check:", {
-      isLoading,
-      isAuthenticated,
-      prevAuth: previousAuthStateRef.current,
-      hasSynced: hasSyncedRef.current,
-      localCartSize: getLocalCart().length
-    });
-
     if (
       !isLoading &&
       isAuthenticated &&
@@ -34,12 +25,10 @@ export function CartSyncHandler() {
       !hasSyncedRef.current
     ) {
       const localCart = getLocalCart();
-      console.log("Attempting to sync cart...", localCart);
 
       if (localCart.length > 0) {
         // User just logged in and has items in localStorage
-        syncCart().then((result) => {
-          console.log("Cart sync result:", result);
+        syncCart().then(() => {
           hasSyncedRef.current = true;
         }).catch(err => {
           console.error("Cart sync failed:", err);

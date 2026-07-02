@@ -75,7 +75,6 @@ export function useOrderCreation() {
           clearLocalCart();
         } catch (_error) {
           // Silently fail if local cart doesn't exist
-          console.debug("No local cart to clear");
         }
       }
 

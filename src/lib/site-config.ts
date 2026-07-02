@@ -20,3 +20,12 @@ export const SOCIAL_LINKS = {
 
 export const CONTACT_EMAIL = "support@trichomesshop.com";
 export const CONTACT_PHONE = "+2348087098720";
+
+export const SITE_ADDRESS = {
+  streetAddress:
+    "Oritagun Bus-stop, 1st Floor HACO GLOBAL BUILDING, Off Arakale Rd, Beside Union Bank, HACO MARKET/ELEMO PALACE, Oba Adesida Road",
+  addressLocality: "Akure",
+  addressRegion: "Ondo",
+  postalCode: "340110",
+  addressCountry: "NG",
+};

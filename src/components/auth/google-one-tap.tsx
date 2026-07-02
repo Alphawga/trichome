@@ -140,18 +140,7 @@ export function GoogleOneTap({
             });
 
             // Show the One Tap prompt
-            window.google.accounts.id.prompt((notification: PromptNotification) => {
-                if (notification.isNotDisplayed()) {
-                    console.log(
-                        "One Tap not displayed:",
-                        notification.getNotDisplayedReason()
-                    );
-                } else if (notification.isSkippedMoment()) {
-                    console.log("One Tap skipped:", notification.getSkippedReason());
-                } else if (notification.isDismissedMoment()) {
-                    console.log("One Tap dismissed:", notification.getDismissedReason());
-                }
-            });
+            window.google.accounts.id.prompt();
 
             initialized.current = true;
         } catch (error) {

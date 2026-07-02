@@ -67,13 +67,6 @@ export function ProductFormSheet({
     },
   });
 
-  // Debug: log form errors when they change
-  useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      console.log("Form validation errors:", errors);
-    }
-  }, [errors]);
-
   const productQuery = trpc.getProductById.useQuery(
     productId ? { id: productId } : { id: "" },
     { enabled: !!productId },

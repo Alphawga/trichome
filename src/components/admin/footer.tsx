@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type React from "react";
+import { SITE_ADDRESS } from "@/lib/site-config";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -219,10 +220,14 @@ export const Footer: React.FC = () => {
                   support@trichomesshop.com
                 </a>
               </p>
-              <p className="text-white/80 text-[14px] font-body underline">
+              <p className="text-white/80 text-[14px] mb-2 font-body underline">
                 <a href="tel:+2348087098720" className="hover:text-white transition-colors">
                   +234 808 709 8720
                 </a>
+              </p>
+              <p className="text-white/80 text-[14px] font-body">
+                {SITE_ADDRESS.streetAddress}, {SITE_ADDRESS.addressLocality}{" "}
+                {SITE_ADDRESS.postalCode}, {SITE_ADDRESS.addressRegion}
               </p>
             </div>
           </div>
