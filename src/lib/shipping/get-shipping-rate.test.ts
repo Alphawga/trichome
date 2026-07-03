@@ -83,3 +83,69 @@ describe("getShippingRates (static fallback, no SHIPBUBBLE_API_KEY)", () => {
     expect(rates.every((r) => r.source === "static")).toBe(true);
   });
 });
+
+describe("getShippingRates (SHIPBUBBLE_API_KEY set)", () => {
+  const originalKey = process.env.SHIPBUBBLE_API_KEY;
+
+  beforeAll(() => {
+    process.env.SHIPBUBBLE_API_KEY = "test-key";
+  });
+
+  afterAll(() => {
+    if (originalKey) {
+      process.env.SHIPBUBBLE_API_KEY = originalKey;
+    } else {
+      delete process.env.SHIPBUBBLE_API_KEY;
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("skips the live call and logs a distinct incomplete-address warning when contact details are missing", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch");
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Lagos", city: "Ikeja" },
+    });
+
+    expect(rates[0].source).toBe("static");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("not a Shipbubble outage"),
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to static rates and logs a generic operational error when the live call fails", async () => {
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      .mockRejectedValue(new Error("network down"));
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: {
+        state: "Lagos",
+        city: "Ikeja",
+        addressLine: "1 Test Street",
+        contactName: "Test User",
+        contactEmail: "test@example.com",
+        contactPhone: "08000000000",
+      },
+    });
+
+    expect(rates[0].source).toBe("static");
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Shipbubble rate lookup failed, falling back to static rates:",
+      expect.any(Error),
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+});

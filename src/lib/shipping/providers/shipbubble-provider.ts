@@ -23,6 +23,28 @@ interface ShipbubbleRatesData {
   cheapest_courier?: ShipbubbleCourier;
 }
 
+export class ShipbubbleIncompleteRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ShipbubbleIncompleteRequestError";
+  }
+}
+
+// Single source of truth for "does this destination have everything
+// Shipbubble's address-validation endpoint requires" — shared by
+// get-shipping-rate.ts's pre-check and this file's own defensive throw so
+// the two can't drift into different field lists.
+export function hasCompleteDestinationForLiveQuote(
+  destination: ShippingQuoteInput["destination"],
+): boolean {
+  return Boolean(
+    destination.addressLine &&
+      destination.contactName &&
+      destination.contactEmail &&
+      destination.contactPhone,
+  );
+}
+
 const receiverAddressCache = new Map<string, number>();
 
 function authHeaders(): HeadersInit {
@@ -35,13 +57,8 @@ function authHeaders(): HeadersInit {
 async function validateReceiverAddress(
   destination: ShippingQuoteInput["destination"],
 ): Promise<number> {
-  if (
-    !destination.addressLine ||
-    !destination.contactName ||
-    !destination.contactEmail ||
-    !destination.contactPhone
-  ) {
-    throw new Error(
+  if (!hasCompleteDestinationForLiveQuote(destination)) {
+    throw new ShipbubbleIncompleteRequestError(
       "Shipbubble: missing contact/address details required for address validation",
     );
   }
@@ -81,6 +98,26 @@ async function validateReceiverAddress(
   );
 
   const responseBody = await response.json();
+
+  // TEMP DEBUG — remove before commit
+  console.log(
+    "[shipbubble debug] address/validate request:",
+    JSON.stringify({
+      name: destination.contactName,
+      address: [
+        destination.addressLine,
+        destination.city,
+        destination.state,
+        destination.country,
+      ]
+        .filter(Boolean)
+        .join(", "),
+    }),
+  );
+  console.log(
+    "[shipbubble debug] address/validate response:",
+    JSON.stringify(responseBody),
+  );
 
   if (!response.ok) {
     console.error(
@@ -135,6 +172,16 @@ async function fetchRates(
   });
 
   const responseBody = await response.json();
+
+  // TEMP DEBUG — remove before commit
+  console.log(
+    "[shipbubble debug] fetch_rates request:",
+    JSON.stringify(requestBody),
+  );
+  console.log(
+    "[shipbubble debug] fetch_rates response:",
+    JSON.stringify(responseBody),
+  );
 
   if (!response.ok) {
     console.error(

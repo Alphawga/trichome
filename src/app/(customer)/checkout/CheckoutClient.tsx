@@ -3,7 +3,7 @@ import type { Prisma, Product as PrismaProduct } from "@prisma/client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -103,6 +103,20 @@ function CheckoutPageContent() {
     }
   }, [session, isAuthenticated, isGuestMode, setValue]);
 
+  // Prefill phone from the user's saved profile (session doesn't carry it)
+  const profileQuery = trpc.getProfile.useQuery(undefined, {
+    enabled: isAuthenticated && !isGuestMode,
+  });
+
+  const phonePrefilledRef = useRef(false);
+  useEffect(() => {
+    if (phonePrefilledRef.current || !profileQuery.data) return;
+    phonePrefilledRef.current = true;
+    if (profileQuery.data.phone && !formData.phone) {
+      setValue("phone", profileQuery.data.phone);
+    }
+  }, [profileQuery.data, formData.phone, setValue]);
+
   // Determine cart items based on auth state
   const cartItems = useMemo(() => {
     if (isGuestMode) {
@@ -198,14 +212,20 @@ function CheckoutPageContent() {
     [cartItems],
   );
 
-  // Debounce the address fields that drive the live shipping quote so we
-  // don't fire a request (and, once a carrier key is set, a real external
-  // API call) on every keystroke.
+  // Debounce the address/contact fields that drive the live shipping quote
+  // so we don't fire a request (and, once a carrier key is set, a real
+  // external API call) on every keystroke. Shipbubble's address validation
+  // requires all of these fields, so they're debounced together and the
+  // query is only enabled once every one of them is present.
   const [debouncedAddress, setDebouncedAddress] = useState({
     state: formData.state,
     city: formData.city,
     postal_code: formData.postal_code,
     country: formData.country,
+    address_1: formData.address_1,
+    contactName: `${formData.first_name} ${formData.last_name}`.trim(),
+    email: formData.email,
+    phone: formData.phone,
   });
 
   useEffect(() => {
@@ -215,6 +235,10 @@ function CheckoutPageContent() {
         city: formData.city,
         postal_code: formData.postal_code,
         country: formData.country,
+        address_1: formData.address_1,
+        contactName: `${formData.first_name} ${formData.last_name}`.trim(),
+        email: formData.email,
+        phone: formData.phone,
       });
     }, 500);
     return () => clearTimeout(timeout);
@@ -223,7 +247,21 @@ function CheckoutPageContent() {
     formData.city,
     formData.postal_code,
     formData.country,
+    formData.address_1,
+    formData.first_name,
+    formData.last_name,
+    formData.email,
+    formData.phone,
   ]);
+
+  const hasCompleteShippingContactDetails = Boolean(
+    debouncedAddress.state &&
+      debouncedAddress.city &&
+      debouncedAddress.address_1 &&
+      debouncedAddress.contactName &&
+      debouncedAddress.email &&
+      debouncedAddress.phone,
+  );
 
   const shippingRateQuery = trpc.getShippingRate.useQuery(
     {
@@ -231,10 +269,10 @@ function CheckoutPageContent() {
       city: debouncedAddress.city,
       postalCode: debouncedAddress.postal_code,
       country: debouncedAddress.country || "Nigeria",
-      addressLine: formData.address_1,
-      contactName: `${formData.first_name} ${formData.last_name}`.trim(),
-      contactEmail: formData.email,
-      contactPhone: formData.phone,
+      addressLine: debouncedAddress.address_1,
+      contactName: debouncedAddress.contactName,
+      contactEmail: debouncedAddress.email,
+      contactPhone: debouncedAddress.phone,
       weightKg: cartWeightKg,
       subtotal,
       items: cartItems.map((item) => ({
@@ -245,10 +283,27 @@ function CheckoutPageContent() {
       })),
     },
     {
-      enabled: Boolean(debouncedAddress.state && debouncedAddress.city),
+      enabled: hasCompleteShippingContactDetails,
       staleTime: 60_000,
     },
   );
+
+  // True while the 500ms debounce hasn't caught up with the latest typed
+  // shipping/contact input yet, or while a refetch triggered by it is still
+  // in flight — used to block payment submission on a stale quote so the
+  // amount charged never lags behind what was just typed.
+  const isShippingQuotePending =
+    formData.state !== debouncedAddress.state ||
+    formData.city !== debouncedAddress.city ||
+    formData.postal_code !== debouncedAddress.postal_code ||
+    formData.country !== debouncedAddress.country ||
+    formData.address_1 !== debouncedAddress.address_1 ||
+    `${formData.first_name} ${formData.last_name}`.trim() !==
+      debouncedAddress.contactName ||
+    formData.email !== debouncedAddress.email ||
+    formData.phone !== debouncedAddress.phone ||
+    shippingRateQuery.isLoading ||
+    shippingRateQuery.isFetching;
 
   const selectedRate = shippingRateQuery.data?.rates?.[0];
 
@@ -319,9 +374,16 @@ function CheckoutPageContent() {
       : guestPaymentHandler;
 
   const handleSelectSavedAddress = (address: Partial<AddressFormData>) => {
+    // Address records don't store email, and phone may legitimately be
+    // absent on file — don't let those two fields blank out a value the
+    // customer already typed. Every other field should fully adopt the
+    // selected address, including clearing fields it doesn't have.
+    const { phone, email, ...rest } = address;
     reset({
       ...formData,
-      ...address,
+      ...rest,
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
     });
     setSelectedAddressId(undefined);
   };
@@ -702,7 +764,12 @@ function CheckoutPageContent() {
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
                       Shipping
                     </h3>
-                    {shippingRateQuery.isLoading ? (
+                    {!hasCompleteShippingContactDetails ? (
+                      <p className="text-sm text-gray-500 font-body">
+                        Complete your name, email, phone number and street
+                        address above to see shipping cost.
+                      </p>
+                    ) : shippingRateQuery.isLoading ? (
                       <p className="text-sm text-gray-500 font-body">
                         Calculating shipping...
                       </p>
@@ -716,6 +783,7 @@ function CheckoutPageContent() {
                           <div className="font-medium text-gray-900 text-sm font-body">
                             {selectedRate.courier} ({selectedRate.estimatedDays}{" "}
                             {selectedRate.estimatedDays === 1 ? "day" : "days"})
+                            {selectedRate.source === "static" && " (estimated)"}
                           </div>
                           <div className="text-sm font-semibold text-gray-900 font-body">
                             {selectedRate.cost === 0
@@ -777,12 +845,18 @@ function CheckoutPageContent() {
 
                       <button
                         type="submit"
-                        disabled={!isValid || paymentHandler.isLoading}
+                        disabled={
+                          !isValid ||
+                          paymentHandler.isLoading ||
+                          isShippingQuotePending
+                        }
                         className="w-full bg-[#1E3024] text-white py-3 sm:py-4 rounded-full hover:bg-[#1E3024]/90 font-semibold disabled:bg-gray-200 disabled:cursor-not-allowed transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
                       >
                         {paymentHandler.isLoading
                           ? "Processing..."
-                          : "Continue to Payment"}
+                          : isShippingQuotePending
+                            ? "Calculating shipping..."
+                            : "Continue to Payment"}
                       </button>
 
                       {/* Promo Code Section */}
