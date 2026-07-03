@@ -27,7 +27,6 @@ export interface ShippingRate {
   courier: string;
   cost: number;
   estimatedDays: number;
-  method: "standard" | "express";
   source: "live" | "static";
 }
 

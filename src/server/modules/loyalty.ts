@@ -59,7 +59,7 @@ export const getLoyaltyTiers = publicProcedure.query(async () => {
       minPoints: 5000,
       benefits: [
         "20% off on all orders",
-        "Free express shipping",
+        "Free shipping",
         "VIP support",
         "Exclusive events",
         "Personal shopper",

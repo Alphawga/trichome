@@ -43,18 +43,16 @@ interface OrderProduct {
 
 /**
  * Authoritative, server-side shipping cost — never trust the client-reported
- * `totals.shipping`. Since the client didn't tell us which method (standard
- * vs express) it charged for, we match the client-reported cost against the
- * two real server-computed rates to recover the intended method; a
- * fraudulent/zeroed client value won't match either and falls back to the
- * cheaper rate, which correctly fails the payment-amount check below.
+ * `totals.shipping`. Always recomputes via the live Shipbubble API (or its
+ * static fallback) and uses that rate directly, ignoring whatever the client
+ * reported; a fraudulent/zeroed client value fails the payment-amount check
+ * below since it won't match the server-recomputed total.
  */
 async function computeServerShippingCost(
   address: OrderAddressInput,
   orderItems: OrderItemInput[],
   products: OrderProduct[],
   subtotal: number,
-  clientReportedShipping: number,
 ): Promise<number> {
   const weightKg = orderItems.reduce((sum, item) => {
     const product = products.find((p) => p.id === item.product_id);
@@ -86,14 +84,7 @@ async function computeServerShippingCost(
     }),
   });
 
-  const closest = rates.reduce((closest, rate) =>
-    Math.abs(rate.cost - clientReportedShipping) <
-    Math.abs(closest.cost - clientReportedShipping)
-      ? rate
-      : closest,
-  );
-
-  return closest.cost;
+  return rates[0].cost;
 }
 
 // Get user's orders
@@ -571,7 +562,6 @@ export const createOrderWithPayment = checkoutRateLimited
       orderItems,
       products,
       totals.subtotal,
-      totals.shipping,
     );
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.
@@ -962,7 +952,6 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       orderItems,
       products,
       totals.subtotal,
-      totals.shipping,
     );
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.

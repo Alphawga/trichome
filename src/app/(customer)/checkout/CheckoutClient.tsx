@@ -122,10 +122,6 @@ function CheckoutPageContent() {
     return cartQuery.data?.items || [];
   }, [isGuestMode, localCartItems, localProductsQuery.data, cartQuery.data]);
 
-  const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
-    "standard",
-  );
-
   const [saveAddress, setSaveAddress] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<
     string | undefined
@@ -254,10 +250,7 @@ function CheckoutPageContent() {
     },
   );
 
-  const shippingRates = shippingRateQuery.data?.rates ?? [];
-  const selectedRate = shippingRates.find(
-    (rate) => rate.method === shippingMethod,
-  );
+  const selectedRate = shippingRateQuery.data?.rates?.[0];
 
   const shipping = appliedPromoCode?.isFreeShipping
     ? 0
@@ -703,11 +696,11 @@ function CheckoutPageContent() {
                   </div>
                 )}
 
-                {/* Shipping Method Selection */}
+                {/* Shipping */}
                 {formData.city && formData.state && (
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
-                      Shipping Method
+                      Shipping
                     </h3>
                     {shippingRateQuery.isLoading ? (
                       <p className="text-sm text-gray-500 font-body">
@@ -718,52 +711,19 @@ function CheckoutPageContent() {
                         Couldn&apos;t calculate shipping. Please try again.
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {shippingRates.map((rate) => (
-                          <label
-                            key={rate.method}
-                            className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-all duration-150 ${shippingMethod === rate.method
-                              ? "border-black bg-gray-50"
-                              : "border-gray-200 hover:border-gray-300"
-                              }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="radio"
-                                name="shippingMethod"
-                                value={rate.method}
-                                checked={shippingMethod === rate.method}
-                                onChange={(e) =>
-                                  setShippingMethod(
-                                    e.target.value as "standard" | "express",
-                                  )
-                                }
-                                className="w-4 h-4 text-black border-gray-200 focus:ring-black focus:ring-1"
-                              />
-                              <div>
-                                <div className="font-medium text-gray-900 text-sm font-body">
-                                  {rate.method === "standard"
-                                    ? "Standard"
-                                    : "Express"}{" "}
-                                  Delivery ({rate.estimatedDays}{" "}
-                                  {rate.estimatedDays === 1 ? "day" : "days"})
-                                </div>
-                                {rate.cost === 0 &&
-                                  rate.method === "standard" && (
-                                    <div className="text-xs text-[#407029] font-body">
-                                      Free shipping on orders over ₦50,000
-                                    </div>
-                                  )}
-                              </div>
-                            </div>
-                            <div className="text-sm font-semibold text-gray-900 font-body">
-                              {rate.cost === 0
-                                ? "Free"
-                                : `₦${rate.cost.toLocaleString()}`}
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                      selectedRate && (
+                        <div className="flex items-center justify-between p-3 border border-gray-200 rounded-sm">
+                          <div className="font-medium text-gray-900 text-sm font-body">
+                            {selectedRate.courier} ({selectedRate.estimatedDays}{" "}
+                            {selectedRate.estimatedDays === 1 ? "day" : "days"})
+                          </div>
+                          <div className="text-sm font-semibold text-gray-900 font-body">
+                            {selectedRate.cost === 0
+                              ? "Free"
+                              : `₦${selectedRate.cost.toLocaleString()}`}
+                          </div>
+                        </div>
+                      )
                     )}
                   </div>
                 )}

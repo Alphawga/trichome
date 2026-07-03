@@ -21,9 +21,40 @@ describe("getShippingRates (static fallback, no SHIPBUBBLE_API_KEY)", () => {
     if (originalKey) process.env.SHIPBUBBLE_API_KEY = originalKey;
   });
 
-  it("returns free shipping above the threshold", async () => {
-    const rates = await getShippingRates({ ...baseInput, subtotal: 60000 });
+  it("returns free shipping for Akure orders at or above ₦20,000", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Ondo", city: "Akure" },
+      subtotal: 20000,
+    });
     expect(rates[0].cost).toBe(0);
+  });
+
+  it("matches Akure case-insensitively and trimmed", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Ondo", city: " AKURE " },
+      subtotal: 20000,
+    });
+    expect(rates[0].cost).toBe(0);
+  });
+
+  it("does not give free shipping to Akure orders below ₦20,000", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Ondo", city: "Akure" },
+      subtotal: 19999,
+    });
+    expect(rates[0].cost).toBe(4500);
+  });
+
+  it("no longer gives free shipping for large non-Akure orders", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Lagos" },
+      subtotal: 100000,
+    });
+    expect(rates[0].cost).toBe(3000);
   });
 
   it("uses the state base cost below the threshold", async () => {
@@ -31,12 +62,12 @@ describe("getShippingRates (static fallback, no SHIPBUBBLE_API_KEY)", () => {
       ...baseInput,
       destination: { state: "Lagos" },
     });
-    expect(rates.find((r) => r.method === "standard")?.cost).toBe(3000);
+    expect(rates[0].cost).toBe(3000);
   });
 
   it("applies the weight multiplier", async () => {
     const rates = await getShippingRates({ ...baseInput, weightKg: 4 });
-    expect(rates.find((r) => r.method === "standard")?.cost).toBe(4800); // 3000 * 1.6
+    expect(rates[0].cost).toBe(4800); // 3000 * 1.6
   });
 
   it("falls back to the default state rate for unknown states", async () => {
@@ -44,7 +75,7 @@ describe("getShippingRates (static fallback, no SHIPBUBBLE_API_KEY)", () => {
       ...baseInput,
       destination: { state: "Unknown" },
     });
-    expect(rates.find((r) => r.method === "standard")?.cost).toBe(5000);
+    expect(rates[0].cost).toBe(5000);
   });
 
   it("tags results as static", async () => {
