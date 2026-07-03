@@ -21,7 +21,6 @@ interface ShipbubbleRatesData {
   request_token: string;
   couriers: ShipbubbleCourier[];
   cheapest_courier?: ShipbubbleCourier;
-  fastest_courier?: ShipbubbleCourier;
 }
 
 const receiverAddressCache = new Map<string, number>();
@@ -169,21 +168,12 @@ export const shipbubbleProvider = {
     const rates = await fetchRates(receiverAddressCode, input);
 
     const cheapest = rates.cheapest_courier ?? rates.couriers[0];
-    const fastest = rates.fastest_courier ?? rates.couriers[0];
 
     return [
       {
         courier: cheapest.courier_name,
         cost: cheapest.rate_card_amount,
         estimatedDays: estimateDaysFromEta(cheapest.delivery_eta_time),
-        method: "standard",
-        source: "live",
-      },
-      {
-        courier: fastest.courier_name,
-        cost: fastest.rate_card_amount,
-        estimatedDays: estimateDaysFromEta(fastest.delivery_eta_time),
-        method: "express",
         source: "live",
       },
     ];

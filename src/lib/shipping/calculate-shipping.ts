@@ -30,14 +30,12 @@ export interface ShippingCalculationResult {
   isFree: boolean;
   /** Estimated delivery days */
   estimatedDays: number;
-  /** Shipping method */
-  method: "standard" | "express";
 }
 
 /**
- * Free shipping threshold in NGN
+ * Free shipping threshold for Akure orders, in NGN
  */
-const FREE_SHIPPING_THRESHOLD = 50000; // ₦50,000
+const AKURE_FREE_SHIPPING_THRESHOLD = 20000; // ₦20,000
 
 /**
  * Base shipping costs by state (in NGN)
@@ -54,6 +52,7 @@ const STATE_SHIPPING_COSTS: Record<string, number> = {
   Oyo: 4000,
   Edo: 4000,
   Enugu: 4500,
+  Ondo: 4500,
   // Default for other states
   default: 5000,
 };
@@ -84,6 +83,7 @@ const DELIVERY_DAYS: Record<string, number> = {
   Oyo: 2,
   Edo: 2,
   Enugu: 3,
+  Ondo: 2,
   default: 3,
 };
 
@@ -97,19 +97,19 @@ export function calculateShipping(
     subtotal,
     weight = 0,
     state,
-    city: _city,
+    city,
     country: _country = "Nigeria",
   } = input;
 
-  // Check if order qualifies for free shipping
-  if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+  // Free shipping for Akure orders above the Akure threshold
+  const isAkure = city?.trim().toLowerCase() === "akure";
+  if (isAkure && subtotal >= AKURE_FREE_SHIPPING_THRESHOLD) {
     return {
       cost: 0,
       isFree: true,
       estimatedDays: state
         ? DELIVERY_DAYS[state] || DELIVERY_DAYS.default
         : DELIVERY_DAYS.default,
-      method: "standard",
     };
   }
 
@@ -133,66 +133,5 @@ export function calculateShipping(
     cost,
     isFree: false,
     estimatedDays,
-    method: "standard",
   };
-}
-
-/**
- * Calculate express shipping cost (2x standard, 1 day faster)
- */
-export function calculateExpressShipping(
-  input: ShippingCalculationInput,
-): ShippingCalculationResult {
-  const standard = calculateShipping(input);
-
-  if (standard.isFree) {
-    return standard; // Free shipping applies to express too
-  }
-
-  return {
-    cost: standard.cost * 2,
-    isFree: false,
-    estimatedDays: Math.max(1, standard.estimatedDays - 1),
-    method: "express",
-  };
-}
-
-/**
- * Get available shipping methods for an order
- */
-export function getAvailableShippingMethods(
-  input: ShippingCalculationInput,
-): Array<{
-  method: "standard" | "express";
-  cost: number;
-  estimatedDays: number;
-  label: string;
-}> {
-  const standard = calculateShipping(input);
-  const express = calculateExpressShipping(input);
-
-  return [
-    {
-      method: "standard",
-      cost: standard.cost,
-      estimatedDays: standard.estimatedDays,
-      label: `Standard Delivery (${standard.estimatedDays} ${standard.estimatedDays === 1 ? "day" : "days"})`,
-    },
-    {
-      method: "express",
-      cost: express.cost,
-      estimatedDays: express.estimatedDays,
-      label: `Express Delivery (${express.estimatedDays} ${express.estimatedDays === 1 ? "day" : "days"})`,
-    },
-  ];
-}
-
-/**
- * Format shipping cost for display
- */
-export function formatShippingCost(cost: number): string {
-  if (cost === 0) {
-    return "Free";
-  }
-  return `₦${cost.toLocaleString()}`;
 }
