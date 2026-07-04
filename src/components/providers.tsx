@@ -7,6 +7,7 @@ import { useState } from "react";
 import superjson from "superjson";
 import { AuthProvider } from "@/app/contexts/auth-context";
 import { CompareProvider } from "@/app/contexts/compare-context";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { Toaster } from "@/components/ui/sonner";
 import { getBaseUrl } from "@/lib/helper-function";
 import { trpc } from "@/utils/trpc";
@@ -46,6 +47,7 @@ export default function Providers({ children }: ProvidersProps) {
             <CompareProvider>
               {children}
             </CompareProvider>
+            <PageViewTracker />
             <Toaster />
           </AuthProvider>
         </QueryClientProvider>

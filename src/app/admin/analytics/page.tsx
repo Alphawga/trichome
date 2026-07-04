@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { type Column, DataTable } from "@/components/ui/data-table";
+import { formatCurrency } from "@/lib/utils/common";
 import { trpc } from "@/utils/trpc";
 
 type DateRange = "today" | "week" | "month" | "year" | "custom";
@@ -84,9 +85,7 @@ export default function AdminAnalyticsPage() {
     {
       header: "Revenue",
       cell: (item) => (
-        <span className="font-medium">
-          ₦{Number(item.revenue).toLocaleString()}
-        </span>
+        <span className="font-medium">{formatCurrency(Number(item.revenue))}</span>
       ),
     },
     {
@@ -237,7 +236,7 @@ export default function AdminAnalyticsPage() {
               <p className="text-2xl font-bold">
                 {summaryQuery.isLoading
                   ? "..."
-                  : `₦${Number(summary?.totalRevenue || 0).toLocaleString()}`}
+                  : formatCurrency(Number(summary?.totalRevenue || 0))}
               </p>
             </div>
           </div>
@@ -305,10 +304,10 @@ export default function AdminAnalyticsPage() {
                     height: `${(item.revenue / maxRevenue) * 100}%`,
                     minHeight: item.revenue > 0 ? "4px" : "0",
                   }}
-                  title={`${item.date}: ₦${item.revenue.toLocaleString()}`}
+                  title={`${item.date}: ${formatCurrency(item.revenue)}`}
                 >
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                    ₦{item.revenue.toLocaleString()}
+                    {formatCurrency(item.revenue)}
                   </div>
                 </div>
                 <span className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left">

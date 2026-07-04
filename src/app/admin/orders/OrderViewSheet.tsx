@@ -28,6 +28,10 @@ interface AdminOrder {
   customerName: string;
   customerEmail: string;
   items: OrderItem[];
+  subtotal: number;
+  tax: number;
+  shippingCost: number;
+  discount: number;
   total: number;
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded";
@@ -138,13 +142,6 @@ export function OrderViewSheet({
   });
 
   if (!order) return null;
-
-  const subtotal = order.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
-  const tax = subtotal * 0.075; // 7.5% VAT
-  const shipping = order.total - subtotal - tax;
 
   const handleUpdateStatus = () => {
     if (!selectedStatus || !order.dbId) return;
@@ -489,17 +486,21 @@ export function OrderViewSheet({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">
-                    ₦{subtotal.toLocaleString()}
+                    ₦{order.subtotal.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax (7.5%)</span>
-                  <span className="font-medium">₦{tax.toLocaleString()}</span>
-                </div>
+                {order.tax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax</span>
+                    <span className="font-medium">
+                      ₦{order.tax.toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
                   <span className="font-medium">
-                    ₦{shipping.toLocaleString()}
+                    ₦{order.shippingCost.toLocaleString()}
                   </span>
                 </div>
                 <div className="border-t pt-2 mt-2 flex justify-between">

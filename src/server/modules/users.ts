@@ -2,6 +2,7 @@ import { UserRole, UserStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, staffProcedure } from "../trpc";
+import { getRevenueTotal, REVENUE_WHERE } from "@/lib/analytics/revenue";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
 
 // Create user (admin only)
@@ -352,37 +353,29 @@ export const revokePermission = adminProcedure
 
 // Get user statistics (admin/staff only)
 export const getUserStats = staffProcedure.query(async ({ ctx }) => {
-  const [total, active, pending, suspended] = await Promise.all([
-    ctx.prisma.user.count({ where: { role: "CUSTOMER" } }),
-    ctx.prisma.user.count({ where: { role: "CUSTOMER", status: "ACTIVE" } }),
-    ctx.prisma.user.count({
-      where: { role: "CUSTOMER", status: "PENDING_VERIFICATION" },
-    }),
-    ctx.prisma.user.count({ where: { role: "CUSTOMER", status: "SUSPENDED" } }),
-  ]);
-
-  // Calculate total revenue from completed orders
-  const revenue = await ctx.prisma.order.aggregate({
-    where: {
-      payment_status: "COMPLETED",
-    },
-    _sum: {
-      total: true,
-    },
-  });
-
-  // Get total orders count
-  const totalOrders = await ctx.prisma.order.count();
+  const [total, active, pending, suspended, revenue, totalOrders, paidOrders] =
+    await Promise.all([
+      ctx.prisma.user.count({ where: { role: "CUSTOMER" } }),
+      ctx.prisma.user.count({ where: { role: "CUSTOMER", status: "ACTIVE" } }),
+      ctx.prisma.user.count({
+        where: { role: "CUSTOMER", status: "PENDING_VERIFICATION" },
+      }),
+      ctx.prisma.user.count({
+        where: { role: "CUSTOMER", status: "SUSPENDED" },
+      }),
+      getRevenueTotal(),
+      ctx.prisma.order.count(),
+      ctx.prisma.order.count({ where: REVENUE_WHERE }),
+    ]);
 
   return {
     total,
     active,
     pending,
     suspended,
-    revenue: revenue._sum.total || 0,
+    revenue,
     totalOrders,
-    avgOrderValue:
-      totalOrders > 0 ? Number(revenue._sum.total || 0) / totalOrders : 0,
+    avgOrderValue: paidOrders > 0 ? revenue / paidOrders : 0,
   };
 });
 

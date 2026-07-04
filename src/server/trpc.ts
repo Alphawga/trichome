@@ -111,3 +111,12 @@ export const shippingQuoteRateLimited = publicProcedure.use(
     return next();
   },
 );
+
+// Page view tracking beacon - unauthenticated, fires on every storefront
+// navigation, rate limited by IP to bound write volume from bots/scripts.
+export const pageViewRateLimited = publicProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("pageView", ctx.ip, 60, 60);
+    return next();
+  },
+);
