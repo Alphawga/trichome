@@ -14,6 +14,7 @@ interface ShipbubbleCourier {
   courier_name: string;
   rate_card_amount: number;
   pickup_eta_time?: string;
+  delivery_eta?: string;
   delivery_eta_time?: string;
 }
 
@@ -99,26 +100,6 @@ async function validateReceiverAddress(
 
   const responseBody = await response.json();
 
-  // TEMP DEBUG — remove before commit
-  console.log(
-    "[shipbubble debug] address/validate request:",
-    JSON.stringify({
-      name: destination.contactName,
-      address: [
-        destination.addressLine,
-        destination.city,
-        destination.state,
-        destination.country,
-      ]
-        .filter(Boolean)
-        .join(", "),
-    }),
-  );
-  console.log(
-    "[shipbubble debug] address/validate response:",
-    JSON.stringify(responseBody),
-  );
-
   if (!response.ok) {
     console.error(
       "Shipbubble address validation failed:",
@@ -173,16 +154,6 @@ async function fetchRates(
 
   const responseBody = await response.json();
 
-  // TEMP DEBUG — remove before commit
-  console.log(
-    "[shipbubble debug] fetch_rates request:",
-    JSON.stringify(requestBody),
-  );
-  console.log(
-    "[shipbubble debug] fetch_rates response:",
-    JSON.stringify(responseBody),
-  );
-
   if (!response.ok) {
     console.error(
       "Shipbubble fetch_rates failed:",
@@ -202,8 +173,8 @@ async function fetchRates(
 
 function estimateDaysFromEta(eta: string | undefined): number {
   if (!eta) return 3;
-  const match = eta.match(/(\d+)/);
-  return match ? Number(match[1]) : 3;
+  const matches = eta.match(/\d+/g);
+  return matches ? Number(matches[matches.length - 1]) : 3;
 }
 
 export const shipbubbleProvider = {
@@ -220,7 +191,7 @@ export const shipbubbleProvider = {
       {
         courier: cheapest.courier_name,
         cost: cheapest.rate_card_amount,
-        estimatedDays: estimateDaysFromEta(cheapest.delivery_eta_time),
+        estimatedDays: estimateDaysFromEta(cheapest.delivery_eta),
         source: "live",
       },
     ];

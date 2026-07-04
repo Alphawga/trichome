@@ -60,6 +60,10 @@ interface AdminOrder {
     price: number;
     image: string;
   }>;
+  subtotal: number;
+  tax: number;
+  shippingCost: number;
+  discount: number;
   total: number;
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded";
@@ -122,6 +126,10 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
         item.product.images[0]?.url ||
         "https://placehold.co/50x50/38761d/white?text=P",
     })),
+    subtotal: Number(order.subtotal),
+    tax: Number(order.tax),
+    shippingCost: Number(order.shipping_cost),
+    discount: Number(order.discount),
     total: Number(order.total),
     status: mapOrderStatus(order.status),
     paymentStatus: mapPaymentStatus(order.payment_status),

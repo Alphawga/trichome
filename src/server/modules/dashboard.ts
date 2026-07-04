@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REVENUE_WHERE } from "@/lib/analytics/revenue";
 import { staffProcedure } from "../trpc";
 
 // Get dashboard statistics
@@ -123,51 +124,49 @@ export const getTopProducts = staffProcedure
     }),
   )
   .query(async ({ input, ctx }) => {
-    // Get products with most sales
-    const topProducts = await ctx.prisma.product.findMany({
-      where: { status: "ACTIVE" },
+    // Rank by units sold at the DB level first, then fetch product details —
+    // fetching `limit` products before ranking would miss real best-sellers
+    // that don't happen to fall in the first `limit` rows of an unordered scan.
+    const grouped = await ctx.prisma.orderItem.groupBy({
+      by: ["product_id"],
+      where: { order: REVENUE_WHERE },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: input.limit * 2, // headroom to filter out non-ACTIVE products below
+    });
+
+    const productIds = grouped.map((g) => g.product_id);
+    const products = await ctx.prisma.product.findMany({
+      where: { id: { in: productIds }, status: "ACTIVE" },
       include: {
-        category: {
-          select: { name: true },
-        },
-        images: {
-          where: { is_primary: true },
-          take: 1,
-        },
-        order_items: {
-          select: {
-            quantity: true,
-          },
-        },
+        category: { select: { name: true } },
+        images: { where: { is_primary: true }, take: 1 },
       },
-      take: input.limit,
     });
+    const productsById = new Map(products.map((p) => [p.id, p]));
 
-    // Calculate total sales for each product and sort
-    const productsWithSales = topProducts.map((product) => {
-      const totalSold = product.order_items.reduce(
-        (sum, item) => sum + item.quantity,
-        0,
-      );
-      return {
-        id: product.id,
-        name: product.name,
-        category: product.category.name,
-        price: Number(product.price),
-        stock: product.quantity,
-        status:
-          product.quantity > 0
-            ? ("In stock" as const)
-            : ("Out of stock" as const),
-        imageUrl:
-          product.images[0]?.url ||
-          "https://placehold.co/50x50/38761d/white?text=P",
-        totalSold,
-      };
-    });
-
-    // Sort by total sold
-    productsWithSales.sort((a, b) => b.totalSold - a.totalSold);
+    const productsWithSales = grouped
+      .map((g) => {
+        const product = productsById.get(g.product_id);
+        if (!product) return null;
+        return {
+          id: product.id,
+          name: product.name,
+          category: product.category.name,
+          price: Number(product.price),
+          stock: product.quantity,
+          status:
+            product.quantity > 0
+              ? ("In stock" as const)
+              : ("Out of stock" as const),
+          imageUrl:
+            product.images[0]?.url ||
+            "https://placehold.co/50x50/38761d/white?text=P",
+          totalSold: g._sum.quantity ?? 0,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .slice(0, input.limit);
 
     return productsWithSales;
   });

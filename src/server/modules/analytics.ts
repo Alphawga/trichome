@@ -1,5 +1,14 @@
+import { randomUUID } from "node:crypto";
+import { cookies } from "next/headers";
 import { z } from "zod";
-import { staffProcedure } from "../trpc";
+import {
+  getDailyAnalytics,
+  summarizeDailyAnalytics,
+} from "@/lib/analytics/aggregate";
+import { pageViewRateLimited, staffProcedure } from "../trpc";
+
+const VISITOR_COOKIE = "trichome_vid";
+const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 // Get analytics for date range
 export const getAnalytics = staffProcedure
@@ -9,18 +18,8 @@ export const getAnalytics = staffProcedure
       endDate: z.date(),
     }),
   )
-  .query(async ({ input, ctx }) => {
-    const analytics = await ctx.prisma.analytics.findMany({
-      where: {
-        date: {
-          gte: input.startDate,
-          lte: input.endDate,
-        },
-      },
-      orderBy: { date: "asc" },
-    });
-
-    return analytics;
+  .query(async ({ input }) => {
+    return getDailyAnalytics(input.startDate, input.endDate);
   });
 
 // Get analytics summary
@@ -31,108 +30,39 @@ export const getAnalyticsSummary = staffProcedure
       endDate: z.date(),
     }),
   )
-  .query(async ({ input, ctx }) => {
-    const analytics = await ctx.prisma.analytics.aggregate({
-      where: {
-        date: {
-          gte: input.startDate,
-          lte: input.endDate,
-        },
-      },
-      _sum: {
-        visitors: true,
-        page_views: true,
-        orders: true,
-        revenue: true,
-      },
-      _avg: {
-        conversion_rate: true,
-        bounce_rate: true,
-      },
-    });
-
-    return {
-      totalVisitors: analytics._sum.visitors || 0,
-      totalPageViews: analytics._sum.page_views || 0,
-      totalOrders: analytics._sum.orders || 0,
-      totalRevenue: analytics._sum.revenue || 0,
-      avgConversionRate: analytics._avg.conversion_rate || 0,
-      avgBounceRate: analytics._avg.bounce_rate || 0,
-    };
+  .query(async ({ input }) => {
+    const days = await getDailyAnalytics(input.startDate, input.endDate);
+    return summarizeDailyAnalytics(days);
   });
 
-// Record analytics (internal use)
-export const recordAnalytics = staffProcedure
-  .input(
-    z.object({
-      date: z.date(),
-      visitors: z.number().int().default(0),
-      page_views: z.number().int().default(0),
-      orders: z.number().int().default(0),
-      revenue: z.number().default(0),
-      conversion_rate: z.number().default(0),
-      bounce_rate: z.number().default(0),
-    }),
-  )
-  .mutation(async ({ input, ctx }) => {
-    const analytics = await ctx.prisma.analytics.upsert({
-      where: { date: input.date },
-      update: input,
-      create: input,
+// Track a page view (public - fires from anonymous storefront visitors too)
+export const trackPageView = pageViewRateLimited.mutation(async ({ ctx }) => {
+  const cookieStore = await cookies();
+  let visitorId = cookieStore.get(VISITOR_COOKIE)?.value;
+
+  if (!visitorId) {
+    visitorId = randomUUID();
+    cookieStore.set(VISITOR_COOKIE, visitorId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: VISITOR_COOKIE_MAX_AGE,
     });
+  }
 
-    return { analytics, message: "Analytics recorded successfully" };
-  });
+  try {
+    await ctx.prisma.$executeRaw`
+      INSERT INTO visitor_daily_stats (id, visitor_id, date, page_view_count, first_seen_at, last_seen_at)
+      VALUES (${randomUUID()}, ${visitorId}, (now() AT TIME ZONE 'UTC')::date, 1, (now() AT TIME ZONE 'UTC'), (now() AT TIME ZONE 'UTC'))
+      ON CONFLICT (visitor_id, date) DO UPDATE SET
+        page_view_count = visitor_daily_stats.page_view_count + 1,
+        last_seen_at = (now() AT TIME ZONE 'UTC')
+    `;
+  } catch (error) {
+    // Best-effort analytics write; never fail the page over a transient DB error.
+    console.error("Page view tracking failed:", error);
+  }
 
-// Get dashboard statistics
-export const getDashboardStats = staffProcedure.query(async ({ ctx }) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const [
-    todayOrders,
-    todayRevenue,
-    totalProducts,
-    lowStockProducts,
-    totalCustomers,
-    pendingOrders,
-  ] = await Promise.all([
-    ctx.prisma.order.count({
-      where: {
-        created_at: { gte: today },
-      },
-    }),
-    ctx.prisma.order.aggregate({
-      where: {
-        created_at: { gte: today },
-        payment_status: "COMPLETED",
-      },
-      _sum: { total: true },
-    }),
-    ctx.prisma.product.count({
-      where: { status: "ACTIVE" },
-    }),
-    ctx.prisma.product.count({
-      where: {
-        status: "ACTIVE",
-        track_quantity: true,
-        quantity: { lte: ctx.prisma.product.fields.low_stock_threshold },
-      },
-    }),
-    ctx.prisma.user.count({
-      where: { role: "CUSTOMER" },
-    }),
-    ctx.prisma.order.count({
-      where: { status: "PENDING" },
-    }),
-  ]);
-
-  return {
-    todayOrders,
-    todayRevenue: todayRevenue._sum.total || 0,
-    totalProducts,
-    lowStockProducts,
-    totalCustomers,
-    pendingOrders,
-  };
+  return { success: true };
 });

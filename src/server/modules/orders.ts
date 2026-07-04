@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getRevenueTotal } from "@/lib/analytics/revenue";
 import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
@@ -1351,7 +1352,7 @@ export const getOrderByNumberPublic = publicProcedure
 
 // Get order statistics (staff)
 export const getOrderStats = staffProcedure.query(async ({ ctx }) => {
-  const [total, pending, processing, shipped, delivered, cancelled] =
+  const [total, pending, processing, shipped, delivered, cancelled, revenue] =
     await Promise.all([
       ctx.prisma.order.count(),
       ctx.prisma.order.count({ where: { status: "PENDING" } }),
@@ -1359,12 +1360,8 @@ export const getOrderStats = staffProcedure.query(async ({ ctx }) => {
       ctx.prisma.order.count({ where: { status: "SHIPPED" } }),
       ctx.prisma.order.count({ where: { status: "DELIVERED" } }),
       ctx.prisma.order.count({ where: { status: "CANCELLED" } }),
+      getRevenueTotal(),
     ]);
-
-  const revenue = await ctx.prisma.order.aggregate({
-    where: { payment_status: "COMPLETED" },
-    _sum: { total: true },
-  });
 
   return {
     total,
@@ -1373,6 +1370,6 @@ export const getOrderStats = staffProcedure.query(async ({ ctx }) => {
     shipped,
     delivered,
     cancelled,
-    revenue: revenue._sum.total || 0,
+    revenue,
   };
 });

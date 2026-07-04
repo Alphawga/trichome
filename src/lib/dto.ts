@@ -283,21 +283,6 @@ export const getContentSchema = z.object({
   status: z.nativeEnum(ContentStatus).optional(),
 });
 
-export const getAnalyticsSchema = z.object({
-  startDate: z.date(),
-  endDate: z.date(),
-});
-
-export const recordAnalyticsSchema = z.object({
-  date: z.date(),
-  visitors: z.number().int().default(0),
-  page_views: z.number().int().default(0),
-  orders: z.number().int().default(0),
-  revenue: z.number().default(0),
-  conversion_rate: z.number().default(0),
-  bounce_rate: z.number().default(0),
-});
-
 export const idSchema = z.object({
   id: z.string(),
 });
@@ -353,5 +338,3 @@ export type CreateContentInput = z.infer<typeof createContentSchema>;
 export type UpdateContentInput = z.infer<typeof updateContentSchema>;
 export type GetContentInput = z.infer<typeof getContentSchema>;
 
-export type GetAnalyticsInput = z.infer<typeof getAnalyticsSchema>;
-export type RecordAnalyticsInput = z.infer<typeof recordAnalyticsSchema>;

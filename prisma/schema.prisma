@@ -380,20 +380,17 @@ model Content {
   @@map("content")
 }
 
-model Analytics {
+model VisitorDailyStat {
   id              String   @id @default(cuid())
-  date            DateTime @unique @db.Date
-  visitors        Int      @default(0)
-  page_views      Int      @default(0)
-  orders          Int      @default(0)
-  revenue         Decimal  @default(0) @db.Decimal(12, 2)
-  conversion_rate Decimal  @default(0) @db.Decimal(5, 4)
-  bounce_rate     Decimal  @default(0) @db.Decimal(5, 4)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  visitor_id      String
+  date            DateTime @db.Date
+  page_view_count Int      @default(1)
+  first_seen_at   DateTime @default(now())
+  last_seen_at    DateTime @updatedAt
 
+  @@unique([visitor_id, date])
   @@index([date])
-  @@map("analytics")
+  @@map("visitor_daily_stats")
 }
 
 model Promotion {
