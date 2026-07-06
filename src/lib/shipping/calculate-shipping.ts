@@ -35,7 +35,7 @@ export interface ShippingCalculationResult {
 /**
  * Free shipping threshold for Akure orders, in NGN
  */
-const AKURE_FREE_SHIPPING_THRESHOLD = 20000; // ₦20,000
+const AKURE_FREE_SHIPPING_THRESHOLD = 30000; // ₦30,000
 
 /**
  * Base shipping costs by state (in NGN)

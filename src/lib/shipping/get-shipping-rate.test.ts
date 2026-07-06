@@ -41,11 +41,11 @@ describe("getShippingRates (static fallback, no TERMINAL_SECRET_KEY)", () => {
     if (originalKey) process.env.TERMINAL_SECRET_KEY = originalKey;
   });
 
-  it("returns free shipping for Akure orders at or above ₦20,000", async () => {
+  it("returns free shipping for Akure orders at or above ₦30,000", async () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Ondo", city: "Akure" },
-      subtotal: 20000,
+      subtotal: 30000,
     });
     expect(rates[0].cost).toBe(0);
   });
@@ -54,16 +54,16 @@ describe("getShippingRates (static fallback, no TERMINAL_SECRET_KEY)", () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Ondo", city: " AKURE " },
-      subtotal: 20000,
+      subtotal: 30000,
     });
     expect(rates[0].cost).toBe(0);
   });
 
-  it("does not give free shipping to Akure orders below ₦20,000", async () => {
+  it("does not give free shipping to Akure orders below ₦30,000", async () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Ondo", city: "Akure" },
-      subtotal: 19999,
+      subtotal: 29999,
     });
     expect(rates[0].cost).toBe(4500);
   });
