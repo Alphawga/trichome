@@ -41,7 +41,7 @@ const AKURE_FREE_SHIPPING_THRESHOLD = 20000; // ₦20,000
  * Base shipping costs by state (in NGN)
  * Lagos and Abuja have lower costs due to proximity to warehouses
  */
-const STATE_SHIPPING_COSTS: Record<string, number> = {
+export const STATE_SHIPPING_COSTS: Record<string, number> = {
   Lagos: 3000,
   Abuja: 3500,
   Rivers: 4000,
@@ -72,7 +72,7 @@ const WEIGHT_MULTIPLIERS: Array<{ maxWeight: number; multiplier: number }> = [
 /**
  * Estimated delivery days by state
  */
-const DELIVERY_DAYS: Record<string, number> = {
+export const DELIVERY_DAYS: Record<string, number> = {
   Lagos: 1,
   Abuja: 2,
   Rivers: 2,
@@ -86,6 +86,29 @@ const DELIVERY_DAYS: Record<string, number> = {
   Ondo: 2,
   default: 3,
 };
+
+/**
+ * Normalizes a free-text state name for matching against STATE_SHIPPING_COSTS/
+ * DELIVERY_DAYS keys: trims, lowercases, and strips a trailing "state" suffix
+ * (e.g. "Oyo state" / " OYO STATE " both resolve to "oyo").
+ */
+function normalizeStateKey(state: string): string {
+  return state
+    .trim()
+    .toLowerCase()
+    .replace(/\s*state$/i, "");
+}
+
+function lookupByNormalizedState<T>(
+  table: Record<string, T>,
+  stateKey: string,
+): T | undefined {
+  const normalized = normalizeStateKey(stateKey);
+  const match = Object.keys(table).find(
+    (key) => normalizeStateKey(key) === normalized,
+  );
+  return match ? table[match] : undefined;
+}
 
 /**
  * Calculate shipping cost based on order details
@@ -107,16 +130,16 @@ export function calculateShipping(
     return {
       cost: 0,
       isFree: true,
-      estimatedDays: state
-        ? DELIVERY_DAYS[state] || DELIVERY_DAYS.default
-        : DELIVERY_DAYS.default,
+      estimatedDays:
+        (state && lookupByNormalizedState(DELIVERY_DAYS, state)) ||
+        DELIVERY_DAYS.default,
     };
   }
 
   // Get base shipping cost for state
-  const stateKey = state || "default";
   const baseCost =
-    STATE_SHIPPING_COSTS[stateKey] || STATE_SHIPPING_COSTS.default;
+    (state && lookupByNormalizedState(STATE_SHIPPING_COSTS, state)) ||
+    STATE_SHIPPING_COSTS.default;
 
   // Calculate weight multiplier
   const weightMultiplier =
@@ -127,7 +150,9 @@ export function calculateShipping(
   const cost = Math.round(baseCost * weightMultiplier);
 
   // Get estimated delivery days
-  const estimatedDays = DELIVERY_DAYS[stateKey] || DELIVERY_DAYS.default;
+  const estimatedDays =
+    (state && lookupByNormalizedState(DELIVERY_DAYS, state)) ||
+    DELIVERY_DAYS.default;
 
   return {
     cost,

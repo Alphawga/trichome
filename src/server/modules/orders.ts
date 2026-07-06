@@ -44,8 +44,8 @@ interface OrderProduct {
 
 /**
  * Authoritative, server-side shipping cost — never trust the client-reported
- * `totals.shipping`. Always recomputes via the live Shipbubble API (or its
- * static fallback) and uses that rate directly, ignoring whatever the client
+ * `totals.shipping`. Always recomputes via the live Terminal Africa API (or
+ * its static fallback) and uses that rate directly, ignoring whatever the client
  * reported; a fraudulent/zeroed client value fails the payment-amount check
  * below since it won't match the server-recomputed total.
  */

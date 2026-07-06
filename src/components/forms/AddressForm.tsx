@@ -10,6 +10,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { z } from "zod";
+import { NIGERIAN_STATES } from "@/lib/constants/nigerian-states";
 
 /**
  * Address Form Schema
@@ -315,6 +316,71 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
       );
     };
 
+    // State select field component
+    const StateField = ({
+      id,
+      name,
+      label,
+      value,
+      onChange,
+      onBlur,
+      error,
+      readOnly: fieldReadOnly = false,
+    }: {
+      id: string;
+      name: keyof AddressFormData;
+      label: string;
+      value: string;
+      onChange: (value: string) => void;
+      onBlur: () => void;
+      error?: string;
+      readOnly?: boolean;
+    }) => {
+      const isReadOnly = readOnly || fieldReadOnly;
+      const hasError = showErrors && error && touched[name];
+
+      return (
+        <div>
+          <label
+            htmlFor={id}
+            className="block text-[14px] sm:text-[15px] font-medium text-trichomes-forest mb-1 font-body"
+          >
+            {label}
+          </label>
+          <select
+            id={id}
+            name={name}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+            disabled={isReadOnly || isLoading}
+            className={`w-full px-4 py-3 border rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150 ${
+              hasError
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                : "border-trichomes-forest/20"
+            } ${isReadOnly ? "bg-trichomes-soft cursor-not-allowed" : ""} ${
+              isLoading ? "opacity-50 cursor-wait" : ""
+            }`}
+          >
+            <option value="">Select state</option>
+            {value && !NIGERIAN_STATES.some((s) => s.value === value) && (
+              <option value={value}>{value}</option>
+            )}
+            {NIGERIAN_STATES.map((state) => (
+              <option key={state.value} value={state.value}>
+                {state.label}
+              </option>
+            ))}
+          </select>
+          {hasError && (
+            <p className="mt-1 text-[12px] sm:text-[13px] text-red-600 font-body">
+              {error}
+            </p>
+          )}
+        </div>
+      );
+    };
+
     const FormWrapper = asDiv ? "div" : "form";
     const wrapperProps = asDiv
       ? { className }
@@ -430,11 +496,10 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
           />
 
           {/* State */}
-          <InputField
+          <StateField
             id={`${formId}-state`}
             name="state"
             label="State"
-            placeholder="State"
             value={formData.state || ""}
             onChange={(value) => handleChange("state", value)}
             onBlur={() => handleBlur("state")}
