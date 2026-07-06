@@ -13,6 +13,7 @@ import { OrderCreationStatus } from "@/components/checkout/OrderCreationStatus";
 import { usePaymentHandler } from "@/components/checkout/PaymentHandler";
 import { SavedAddressesSelector } from "@/components/checkout/SavedAddressesSelector";
 import { OrderSummary } from "@/components/orders/OrderSummary";
+import { NIGERIAN_STATES } from "@/lib/constants/nigerian-states";
 import { getLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
 import { useAuth } from "../../contexts/auth-context";
@@ -214,7 +215,7 @@ function CheckoutPageContent() {
 
   // Debounce the address/contact fields that drive the live shipping quote
   // so we don't fire a request (and, once a carrier key is set, a real
-  // external API call) on every keystroke. Shipbubble's address validation
+  // external API call) on every keystroke. Terminal Africa's rate quote
   // requires all of these fields, so they're debounced together and the
   // query is only enabled once every one of them is present.
   const [debouncedAddress, setDebouncedAddress] = useState({
@@ -689,13 +690,26 @@ function CheckoutPageContent() {
                     >
                       State
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="state"
                       {...register("state")}
-                      placeholder="State"
                       className="w-full px-4 py-3 border border-trichomes-forest/20 rounded-lg bg-white focus:ring-2 focus:ring-trichomes-primary focus:border-trichomes-primary outline-none text-trichomes-forest font-body transition-all duration-150"
-                    />
+                    >
+                      <option value="">Select state</option>
+                      {formData.state &&
+                        !NIGERIAN_STATES.some(
+                          (s) => s.value === formData.state,
+                        ) && (
+                          <option value={formData.state}>
+                            {formData.state}
+                          </option>
+                        )}
+                      {NIGERIAN_STATES.map((state) => (
+                        <option key={state.value} value={state.value}>
+                          {state.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Postal Code */}

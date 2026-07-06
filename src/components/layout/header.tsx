@@ -579,7 +579,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
               </span>
               <span className="mx-2">•</span>
               <span>
-                FREE SHIPPING OVER ₦20,000 FOR ANYWHERE WITHIN AKURE-{" "}
+                FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE-{" "}
                 <Link
                   href="/products"
                   className="underline hover:text-[#3A643B] transition-colors"
@@ -593,7 +593,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
           {/* Mobile: Simplified announcement */}
           <div className="md:hidden text-center">
             <p className="uppercase tracking-wide">
-              FREE SHIPPING OVER ₦20,000 FOR ANYWHERE WITHIN AKURE-{" "}
+              FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE-{" "}
               <Link
                 href="/products"
                 className="underline hover:text-[#3A643B] transition-colors"

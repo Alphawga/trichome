@@ -28,6 +28,14 @@ export interface ShippingRate {
   cost: number;
   estimatedDays: number;
   source: "live" | "static";
+  /**
+   * Resolved/geocoded state for this destination, when a live provider's
+   * address validation echoes one back. Currently unused — Terminal
+   * Africa's rate-quote response doesn't echo a normalized address. Kept
+   * optional for a future provider that does. Display-only — never used to
+   * overwrite the customer's own entered address.
+   */
+  resolvedState?: string;
 }
 
 export interface ShippingRateProvider {
