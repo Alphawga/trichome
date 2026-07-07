@@ -55,6 +55,29 @@ function splitName(fullName: string): {
   return { first_name, last_name: rest.join(" ") || first_name };
 }
 
+// Terminal Africa's address line1 has a hard 45-character limit (confirmed
+// via /addresses/validate). Customer-entered addresses are free text and
+// regularly exceed it — split on the last word boundary at-or-before the
+// limit so line1 doesn't get cut mid-word.
+const ADDRESS_LINE1_MAX_LENGTH = 45;
+
+function splitAddressLine(addressLine: string): {
+  line1: string;
+  line2?: string;
+} {
+  if (addressLine.length <= ADDRESS_LINE1_MAX_LENGTH) {
+    return { line1: addressLine };
+  }
+
+  const breakPoint = addressLine.lastIndexOf(" ", ADDRESS_LINE1_MAX_LENGTH);
+  const splitAt = breakPoint > 0 ? breakPoint : ADDRESS_LINE1_MAX_LENGTH;
+
+  return {
+    line1: addressLine.slice(0, splitAt).trim(),
+    line2: addressLine.slice(splitAt).trim() || undefined,
+  };
+}
+
 function senderAddress() {
   return {
     ...splitName("Trichomes Cosmeceuticals"),
@@ -70,9 +93,11 @@ function senderAddress() {
 }
 
 function receiverAddress(destination: ShippingQuoteInput["destination"]) {
+  const { line1, line2 } = splitAddressLine(destination.addressLine as string);
   return {
     ...splitName(destination.contactName as string),
-    line1: destination.addressLine,
+    line1,
+    ...(line2 ? { line2 } : {}),
     city: destination.city,
     state: destination.state,
     country: destination.country === "Nigeria" ? "NG" : destination.country,
