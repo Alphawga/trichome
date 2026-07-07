@@ -28,4 +28,11 @@ export const SITE_ADDRESS = {
   addressRegion: "Ondo",
   postalCode: "340110",
   addressCountry: "NG",
+  /**
+   * Terminal Africa's address line1 has a 45-character limit — the full
+   * streetAddress above fails their validation. Same physical address,
+   * split across line1/line2 for carrier use only (not shown to customers).
+   */
+  shippingLine1: "HACO Global Building, Oba Adesida Rd",
+  shippingLine2: "Off Arakale Rd, near Union Bank, Oritagun",
 };
