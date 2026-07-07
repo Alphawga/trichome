@@ -5,7 +5,25 @@ import {
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { prisma } from "@/lib/prisma";
 import { adminProcedure, publicProcedure, staffProcedure } from "../trpc";
+
+// Activates SCHEDULED promotions past their start date and expires ACTIVE
+// promotions past their end date; there is no cron in this app, so status is
+// self-healed lazily whenever promotions are read.
+async function syncPromotionStatuses(db: typeof prisma) {
+  const now = new Date();
+  await Promise.all([
+    db.promotion.updateMany({
+      where: { status: "SCHEDULED", start_date: { lte: now } },
+      data: { status: "ACTIVE" },
+    }),
+    db.promotion.updateMany({
+      where: { status: "ACTIVE", end_date: { lt: now } },
+      data: { status: "EXPIRED" },
+    }),
+  ]);
+}
 
 // Get all promotions (staff/admin only)
 export const getPromotions = staffProcedure
@@ -19,6 +37,8 @@ export const getPromotions = staffProcedure
     }),
   )
   .query(async ({ input, ctx }) => {
+    await syncPromotionStatuses(ctx.prisma);
+
     const { page, limit, status, type, search } = input;
     const skip = (page - 1) * limit;
 
@@ -74,6 +94,8 @@ export const getPromotions = staffProcedure
 export const getPromotionById = staffProcedure
   .input(z.object({ id: z.string() }))
   .query(async ({ input, ctx }) => {
+    await syncPromotionStatuses(ctx.prisma);
+
     const promotion = await ctx.prisma.promotion.findUnique({
       where: { id: input.id },
       include: {
@@ -134,6 +156,7 @@ export const createPromotion = adminProcedure
       end_date: z.string().or(z.date()),
       usage_limit: z.number().min(0).default(0),
       usage_limit_per_user: z.number().min(0).optional(),
+      show_on_banner: z.boolean().default(false),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -175,6 +198,7 @@ export const createPromotion = adminProcedure
         end_date: endDate,
         usage_limit: input.usage_limit,
         usage_limit_per_user: input.usage_limit_per_user,
+        show_on_banner: input.show_on_banner,
         created_by: ctx.user.id,
       },
     });
@@ -200,6 +224,7 @@ export const updatePromotion = adminProcedure
       end_date: z.string().or(z.date()).optional(),
       usage_limit: z.number().min(0).optional(),
       usage_limit_per_user: z.number().min(0).optional(),
+      show_on_banner: z.boolean().optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -288,6 +313,8 @@ export const togglePromotionStatus = adminProcedure
 
 // Get promotion statistics (staff/admin only)
 export const getPromotionStats = staffProcedure.query(async ({ ctx }) => {
+  await syncPromotionStatuses(ctx.prisma);
+
   const [total, active, inactive, scheduled, expired] = await Promise.all([
     ctx.prisma.promotion.count(),
     ctx.prisma.promotion.count({ where: { status: "ACTIVE" } }),
@@ -445,3 +472,30 @@ export const validatePromoCode = publicProcedure
       isFreeShipping: promotion.type === "FREE_SHIPPING",
     };
   });
+
+// Get the promotion (if any) flagged to display on the site banner (public)
+export const getBannerPromotion = publicProcedure.query(async ({ ctx }) => {
+  await syncPromotionStatuses(ctx.prisma);
+
+  const now = new Date();
+
+  const promotion = await ctx.prisma.promotion.findFirst({
+    where: {
+      show_on_banner: true,
+      status: "ACTIVE",
+      start_date: { lte: now },
+      end_date: { gte: now },
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  if (!promotion) {
+    return null;
+  }
+
+  return {
+    name: promotion.name,
+    description: promotion.description,
+    code: promotion.code,
+  };
+});

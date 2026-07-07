@@ -1,6 +1,7 @@
 import { ContentStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { CONTENT_TYPES } from "@/lib/constants/content-types";
 import { publicProcedure, staffProcedure } from "../trpc";
 
 // Get published content by type (public) - now accepts string types
@@ -78,6 +79,16 @@ export const getPageContent = staffProcedure
 
     return contentMap;
   });
+
+// Get hero slides for the admin manager (staff) - all statuses, ordered for editing
+export const getHeroSlides = staffProcedure.query(async ({ ctx }) => {
+  const slides = await ctx.prisma.content.findMany({
+    where: { type: CONTENT_TYPES.HOME_HERO },
+    orderBy: { sort_order: "asc" },
+  });
+
+  return slides;
+});
 
 // Get all content (staff)
 export const getAllContent = staffProcedure

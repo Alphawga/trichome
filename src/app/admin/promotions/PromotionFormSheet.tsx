@@ -29,6 +29,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/utils/trpc";
+import { PromotionDiscountFields } from "./PromotionDiscountFields";
 
 interface PromotionFormSheetProps {
   promotion: Promotion | null;
@@ -59,6 +60,7 @@ interface PromotionFormData {
   end_date: string;
   usage_limit: number;
   usage_limit_per_user?: number;
+  show_on_banner: boolean;
 }
 
 export function PromotionFormSheet({
@@ -85,6 +87,7 @@ export function PromotionFormSheet({
       value: 10,
       min_order_value: 0,
       usage_limit: 100,
+      show_on_banner: false,
     },
   });
 
@@ -135,6 +138,7 @@ export function PromotionFormSheet({
         end_date: new Date(promotion.end_date).toISOString().split("T")[0],
         usage_limit: promotion.usage_limit,
         usage_limit_per_user: promotion.usage_limit_per_user || undefined,
+        show_on_banner: promotion.show_on_banner,
       });
     } else if (template) {
       // Pre-fill from template
@@ -153,6 +157,7 @@ export function PromotionFormSheet({
         usage_limit: 1000,
         start_date: today.toISOString().split("T")[0],
         end_date: nextMonth.toISOString().split("T")[0],
+        show_on_banner: false,
       });
     } else {
       reset({
@@ -162,6 +167,7 @@ export function PromotionFormSheet({
         value: 10,
         min_order_value: 0,
         usage_limit: 100,
+        show_on_banner: false,
       });
     }
   }, [promotion, template, reset]);
@@ -264,129 +270,14 @@ export function PromotionFormSheet({
             </div>
           </div>
 
-          {/* Discount Settings */}
-          <div className="space-y-4 border-t pt-4">
-            <h3 className="text-lg font-semibold">Discount Settings</h3>
-
-            {/* Type */}
-            <div>
-              <Label className="text-gray-700">
-                Discount Type <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={typeValue}
-                onValueChange={(value: PromotionType) =>
-                  setValue("type", value)
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select discount type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PERCENTAGE">Percentage Off</SelectItem>
-                  <SelectItem value="FIXED_AMOUNT">Fixed Amount Off</SelectItem>
-                  <SelectItem value="FREE_SHIPPING">Free Shipping</SelectItem>
-                  <SelectItem value="BUY_X_GET_Y">Buy X Get Y</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Value with Slider */}
-            {typeValue !== "FREE_SHIPPING" && (
-              <div>
-                <Label htmlFor="value" className="text-gray-700">
-                  Discount Value <span className="text-red-500">*</span>
-                </Label>
-                <div className="mt-2 space-y-3">
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      value={[valueSlider]}
-                      onValueChange={(values) => setValue("value", values[0])}
-                      min={typeValue === "PERCENTAGE" ? 1 : 100}
-                      max={typeValue === "PERCENTAGE" ? 100 : 100000}
-                      step={typeValue === "PERCENTAGE" ? 1 : 100}
-                      className="flex-1"
-                    />
-                    <div className="w-32">
-                      <Input
-                        type="number"
-                        {...register("value", {
-                          required: "Value is required",
-                          min: { value: 0, message: "Value must be positive" },
-                        })}
-                        className="text-right"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {typeValue === "PERCENTAGE"
-                      ? `${valueSlider}% discount`
-                      : `₦${valueSlider.toLocaleString()} discount`}
-                  </p>
-                </div>
-                {errors.value && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.value.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Min Order Value with Slider */}
-            <div>
-              <Label htmlFor="min_order_value" className="text-gray-700">
-                Minimum Order Value
-              </Label>
-              <div className="mt-2 space-y-3">
-                <div className="flex items-center gap-4">
-                  <Slider
-                    value={[minOrderSlider]}
-                    onValueChange={(values) =>
-                      setValue("min_order_value", values[0])
-                    }
-                    min={0}
-                    max={500000}
-                    step={1000}
-                    className="flex-1"
-                  />
-                  <div className="w-32">
-                    <Input
-                      type="number"
-                      {...register("min_order_value", {
-                        min: { value: 0, message: "Must be 0 or greater" },
-                      })}
-                      className="text-right"
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500">
-                  Minimum: ₦{minOrderSlider.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            {/* Max Discount (for percentage) */}
-            {typeValue === "PERCENTAGE" && (
-              <div>
-                <Label htmlFor="max_discount" className="text-gray-700">
-                  Maximum Discount Amount (Optional)
-                </Label>
-                <Input
-                  id="max_discount"
-                  type="number"
-                  {...register("max_discount", {
-                    min: { value: 0, message: "Must be positive" },
-                  })}
-                  className="mt-1"
-                  placeholder="e.g., 50000"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Cap the maximum discount amount for percentage-based
-                  promotions
-                </p>
-              </div>
-            )}
-          </div>
+          <PromotionDiscountFields
+            register={register}
+            setValue={setValue}
+            errors={errors}
+            typeValue={typeValue}
+            valueSlider={valueSlider}
+            minOrderSlider={minOrderSlider}
+          />
 
           {/* Usage Limits */}
           <div className="space-y-4 border-t pt-4">
@@ -544,6 +435,25 @@ export function PromotionFormSheet({
                   "Promotion is paused and cannot be used"}
                 {statusValue === "SCHEDULED" &&
                   "Promotion will activate automatically on start date"}
+              </p>
+            </div>
+
+            {/* Show on Site Banner */}
+            <div>
+              <label className="flex items-center">
+                <input
+                  {...register("show_on_banner")}
+                  type="checkbox"
+                  className="mr-2 w-4 h-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-700">
+                  Show on site banner
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Displays this promotion in the top announcement banner instead
+                of the default free shipping message, while it is active and
+                within its date range
               </p>
             </div>
           </div>

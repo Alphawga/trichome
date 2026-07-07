@@ -409,6 +409,7 @@ model Promotion {
   usage_limit          Int              @default(0)
   usage_count          Int              @default(0)
   usage_limit_per_user Int?
+  show_on_banner       Boolean          @default(false)
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
   created_by           String?

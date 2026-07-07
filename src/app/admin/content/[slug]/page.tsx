@@ -159,13 +159,6 @@ interface EditorProps {
 
 // Default content (same as customer pages)
 const HOME_DEFAULTS = {
-    hero: {
-        title: "Natural Beauty,\nNaturally Yours",
-        description: "Where science meets nature — luxury simplified. Discover our range of natural, effective skincare products crafted with care.",
-        buttonText: "Shop Now",
-        buttonLink: "/products",
-        imageUrl: "/hero/hero-image.jpg",
-    },
     collectionTitle: "Our Collection",
     featuredTitle: "Featured Items",
     topSellersTitle: "Top Sellers",
@@ -186,13 +179,6 @@ const HOME_DEFAULTS = {
 // =====================
 function HomePageEditor({ contentMap, editingSection, onEditSection, getSectionConfig }: EditorProps) {
     // Get content with fallbacks
-    const hero = {
-        title: contentMap[CONTENT_TYPES.HOME_HERO]?.title || HOME_DEFAULTS.hero.title,
-        description: contentMap[CONTENT_TYPES.HOME_HERO]?.description || HOME_DEFAULTS.hero.description,
-        buttonText: contentMap[CONTENT_TYPES.HOME_HERO]?.button_text || HOME_DEFAULTS.hero.buttonText,
-        buttonLink: contentMap[CONTENT_TYPES.HOME_HERO]?.button_link || HOME_DEFAULTS.hero.buttonLink,
-        imageUrl: contentMap[CONTENT_TYPES.HOME_HERO]?.image_url || HOME_DEFAULTS.hero.imageUrl,
-    };
     const collectionTitle = contentMap[CONTENT_TYPES.HOME_COLLECTION_TITLE]?.title || HOME_DEFAULTS.collectionTitle;
     const featuredTitle = contentMap[CONTENT_TYPES.HOME_FEATURED_TITLE]?.title || HOME_DEFAULTS.featuredTitle;
     const topSellersTitle = contentMap[CONTENT_TYPES.HOME_TOPSELLERS_TITLE]?.title || HOME_DEFAULTS.topSellersTitle;
@@ -227,47 +213,23 @@ function HomePageEditor({ contentMap, editingSection, onEditSection, getSectionC
     const featuredProducts = featuredQuery.data?.products || [];
     const topSellers = topSellersQuery.data?.products || [];
 
-    const titleParts = hero.title.split("\n");
-
     return (
         <div className="bg-white overflow-x-hidden">
-            {/* Hero Section */}
-            <EditableSection
-                sectionName="Hero Section"
-                isEditing={editingSection === CONTENT_TYPES.HOME_HERO}
-                onEditClick={() => onEditSection(CONTENT_TYPES.HOME_HERO)}
-                editForm={
-                    <InlineEditor
-                        contentType={CONTENT_TYPES.HOME_HERO}
-                        sectionName="Hero Section"
-                        initialData={contentMap[CONTENT_TYPES.HOME_HERO]}
-                        onSave={() => onEditSection(null)}
-                        onCancel={() => onEditSection(null)}
-                        fields={getSectionConfig(CONTENT_TYPES.HOME_HERO)?.fields as FieldType[]}
-                    />
-                }
-            >
-                <section className="relative text-trichomes-forest overflow-hidden min-h-[60vh]">
-                    <div className="absolute inset-0">
-                        <Image src={hero.imageUrl} alt="Hero" fill className="object-cover object-center" priority />
-                    </div>
-                    <div className="absolute top-0 inset-x-0 h-[260px] md:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
-                    <div className="hidden lg:block absolute inset-0 bg-[#1E3024]/10 pointer-events-none" />
-                    <div className="relative z-10 w-full h-full px-4 md:mx-auto max-w-[1900px] lg:px-12 xl:px-20 py-8 sm:py-12 lg:py-20 flex flex-col justify-start lg:justify-center items-start">
-                        <div className="w-full max-w-md md:max-w-xl ml-5 md:ml-0">
-                            <h1 className="text-[48px] md:text-[64px] leading-[1.1] text-trichomes-forest tracking-tight mb-4 sm:mb-5 lg:mb-6 font-heading">
-                                {titleParts.map((part, i) => <span key={part}>{part}{i < titleParts.length - 1 && <br />}</span>)}
-                            </h1>
-                            <p className="mb-6 sm:mb-8 lg:mb-10 text-[14px] sm:text-[15px] lg:text-[17px] text-trichomes-forest/70 leading-relaxed font-body">
-                                {hero.description}
-                            </p>
-                            <span className="inline-block bg-[#407029] text-white rounded-lg font-semibold py-3 px-7 sm:py-2.5 sm:px-10 lg:py-3 lg:px-12 text-[15px] sm:text-lg font-body">
-                                {hero.buttonText}
-                            </span>
-                        </div>
-                    </div>
-                </section>
-            </EditableSection>
+            {/* Hero Section - now multi-slide, managed on its own screen */}
+            <div className="mx-4 my-6 p-6 rounded-lg border border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h3 className="font-semibold text-gray-900">Hero Section</h3>
+                    <p className="text-sm text-gray-500">
+                        The hero is now a multi-slide rotation with image/video support and a live device preview. Manage slides in their own screen.
+                    </p>
+                </div>
+                <Link
+                    href="/admin/content/hero-slides"
+                    className="shrink-0 px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium transition-colors text-center"
+                >
+                    Manage Hero Slides
+                </Link>
+            </div>
 
             {/* Our Collection */}
             <EditableSection
