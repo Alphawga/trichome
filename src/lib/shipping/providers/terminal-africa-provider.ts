@@ -6,9 +6,6 @@ const TERMINAL_AFRICA_BASE_URL =
   "https://sandbox.terminal.africa/v1";
 const REQUEST_TIMEOUT_MS = 4000;
 
-// Generic small-parcel box (cm) — Product has no dimension fields today.
-const DEFAULT_PACKAGE_DIMENSION = { length: 20, width: 20, height: 15 };
-
 interface TerminalAfricaRate {
   amount: number;
   carrier_name: string;
@@ -61,7 +58,8 @@ function splitName(fullName: string): {
 function senderAddress() {
   return {
     ...splitName("Trichomes Cosmeceuticals"),
-    line1: SITE_ADDRESS.streetAddress,
+    line1: SITE_ADDRESS.shippingLine1,
+    line2: SITE_ADDRESS.shippingLine2,
     city: SITE_ADDRESS.addressLocality,
     state: SITE_ADDRESS.addressRegion,
     country: SITE_ADDRESS.addressCountry,
@@ -84,24 +82,32 @@ function receiverAddress(destination: ShippingQuoteInput["destination"]) {
   };
 }
 
-// NOTE: request-body shape (embedded address objects vs. address_id
-// references from a separate POST /addresses call) is unverified against a
-// real response as of this writing — Terminal Africa's account this store
-// uses is still mid-KYC-review, and the API 401s with "Complete KYC
-// verification to access the API" regardless of request shape. Built against
-// the embedded-object contract since that's the one two independent doc
-// queries gave consistent field names for. Re-verify with a live call once
-// KYC clears — see docs/changelog and the terminal-africa-shipping skill.
+// Request-body shape confirmed against a real live response 2026-07-07
+// (KYC cleared): the docs' embedded-object contract, but under
+// pickup_address/delivery_address/parcel — not address_from/address_to/
+// packages as originally built from a doc-summary contradiction. packaging_id
+// is intentionally omitted (only required when persist_data: true, which
+// this quote-only flow doesn't set) — Terminal applies a default packaging.
 async function fetchQuotes(
   input: ShippingQuoteInput,
 ): Promise<TerminalAfricaRate[]> {
   const requestBody = {
     currency: "NGN",
-    parcel_total_weight: input.weightKg,
-    parcel_value: input.subtotal,
-    packages: [{ weight: input.weightKg, ...DEFAULT_PACKAGE_DIMENSION }],
-    address_from: senderAddress(),
-    address_to: receiverAddress(input.destination),
+    pickup_address: senderAddress(),
+    delivery_address: receiverAddress(input.destination),
+    parcel: {
+      description: "Trichomes Cosmeceuticals order",
+      weight_unit: "kg",
+      items: input.items.map((item) => ({
+        name: item.name,
+        description: item.name,
+        currency: "NGN",
+        value: item.unitAmount * item.quantity,
+        quantity: item.quantity,
+        weight: item.unitWeightKg,
+        type: "parcel",
+      })),
+    },
   };
 
   const response = await fetch(
