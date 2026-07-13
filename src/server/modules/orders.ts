@@ -8,9 +8,11 @@ import {
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getRevenueTotal } from "@/lib/analytics/revenue";
+import { adminCreateOrderSchema } from "@/lib/dto";
 import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
+  adminProcedure,
   checkoutRateLimited,
   guestCheckoutRateLimited,
   protectedProcedure,
@@ -86,6 +88,10 @@ async function computeServerShippingCost(
   });
 
   return rates[0].cost;
+}
+
+function generateOrderNumber(): string {
+  return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 }
 
 // Get user's orders
@@ -380,7 +386,7 @@ export const createOrder = protectedProcedure
     const total = subtotal + shipping_cost + tax - discount;
 
     // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const orderNumber = generateOrderNumber();
 
     // Create order
     const order = await ctx.prisma.order.create({
@@ -650,7 +656,7 @@ export const createOrderWithPayment = checkoutRateLimited
     }
 
     // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const orderNumber = generateOrderNumber();
 
     // Create order with payment
     const order = await ctx.prisma.order.create({
@@ -978,7 +984,7 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
     // shipping_address_id will be undefined for guest orders
 
     // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const orderNumber = generateOrderNumber();
 
     // Create order with payment (no user_id for guest orders)
     const order = await ctx.prisma.order.create({
@@ -1373,3 +1379,352 @@ export const getOrderStats = staffProcedure.query(async ({ ctx }) => {
     revenue,
   };
 });
+
+// Admin: manually create an order and mark it paid (order-recovery flow for
+// checkout glitches, or genuine offline sales). Restricted to ADMIN — this
+// can record a "paid" order without the normal Paystack webhook trail.
+export const adminCreateOrder = adminProcedure
+  .input(adminCreateOrderSchema)
+  .mutation(async ({ input, ctx }) => {
+    const {
+      user_id,
+      address,
+      items: orderItems,
+      shipping_cost,
+      discount,
+      notes,
+      payment,
+    } = input;
+
+    let userId: string | undefined;
+    if (user_id) {
+      const user = await ctx.prisma.user.findUnique({ where: { id: user_id } });
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Customer not found",
+        });
+      }
+      userId = user.id;
+    }
+
+    // Validate products and check stock — same rules as customer-facing checkout
+    const products = await ctx.prisma.product.findMany({
+      where: { id: { in: orderItems.map((item) => item.product_id) } },
+    });
+
+    if (products.length !== orderItems.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Some products not found",
+      });
+    }
+
+    for (const orderItem of orderItems) {
+      const product = products.find((p) => p.id === orderItem.product_id);
+      if (!product) continue;
+      if (product.track_quantity && product.quantity < orderItem.quantity) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Insufficient stock for ${product.name}`,
+        });
+      }
+    }
+
+    const subtotal = orderItems.reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (!product) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Product not found for item ${item.product_id}`,
+        });
+      }
+      return sum + Number(product.price) * item.quantity;
+    }, 0);
+
+    const total = subtotal + shipping_cost - discount;
+
+    // Resolve payment — verify against Paystack when a reference is given,
+    // never trust a bare "mark as paid" without either verification or a
+    // written justification for the manual/offline fallback.
+    let paymentMethod: PaymentMethod;
+    let paymentAmount: number;
+    let paymentReference: string | undefined;
+    let gatewayResponse: Prisma.InputJsonValue;
+    let paymentNote: string;
+
+    if (payment.mode === "verify") {
+      const verifiedPayment = await verifyPaystackTransaction(
+        payment.paystack_reference,
+      );
+
+      if (verifiedPayment.status !== "success") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Payment not completed. Status: ${verifiedPayment.status}`,
+        });
+      }
+
+      const paidAmount = verifiedPayment.amount / 100;
+      if (Math.abs(paidAmount - total) > 0.01) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Verified Paystack amount (₦${paidAmount}) does not match order total (₦${total}). Adjust shipping/discount or items to reconcile.`,
+        });
+      }
+
+      paymentMethod = "PAYSTACK";
+      paymentAmount = paidAmount;
+      paymentReference = verifiedPayment.reference;
+      gatewayResponse = verifiedPayment as unknown as Prisma.InputJsonValue;
+      paymentNote = `Payment verified via Paystack reference ${verifiedPayment.reference}`;
+    } else {
+      if (Math.abs(payment.amount - total) > 0.01) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Entered amount (₦${payment.amount}) does not match order total (₦${total}).`,
+        });
+      }
+
+      paymentMethod = payment.payment_method;
+      paymentAmount = payment.amount;
+      paymentReference = payment.reference || `MANUAL-${Date.now()}`;
+      gatewayResponse = {
+        manual: true,
+        entered_by: ctx.user.id,
+        justification: payment.justification,
+      } as Prisma.InputJsonValue;
+      paymentNote = `Payment manually recorded (${payment.payment_method}): ${payment.justification}`;
+    }
+
+    const orderNumber = generateOrderNumber();
+
+    const runOrderTransaction = async (tx: Prisma.TransactionClient) => {
+      // Address is only persisted for registered users — Address.user_id is
+      // non-nullable, same limitation as guest checkout today.
+      let shippingAddressId: string | undefined;
+      if (userId) {
+        const existingAddress = await tx.address.findFirst({
+          where: {
+            user_id: userId,
+            address_1: address.address_1,
+            city: address.city,
+            postal_code: address.postal_code || "",
+          },
+        });
+
+        const shippingAddress =
+          existingAddress ||
+          (await tx.address.create({
+            data: {
+              user_id: userId,
+              first_name: address.first_name,
+              last_name: address.last_name,
+              address_1: address.address_1,
+              address_2: address.address_2,
+              city: address.city,
+              state: address.state || "",
+              postal_code: address.postal_code || "",
+              country: address.country,
+              phone: address.phone,
+              is_default: false,
+            },
+          }));
+        shippingAddressId = shippingAddress.id;
+      }
+
+      const created = await tx.order.create({
+        data: {
+          order_number: orderNumber,
+          user_id: userId,
+          email: address.email,
+          first_name: address.first_name,
+          last_name: address.last_name,
+          phone: address.phone,
+          payment_method: paymentMethod,
+          currency: "NGN",
+          shipping_address_id: shippingAddressId,
+          notes,
+          subtotal,
+          shipping_cost,
+          tax: 0,
+          discount,
+          total,
+          payment_status: "COMPLETED",
+          status: "PENDING",
+          items: {
+            create: orderItems.map((item) => {
+              const product = products.find((p) => p.id === item.product_id);
+              if (!product) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: `Product not found for item ${item.product_id}`,
+                });
+              }
+              return {
+                product_id: item.product_id,
+                product_name: product.name,
+                product_sku: product.sku,
+                price: product.price,
+                quantity: item.quantity,
+                total: Number(product.price) * item.quantity,
+              };
+            }),
+          },
+          payments: {
+            create: {
+              payment_method: paymentMethod,
+              status: "COMPLETED",
+              amount: paymentAmount,
+              currency: "NGN",
+              reference: paymentReference,
+              gateway_response: gatewayResponse,
+              processed_at: new Date(),
+            },
+          },
+          status_history: {
+            create: [
+              {
+                status: "PENDING",
+                notes: "Order manually created by admin",
+                created_by: ctx.user.id,
+              },
+              {
+                status: "PENDING",
+                notes: paymentNote,
+                created_by: ctx.user.id,
+              },
+            ],
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: {
+                    where: { is_primary: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+          shipping_address: true,
+          payments: true,
+        },
+      });
+
+      for (const item of orderItems) {
+        const product = products.find((p) => p.id === item.product_id);
+        if (!product) continue;
+        if (product.track_quantity) {
+          await tx.product.update({
+            where: { id: item.product_id },
+            data: {
+              quantity: { decrement: item.quantity },
+              reserved_quantity: { increment: item.quantity },
+              sale_count: { increment: item.quantity },
+            },
+          });
+        }
+      }
+
+      return created;
+    };
+
+    const order = await ctx.prisma.$transaction(runOrderTransaction, {
+      maxWait: 10_000,
+      timeout: 15_000,
+    });
+
+    // Send order confirmation email (fire and forget)
+    try {
+      const { sendOrderConfirmationEmail } = await import("@/lib/email");
+      const baseUrl =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+
+      await sendOrderConfirmationEmail({
+        recipientName:
+          order.first_name && order.last_name
+            ? `${order.first_name} ${order.last_name}`
+            : undefined,
+        recipientEmail: order.email,
+        orderNumber: order.order_number,
+        orderDate: order.created_at,
+        items: order.items.map((item) => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          price: Number(item.price),
+        })),
+        subtotal: Number(order.subtotal),
+        shipping: Number(order.shipping_cost),
+        tax: Number(order.tax),
+        discount: Number(order.discount),
+        total: Number(order.total),
+        shippingAddress: order.shipping_address
+          ? {
+              first_name: order.shipping_address.first_name,
+              last_name: order.shipping_address.last_name,
+              address_1: order.shipping_address.address_1,
+              address_2: order.shipping_address.address_2 || undefined,
+              city: order.shipping_address.city,
+              state: order.shipping_address.state,
+              postal_code: order.shipping_address.postal_code,
+              country: order.shipping_address.country,
+            }
+          : {
+              first_name: order.first_name,
+              last_name: order.last_name,
+              address_1: address.address_1,
+              address_2: address.address_2 || undefined,
+              city: address.city,
+              state: address.state || "",
+              postal_code: address.postal_code || "",
+              country: address.country || "Nigeria",
+            },
+        trackingNumber: order.tracking_number || undefined,
+        orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}`,
+      });
+    } catch (error) {
+      console.error("Failed to send order confirmation email:", error);
+    }
+
+    // Notify staff/admin of the new order (fire and forget)
+    try {
+      const { notifyNewOrder } = await import(
+        "@/lib/notifications/notify-new-order"
+      );
+      const baseUrl =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+
+      await notifyNewOrder({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        orderDate: order.created_at,
+        customerName:
+          order.first_name && order.last_name
+            ? `${order.first_name} ${order.last_name}`
+            : order.email,
+        customerEmail: order.email,
+        total: Number(order.total),
+        itemCount: order.items.length,
+        orderUrl: `${baseUrl}/admin/orders/${order.id}`,
+      });
+    } catch (error) {
+      console.error("Failed to send new order notification:", error);
+    }
+
+    return {
+      order,
+      orderNumber: order.order_number,
+      message: "Order created successfully",
+    };
+  });

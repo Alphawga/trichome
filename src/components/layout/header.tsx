@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/contexts/auth-context";
+import { trpc } from "@/utils/trpc";
 import { SearchBar } from "../search/SearchBar";
 import {
   BagIcon,
@@ -232,6 +233,10 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   const searchParams = useSearchParams();
   const searchParam = searchParams.get("search");
   const [searchQuery, setSearchQuery] = useState(searchParam || "");
+  const { data: bannerPromo } = trpc.getBannerPromotion.useQuery();
+  const bannerText = bannerPromo
+    ? `${bannerPromo.name}${bannerPromo.description ? ` - ${bannerPromo.description}` : ""} - USE CODE ${bannerPromo.code}`
+    : "FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE";
 
   // Sync search input with URL search param
   useEffect(() => {
@@ -579,7 +584,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
               </span>
               <span className="mx-2">•</span>
               <span>
-                FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE-{" "}
+                {bannerText}-{" "}
                 <Link
                   href="/products"
                   className="underline hover:text-[#3A643B] transition-colors"
@@ -593,7 +598,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
           {/* Mobile: Simplified announcement */}
           <div className="md:hidden text-center">
             <p className="uppercase tracking-wide">
-              FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE-{" "}
+              {bannerText}-{" "}
               <Link
                 href="/products"
                 className="underline hover:text-[#3A643B] transition-colors"

@@ -2,14 +2,12 @@ import { getServerSession } from "next-auth";
 import { type NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import cloudinary from "@/lib/cloudinary";
-
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-];
+import {
+  IMAGE_MIME_TYPES,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_VIDEO_SIZE_BYTES,
+  VIDEO_MIME_TYPES,
+} from "@/lib/constants/media-upload";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -30,16 +28,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    const isVideo = VIDEO_MIME_TYPES.includes(file.type);
+    const isImage = IMAGE_MIME_TYPES.includes(file.type);
+
+    if (!isVideo && !isImage) {
       return NextResponse.json(
         { error: "Unsupported file type" },
         { status: 400 },
       );
     }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
+    const maxSize = isVideo ? MAX_VIDEO_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES;
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "File exceeds maximum size of 10MB" },
+        {
+          error: `File exceeds maximum size of ${maxSize / (1024 * 1024)}MB`,
+        },
         { status: 400 },
       );
     }
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
         .upload_stream(
           {
             folder,
-            resource_type: "image",
+            resource_type: isVideo ? "video" : "image",
           },
           (error, result) => {
             if (error) reject(error);

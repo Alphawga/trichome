@@ -19,6 +19,37 @@ export default function AdminContentPage() {
 
             {/* Page Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link
+                    href="/admin/content/hero-slides"
+                    className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-[#38761d] hover:shadow-md transition-all duration-200"
+                >
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[#38761d] transition-colors">
+                                Hero Slides
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Manage the rotating slides shown in the homepage hero section
+                            </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-[#38761d]/10 flex items-center justify-center">
+                            <svg
+                                className="w-5 h-5 text-[#38761d]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <title>Manage</title>
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                            </svg>
+                        </div>
+                    </div>
+                </Link>
                 {EDITABLE_PAGES.map((page: EditablePage) => (
                     <Link
                         key={page.slug}

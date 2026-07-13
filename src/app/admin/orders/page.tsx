@@ -13,6 +13,7 @@ import { useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/app/contexts/auth-context";
 import { type Column, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/icons";
 import { trpc } from "@/utils/trpc";
 import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
+import { CreateOrderSheet } from "./CreateOrderSheet";
 import { OrderViewSheet } from "./OrderViewSheet";
 
 type OrderWithRelations = Order & {
@@ -146,6 +148,7 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
 export default function AdminOrdersPage() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") as OrderStatus | null;
+  const { isAdmin } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "All">(
@@ -157,6 +160,7 @@ export default function AdminOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<AdminOrder | null>(null);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
   // Update filter when URL params change
   useEffect(() => {
@@ -425,9 +429,22 @@ export default function AdminOrdersPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
-        <p className="text-gray-600">Track and manage customer orders</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Orders Management
+          </h1>
+          <p className="text-gray-600">Track and manage customer orders</p>
+        </div>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setCreateSheetOpen(true)}
+            className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium"
+          >
+            + Create Order
+          </button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -649,6 +666,16 @@ export default function AdminOrdersPage() {
         open={viewSheetOpen}
         onOpenChange={setViewSheetOpen}
         onOrderUpdated={() => {
+          ordersQuery.refetch();
+          statsQuery.refetch();
+        }}
+      />
+
+      {/* Create Order Sheet */}
+      <CreateOrderSheet
+        open={createSheetOpen}
+        onOpenChange={setCreateSheetOpen}
+        onSuccess={() => {
           ordersQuery.refetch();
           statsQuery.refetch();
         }}

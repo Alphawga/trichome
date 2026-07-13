@@ -74,18 +74,6 @@ export const EDITABLE_PAGES = [
         description: "Main landing page with hero section and featured content",
         sections: [
             {
-                type: CONTENT_TYPES.HOME_HERO,
-                name: "Hero Section",
-                description: "Main hero banner with title, subtitle, and CTA",
-                fields: [
-                    "title",
-                    "description",
-                    "button_text",
-                    "button_link",
-                    "image_url",
-                ] as FieldType[],
-            },
-            {
                 type: CONTENT_TYPES.HOME_COLLECTION_TITLE,
                 name: "Our Collection Title",
                 description: "Section title for the collection grid",

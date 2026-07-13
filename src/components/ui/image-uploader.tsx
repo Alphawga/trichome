@@ -1,9 +1,10 @@
 "use client";
 
-import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
+import { IMAGE_MIME_TYPES } from "@/lib/constants/media-upload";
 
 interface ImageUploaderProps {
   value?: string;
@@ -36,14 +37,7 @@ export function ImageUploader({
     if (!file) return;
 
     // Validate file type
-    const validTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/jpg",
-    ];
-    if (!validTypes.includes(file.type)) {
+    if (!IMAGE_MIME_TYPES.includes(file.type)) {
       toast.error("Please upload a valid image file (JPG, PNG, GIF, or WEBP)");
       return;
     }
@@ -98,7 +92,7 @@ export function ImageUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,image/jpg"
+          accept={IMAGE_MIME_TYPES.join(",")}
           onChange={handleFileChange}
           disabled={disabled || isUploading}
           className="hidden"

@@ -1,13 +1,16 @@
 "use client";
 
-import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
-import Link from "next/link";
 import type React from "react";
+import { useEffect, useState } from "react";
+import {
+  type HeroSlideData,
+  HeroSlideView,
+} from "@/components/sections/hero-slide-view";
 import { CONTENT_TYPES } from "@/lib/constants/content-types";
 import { trpc } from "@/utils/trpc";
 
-// Default/fallback content
-const DEFAULTS = {
+// Default/fallback content, used when no hero slides exist in the DB
+const DEFAULTS: HeroSlideData = {
   title: "Natural Beauty,\nNaturally Yours",
   description:
     "Where science meets nature — luxury simplified. Discover our range of natural, effective skincare products crafted with care.",
@@ -16,8 +19,9 @@ const DEFAULTS = {
   imageUrl: "/hero/hero-image.jpg",
 };
 
+const AUTOPLAY_INTERVAL_MS = 6000;
+
 export const Hero: React.FC = () => {
-  // Fetch hero content from database
   const { data: heroContentArray } = trpc.getContentByType.useQuery(
     { type: CONTENT_TYPES.HOME_HERO },
     {
@@ -26,70 +30,109 @@ export const Hero: React.FC = () => {
     },
   );
 
-  // getContentByType returns an array, get the first item
-  const heroContent = heroContentArray?.[0];
+  const slides: HeroSlideData[] =
+    heroContentArray && heroContentArray.length > 0
+      ? heroContentArray.map((item) => ({
+          title: item.title,
+          description: item.description || "",
+          buttonText: item.button_text || "",
+          buttonLink: item.button_link || "/products",
+          imageUrl: item.image_url,
+          videoUrl: item.video_url,
+        }))
+      : [DEFAULTS];
 
-  // Use database content or fallbacks
-  const title = heroContent?.title || DEFAULTS.title;
-  const description = heroContent?.description || DEFAULTS.description;
-  const buttonText = heroContent?.button_text || DEFAULTS.buttonText;
-  const buttonLink = heroContent?.button_link || DEFAULTS.buttonLink;
-  const imageUrl = heroContent?.image_url || DEFAULTS.imageUrl;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  // Derived rather than corrected via effect, so a slide count shrinking (e.g. a slide is
+  // unpublished) never leaves activeIndex pointing past the end for a render pass
+  const safeIndex = activeIndex % slides.length;
 
-  // Split title by newline for line breaks
-  const titleParts = title.split("\n");
+  useEffect(() => {
+    if (slides.length <= 1 || isPaused) return;
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % slides.length);
+    }, AUTOPLAY_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [slides.length, isPaused]);
+
+  const goToSlide = (index: number) => setActiveIndex(index);
+  const goToPrevious = () =>
+    setActiveIndex((current) => (current - 1 + slides.length) % slides.length);
+  const goToNext = () =>
+    setActiveIndex((current) => (current + 1) % slides.length);
 
   return (
-    <section className="relative text-trichomes-forest overflow-hidden min-h-[60vh] ">
-      {/* Background image using Next/Image for optimization and control */}
-      <div className="absolute inset-0">
-        <Image
-          src={imageUrl}
-          alt="Natural skincare products with coconut and botanical ingredients"
-          fill
-          className="object-cover object-center"
-          priority
-          quality={100}
-          sizes="100vw"
-        />
-      </div>
-
-      {/* Mobile: gradient top bar to blend into the image */}
-      <div className="absolute top-0 inset-x-0 h-[260px] lg:hidden pointer-events-none bg-gradient-to-b from-[#E1D1C1] via-[#E1D1C1]/80 to-transparent" />
-
-      <div className="hidden lg:block absolute inset-0 bg-[#1E3024]/10 pointer-events-none" />
-
-      <div className="relative z-10 w-full h-full px-4  md:mx-auto  max-w-[1900px] lg:px-12 xl:px-20 py-8 sm:py-12 lg:py-20 flex flex-col justify-start lg:justify-center items-start">
-        {/* Text Container - Constrained width, left-aligned */}
-        <div className="w-full  max-w-md md:max-w-xl ml-5 md:ml-0">
-          {/* Headline - Classy Vogue font */}
-          <h1 className=" mx-auto items-center justify-center text-[48px] sm:text-[52px] md:text-[64px] lg:text-[72px] xl:text-[80px] leading-[1.1] text-trichomes-forest tracking-tight mb-4 sm:mb-5 lg:mb-6 animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-heading">
-            {titleParts.map((part, index) => (
-              <span key={part}>
-                {part}
-                {index < titleParts.length - 1 && <br />}
-              </span>
-            ))}
-          </h1>
-
-          {/* Body Text - Inter font - Full text on mobile */}
-          <p
-            className="mb-6 sm:mb-8 lg:mb-10 text-[14px] sm:text-[15px] md:text-[16px] lg:text-[17px] xl:text-[18px] text-trichomes-forest/70 leading-relaxed font-normal animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
-            style={{ animationDelay: "150ms", animationFillMode: "both" }}
-          >
-            {description}
-          </p>
-
-          {/* CTA Button - Inter font - Rounded corners */}
-          <Link
-            href={buttonLink}
-            className="inline-block bg-[#407029] text-white rounded-lg font-semibold py-3 px-7 sm:py-2.5 sm:px-10 lg:py-3 lg:px-12 text-[15px] sm:text-lg hover:bg-[#528C35] transition-all duration-200 ease-out hover:shadow-lg animate-[fadeInUp_400ms_cubic-bezier(0.16,1,0.3,1)] font-body"
-            style={{ animationDelay: "300ms", animationFillMode: "both" }}
-          >
-            {buttonText}
-          </Link>
+    <section
+      className="relative"
+      aria-label="Homepage hero slideshow"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
+    >
+      {slides.map((slide, index) => (
+        <div
+          key={`${slide.title}-${index}`}
+          className={`transition-opacity duration-700 ease-out ${
+            index === safeIndex
+              ? "opacity-100 relative"
+              : "opacity-0 absolute inset-0 pointer-events-none"
+          }`}
+          aria-hidden={index !== safeIndex}
+        >
+          <HeroSlideView
+            slide={slide}
+            priority={index === 0}
+            active={index === safeIndex}
+          />
         </div>
-      </div>
+      ))}
+
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={goToPrevious}
+            aria-label="Previous slide"
+            className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 items-center justify-center w-10 h-10 rounded-full bg-white/70 hover:bg-white text-trichomes-forest shadow-md transition-colors"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={goToNext}
+            aria-label="Next slide"
+            className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 items-center justify-center w-10 h-10 rounded-full bg-white/70 hover:bg-white text-trichomes-forest shadow-md transition-colors"
+          >
+            ›
+          </button>
+
+          <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+            {slides.map((slide, index) => (
+              <button
+                key={`dot-${slide.title}-${index}`}
+                type="button"
+                onClick={() => goToSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                className={`h-2 rounded-full transition-all ${
+                  index === safeIndex
+                    ? "w-6 bg-trichomes-forest"
+                    : "w-2 bg-trichomes-forest/40"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 };
