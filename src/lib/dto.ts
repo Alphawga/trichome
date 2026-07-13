@@ -190,6 +190,53 @@ export const createOrderSchema = z.object({
   items: z.array(createOrderItemSchema).min(1, "At least one item is required"),
 });
 
+export const adminCreateOrderAddressSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  address_1: z.string().min(1, "Street address is required"),
+  address_2: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().optional(),
+  postal_code: z.string().optional(),
+  country: z.string().default("Nigeria"),
+});
+
+export const adminCreateOrderPaymentSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("verify"),
+    paystack_reference: z.string().min(1, "Paystack reference is required"),
+  }),
+  z.object({
+    mode: z.literal("manual"),
+    payment_method: z
+      .nativeEnum(PaymentMethod)
+      .refine((method) => method !== "PAYSTACK", {
+        message:
+          "Paystack payments must be recorded via reference verification",
+      }),
+    amount: z.number().positive("Amount must be positive"),
+    reference: z.string().optional(),
+    justification: z
+      .string()
+      .min(10, "Explain why this payment is being recorded manually"),
+  }),
+]);
+
+export const adminCreateOrderSchema = z.object({
+  // Optional link to a registered account — the order's contact fields
+  // (email/first_name/last_name/phone) always come from `address`, same as
+  // the customer-facing checkout mutations, regardless of user_id.
+  user_id: z.string().optional(),
+  address: adminCreateOrderAddressSchema,
+  items: z.array(createOrderItemSchema).min(1, "At least one item is required"),
+  shipping_cost: z.number().min(0).default(0),
+  discount: z.number().min(0).default(0),
+  notes: z.string().optional(),
+  payment: adminCreateOrderPaymentSchema,
+});
+
 export const updateOrderStatusSchema = z.object({
   id: z.string(),
   status: z.nativeEnum(OrderStatus),
@@ -323,6 +370,7 @@ export type AddToWishlistInput = z.infer<typeof addToWishlistSchema>;
 
 export type GetOrdersInput = z.infer<typeof getOrdersSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type AdminCreateOrderInput = z.infer<typeof adminCreateOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;
 

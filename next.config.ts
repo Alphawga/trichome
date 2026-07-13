@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
     // Temporarily ignore build errors during development
     ignoreBuildErrors: true,
   },
+  // superjson's CJS build requires copy-anything, which ships ESM-only (no
+  // "require" export condition) — needed for Jest tests that import the
+  // tRPC router (superjson is trpc.ts's transformer) to transform correctly.
+  transpilePackages: ["superjson", "copy-anything", "is-what"],
   images: {
     remotePatterns: [
       {
