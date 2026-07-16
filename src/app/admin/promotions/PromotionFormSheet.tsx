@@ -314,6 +314,7 @@ export function PromotionFormSheet({
                       {...register("usage_limit", {
                         required: "Usage limit is required",
                         min: { value: 0, message: "Must be 0 or greater" },
+                        setValueAs: (v) => (v === "" ? undefined : Number(v)),
                       })}
                       className="text-right"
                     />
@@ -337,6 +338,7 @@ export function PromotionFormSheet({
                 type="number"
                 {...register("usage_limit_per_user", {
                   min: { value: 1, message: "Must be at least 1" },
+                  setValueAs: (v) => (v === "" ? undefined : Number(v)),
                 })}
                 className="mt-1"
                 placeholder="e.g., 1"

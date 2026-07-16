@@ -92,6 +92,7 @@ export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
                   {...register("value" as never, {
                     required: "Value is required",
                     min: { value: 0, message: "Value must be positive" },
+                    setValueAs: (v) => (v === "" ? undefined : Number(v)),
                   })}
                   className="text-right"
                 />
@@ -133,6 +134,7 @@ export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
                 type="number"
                 {...register("min_order_value" as never, {
                   min: { value: 0, message: "Must be 0 or greater" },
+                  setValueAs: (v) => (v === "" ? 0 : Number(v)),
                 })}
                 className="text-right"
               />
@@ -155,6 +157,7 @@ export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
             type="number"
             {...register("max_discount" as never, {
               min: { value: 0, message: "Must be positive" },
+              setValueAs: (v) => (v === "" ? undefined : Number(v)),
             })}
             className="mt-1"
             placeholder="e.g., 50000"
