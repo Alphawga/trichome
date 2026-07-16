@@ -9,6 +9,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getRevenueTotal } from "@/lib/analytics/revenue";
 import { adminCreateOrderSchema } from "@/lib/dto";
+import { calculatePaystackFee } from "@/lib/payments/calculate-paystack-fee";
+import { resolveOrderPromotion } from "@/lib/promotions/promotion-eligibility";
 import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
@@ -512,6 +514,9 @@ export const createOrderWithPayment = checkoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
+      // Set when the client resolved its discount via an auto-applied
+      // codeless promotion rather than a typed code.
+      promotion_id: z.string().optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -524,6 +529,7 @@ export const createOrderWithPayment = checkoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
+      promotion_id,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -563,21 +569,48 @@ export const createOrderWithPayment = checkoutRateLimited
       }
     }
 
+    // Never trust the client-reported subtotal for financial decisions —
+    // an inflated totals.subtotal could unlock a min_order_value promotion
+    // the real cart doesn't qualify for. Recompute from verified prices.
+    const verifiedSubtotal = orderItems.reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      return sum + (product ? Number(product.price) * item.quantity : 0);
+    }, 0);
+
+    // Resolve which promotion (if any) applies — a client-typed code, an
+    // auto-applied codeless promotion (identified by id), or none. Never
+    // trust totals.discount: eligibility and the discount amount are always
+    // recomputed server-side, same standard as shipping/fee below.
+    const resolvedPromotion = await resolveOrderPromotion(ctx.prisma, {
+      promotionId: promotion_id,
+      promoCode: _promo_code,
+      subtotal: verifiedSubtotal,
+      userId: ctx.user.id,
+    });
+    const serverDiscount = resolvedPromotion?.discountAmount ?? 0;
+    const isFreeShipping = resolvedPromotion?.isFreeShipping ?? false;
+
     // Recompute shipping server-side — never trust totals.shipping/totals.total
-    const serverShippingCost = await computeServerShippingCost(
-      address,
-      orderItems,
-      products,
-      totals.subtotal,
-    );
+    const serverShippingCost = isFreeShipping
+      ? 0
+      : await computeServerShippingCost(
+          address,
+          orderItems,
+          products,
+          verifiedSubtotal,
+        );
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.
     const serverTax = 0;
-    const serverTotal =
-      totals.subtotal + serverShippingCost + serverTax - totals.discount;
+    const preFeeTotal =
+      verifiedSubtotal + serverShippingCost + serverTax - serverDiscount;
+    // Paystack's transaction fee is passed through to the customer — never
+    // trust a client-reported fee, recompute it the same way as shipping.
+    const serverFee = calculatePaystackFee(preFeeTotal);
+    const grandTotal = preFeeTotal + serverFee;
 
     // Validate the verified Paystack amount (kobo) matches the server-computed total
-    const expectedTotal = serverTotal;
+    const expectedTotal = grandTotal;
     const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
@@ -619,40 +652,19 @@ export const createOrderWithPayment = checkoutRateLimited
       });
     }
 
-    // Handle promo code if provided
-    let _promotionId: string | undefined;
-    if (_promo_code) {
-      const promotion = await ctx.prisma.promotion.findUnique({
-        where: { code: _promo_code.toUpperCase() },
+    if (resolvedPromotion) {
+      await ctx.prisma.promotion.update({
+        where: { id: resolvedPromotion.promotion.id },
+        data: { usage_count: { increment: 1 } },
       });
 
-      if (promotion) {
-        // Validate promo code again (server-side validation)
-        const now = new Date();
-        if (
-          promotion.status === "ACTIVE" &&
-          now >= promotion.start_date &&
-          now <= promotion.end_date &&
-          totals.subtotal >= Number(promotion.min_order_value)
-        ) {
-          _promotionId = promotion.id;
-
-          // Increment usage count
-          await ctx.prisma.promotion.update({
-            where: { id: promotion.id },
-            data: { usage_count: { increment: 1 } },
-          });
-
-          // Record usage
-          await ctx.prisma.promotionUsage.create({
-            data: {
-              promotion_id: promotion.id,
-              user_id: ctx.user.id,
-              discount_amount: totals.discount,
-            },
-          });
-        }
-      }
+      await ctx.prisma.promotionUsage.create({
+        data: {
+          promotion_id: resolvedPromotion.promotion.id,
+          user_id: ctx.user.id,
+          discount_amount: serverDiscount,
+        },
+      });
     }
 
     // Generate order number
@@ -671,11 +683,12 @@ export const createOrderWithPayment = checkoutRateLimited
         currency,
         shipping_address_id: shippingAddress.id,
         notes,
-        subtotal: totals.subtotal,
+        subtotal: verifiedSubtotal,
         shipping_cost: serverShippingCost,
         tax: serverTax,
-        discount: totals.discount,
-        total: serverTotal,
+        discount: serverDiscount,
+        processing_fee: serverFee,
+        total: grandTotal,
         payment_status: "COMPLETED", // Payment is already completed
         status: "PENDING", // Order status starts as PENDING
         items: {
@@ -701,7 +714,7 @@ export const createOrderWithPayment = checkoutRateLimited
           create: {
             payment_method,
             status: "COMPLETED",
-            amount: totals.total,
+            amount: grandTotal,
             currency,
             transaction_id: paymentResponse.transactionReference || undefined,
             reference: paymentResponse.paymentReference,
@@ -791,6 +804,7 @@ export const createOrderWithPayment = checkoutRateLimited
         shipping: Number(order.shipping_cost),
         tax: Number(order.tax),
         discount: Number(order.discount),
+        processingFee: Number(order.processing_fee),
         total: Number(order.total),
         shippingAddress: order.shipping_address
           ? {
@@ -902,6 +916,9 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
+      // Set when the client resolved its discount via an auto-applied
+      // codeless promotion rather than a typed code.
+      promotion_id: z.string().optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -914,6 +931,7 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
+      promotion_id,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -953,21 +971,49 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       }
     }
 
+    // Never trust the client-reported subtotal for financial decisions —
+    // an inflated totals.subtotal could unlock a min_order_value promotion
+    // the real cart doesn't qualify for. Recompute from verified prices.
+    const verifiedSubtotal = orderItems.reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      return sum + (product ? Number(product.price) * item.quantity : 0);
+    }, 0);
+
+    // Resolve which promotion (if any) applies — a client-typed code, an
+    // auto-applied codeless promotion (identified by id), or none. Never
+    // trust totals.discount: eligibility and the discount amount are always
+    // recomputed server-side, same standard as shipping/fee below. This was
+    // previously a gap — guest checkout accepted promo_code but never
+    // validated it or recomputed the discount server-side at all.
+    const resolvedPromotion = await resolveOrderPromotion(ctx.prisma, {
+      promotionId: promotion_id,
+      promoCode: _promo_code,
+      subtotal: verifiedSubtotal,
+    });
+    const serverDiscount = resolvedPromotion?.discountAmount ?? 0;
+    const isFreeShipping = resolvedPromotion?.isFreeShipping ?? false;
+
     // Recompute shipping server-side — never trust totals.shipping/totals.total
-    const serverShippingCost = await computeServerShippingCost(
-      address,
-      orderItems,
-      products,
-      totals.subtotal,
-    );
+    const serverShippingCost = isFreeShipping
+      ? 0
+      : await computeServerShippingCost(
+          address,
+          orderItems,
+          products,
+          verifiedSubtotal,
+        );
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.
     const serverTax = 0;
-    const serverTotal =
-      totals.subtotal + serverShippingCost + serverTax - totals.discount;
+    const preFeeTotal =
+      verifiedSubtotal + serverShippingCost + serverTax - serverDiscount;
+    // Paystack's transaction fee is passed through to the customer — never
+    // trust a client-reported fee, recompute it the same way as shipping.
+    const serverFee = calculatePaystackFee(preFeeTotal);
+    const grandTotal = preFeeTotal + serverFee;
 
     // Validate the verified Paystack amount (kobo) matches the server-computed total
-    const expectedTotal = serverTotal;
+    const expectedTotal = grandTotal;
     const paidAmount = verifiedPayment.amount / 100;
 
     // Allow small floating point differences (e.g., 0.01)
@@ -982,6 +1028,17 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
     // since Address model requires user_id (not nullable)
     // The Order model already stores address info in its own fields
     // shipping_address_id will be undefined for guest orders
+
+    if (resolvedPromotion) {
+      // PromotionUsage.user_id is non-nullable and guest orders have no
+      // user_id, so usage_limit_per_user can't be tracked for guests —
+      // deliberate limitation, not an oversight. The global usage_limit
+      // still applies via the increment below.
+      await ctx.prisma.promotion.update({
+        where: { id: resolvedPromotion.promotion.id },
+        data: { usage_count: { increment: 1 } },
+      });
+    }
 
     // Generate order number
     const orderNumber = generateOrderNumber();
@@ -999,11 +1056,12 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         currency,
         shipping_address_id: undefined, // Guest orders don't have a shipping_address_id
         notes,
-        subtotal: totals.subtotal,
+        subtotal: verifiedSubtotal,
         shipping_cost: serverShippingCost,
         tax: serverTax,
-        discount: totals.discount,
-        total: serverTotal,
+        discount: serverDiscount,
+        processing_fee: serverFee,
+        total: grandTotal,
         payment_status: "COMPLETED",
         status: "PENDING",
         items: {
@@ -1029,7 +1087,7 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
           create: {
             payment_method,
             status: "COMPLETED",
-            amount: totals.total,
+            amount: grandTotal,
             currency,
             transaction_id: paymentResponse.transactionReference || undefined,
             reference: paymentResponse.paymentReference,
@@ -1114,6 +1172,7 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         shipping: Number(order.shipping_cost),
         tax: Number(order.tax),
         discount: Number(order.discount),
+        processingFee: Number(order.processing_fee),
         total: Number(order.total),
         shippingAddress: {
           first_name: order.first_name,
@@ -1452,6 +1511,9 @@ export const adminCreateOrder = adminProcedure
     let paymentReference: string | undefined;
     let gatewayResponse: Prisma.InputJsonValue;
     let paymentNote: string;
+    // Paystack's fee only applies when a real Paystack transaction is being
+    // verified — the manual/offline branch below has no gateway involved.
+    let fee = 0;
 
     if (payment.mode === "verify") {
       const verifiedPayment = await verifyPaystackTransaction(
@@ -1465,11 +1527,13 @@ export const adminCreateOrder = adminProcedure
         });
       }
 
+      fee = calculatePaystackFee(total);
+      const expectedTotal = total + fee;
       const paidAmount = verifiedPayment.amount / 100;
-      if (Math.abs(paidAmount - total) > 0.01) {
+      if (Math.abs(paidAmount - expectedTotal) > 0.01) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Verified Paystack amount (₦${paidAmount}) does not match order total (₦${total}). Adjust shipping/discount or items to reconcile.`,
+          message: `Verified Paystack amount (₦${paidAmount}) does not match order total including the ₦${fee} processing fee (₦${expectedTotal}). Adjust shipping/discount or items to reconcile.`,
         });
       }
 
@@ -1497,6 +1561,7 @@ export const adminCreateOrder = adminProcedure
       paymentNote = `Payment manually recorded (${payment.payment_method}): ${payment.justification}`;
     }
 
+    const grandTotal = total + fee;
     const orderNumber = generateOrderNumber();
 
     const runOrderTransaction = async (tx: Prisma.TransactionClient) => {
@@ -1549,7 +1614,8 @@ export const adminCreateOrder = adminProcedure
           shipping_cost,
           tax: 0,
           discount,
-          total,
+          processing_fee: fee,
+          total: grandTotal,
           payment_status: "COMPLETED",
           status: "PENDING",
           items: {
@@ -1666,6 +1732,7 @@ export const adminCreateOrder = adminProcedure
         shipping: Number(order.shipping_cost),
         tax: Number(order.tax),
         discount: Number(order.discount),
+        processingFee: Number(order.processing_fee),
         total: Number(order.total),
         shippingAddress: order.shipping_address
           ? {

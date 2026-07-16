@@ -11,8 +11,12 @@ export async function getRevenueTotal(
 ): Promise<number> {
   const result = await prisma.order.aggregate({
     where: { ...extra, ...REVENUE_WHERE },
-    _sum: { total: true },
+    // processing_fee is a Paystack pass-through the merchant never keeps —
+    // exclude it so "revenue" doesn't count what was charged for the gateway.
+    _sum: { total: true, processing_fee: true },
   });
 
-  return Number(result._sum.total ?? 0);
+  return (
+    Number(result._sum.total ?? 0) - Number(result._sum.processing_fee ?? 0)
+  );
 }

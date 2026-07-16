@@ -235,7 +235,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   const [searchQuery, setSearchQuery] = useState(searchParam || "");
   const { data: bannerPromo } = trpc.getBannerPromotion.useQuery();
   const bannerText = bannerPromo
-    ? `${bannerPromo.name}${bannerPromo.description ? ` - ${bannerPromo.description}` : ""} - USE CODE ${bannerPromo.code}`
+    ? `${bannerPromo.name}${bannerPromo.description ? ` - ${bannerPromo.description}` : ""}${bannerPromo.code ? ` - USE CODE ${bannerPromo.code}` : ""}`
     : "FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE";
 
   // Sync search input with URL search param

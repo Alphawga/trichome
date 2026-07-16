@@ -47,7 +47,7 @@ export async function getDailyAnalytics(
         ...REVENUE_WHERE,
         created_at: { gte: startDate, lte: endDate },
       },
-      select: { created_at: true, total: true },
+      select: { created_at: true, total: true, processing_fee: true },
     }),
   ]);
 
@@ -73,7 +73,8 @@ export async function getDailyAnalytics(
     const key = dayKey(order.created_at);
     const day = ensureDay(key, order.created_at);
     day.orders += 1;
-    day.revenue += Number(order.total);
+    // processing_fee is a Paystack pass-through, not merchant revenue.
+    day.revenue += Number(order.total) - Number(order.processing_fee);
   }
 
   return Array.from(byDay.entries())

@@ -14,6 +14,7 @@ import { usePaymentHandler } from "@/components/checkout/PaymentHandler";
 import { SavedAddressesSelector } from "@/components/checkout/SavedAddressesSelector";
 import { OrderSummary } from "@/components/orders/OrderSummary";
 import { NIGERIAN_STATES } from "@/lib/constants/nigerian-states";
+import { calculatePaystackFee } from "@/lib/payments/calculate-paystack-fee";
 import { getLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
 import { useAuth } from "../../contexts/auth-context";
@@ -161,11 +162,39 @@ function CheckoutPageContent() {
     [cartItems],
   );
 
-  // Validate promo code query
+  // Validate promo code query — must send the same userId the server will
+  // use to re-validate at order-creation time (usage_limit_per_user,
+  // NEW_CUSTOMERS), or a promo can validate here and then fail the
+  // Paystack amount-match check after the customer has already been charged.
   const validatePromoCodeQuery = trpc.validatePromoCode.useQuery(
-    { code: promoCode, subtotal },
+    {
+      code: promoCode,
+      subtotal,
+      userId: isAuthenticated ? session?.user.id : undefined,
+    },
     { enabled: false, retry: false },
   );
+
+  // Automatically find and apply a codeless promotion, if one is eligible.
+  // A manually entered code always takes priority — see the `activePromo`
+  // derivation below.
+  const autoApplyPromotionQuery = trpc.getAutoApplyPromotion.useQuery(
+    { subtotal, userId: isAuthenticated ? session?.user.id : undefined },
+    { enabled: subtotal > 0 },
+  );
+
+  const activePromo = appliedPromoCode
+    ? { ...appliedPromoCode, isAutoApplied: false }
+    : autoApplyPromotionQuery.data
+      ? {
+          code: undefined,
+          promotionId: autoApplyPromotionQuery.data.promotion.id,
+          discount: autoApplyPromotionQuery.data.discountAmount,
+          isFreeShipping: autoApplyPromotionQuery.data.isFreeShipping,
+          isAutoApplied: true,
+          name: autoApplyPromotionQuery.data.promotion.name,
+        }
+      : null;
 
   const handleApplyPromoCode = async () => {
     if (!promoCode.trim()) {
@@ -308,12 +337,16 @@ function CheckoutPageContent() {
 
   const selectedRate = shippingRateQuery.data?.rates?.[0];
 
-  const shipping = appliedPromoCode?.isFreeShipping
+  const shipping = activePromo?.isFreeShipping
     ? 0
     : (selectedRate?.cost ?? 0);
   const tax = 0; // Tax removed for now (business decision, 2026-07-02)
-  const discount = appliedPromoCode?.discount || 0;
+  const discount = activePromo?.discount || 0;
   const total = subtotal + shipping + tax - discount;
+  // Paystack's transaction fee is passed through to the customer, itemized
+  // separately so the charged amount matches what the server will verify.
+  const fee = calculatePaystackFee(total);
+  const grandTotal = total + fee;
 
   // Mutation to save address
   const createAddressMutation = trpc.createAddress.useMutation({
@@ -347,11 +380,15 @@ function CheckoutPageContent() {
       subtotal,
       shipping,
       tax,
-      total,
+      discount,
+      total: grandTotal,
     },
     customerName: `${formData.first_name} ${formData.last_name}`,
     customerEmail: formData.email,
-    promoCode: appliedPromoCode?.code,
+    promoCode: activePromo?.code,
+    promotionId: activePromo?.isAutoApplied
+      ? activePromo.promotionId
+      : undefined,
   });
 
   const guestPaymentHandler = useGuestPaymentHandler({
@@ -364,9 +401,13 @@ function CheckoutPageContent() {
       subtotal,
       shipping,
       tax,
-      total,
+      discount,
+      total: grandTotal,
     },
-    promoCode: appliedPromoCode?.code,
+    promoCode: activePromo?.code,
+    promotionId: activePromo?.isAutoApplied
+      ? activePromo.promotionId
+      : undefined,
   });
 
   const paymentHandler =
@@ -838,7 +879,8 @@ function CheckoutPageContent() {
                   shipping={shipping}
                   tax={tax}
                   discount={discount}
-                  total={total}
+                  fee={fee}
+                  total={grandTotal}
                   variant="checkout"
                   showItemDetails={true}
                   showActions={true}
@@ -875,6 +917,14 @@ function CheckoutPageContent() {
 
                       {/* Promo Code Section */}
                       <div className="mt-4">
+                        {activePromo?.isAutoApplied && (
+                          <p className="mb-2 text-xs text-trichomes-primary font-body">
+                            &quot;{activePromo.name}&quot; auto-applied
+                            {!activePromo.isFreeShipping &&
+                              ` — -₦${activePromo.discount.toLocaleString()}`}
+                            . Have a code? Entering one below will replace it.
+                          </p>
+                        )}
                         {!appliedPromoCode ? (
                           <div className="space-y-2">
                             <div className="flex gap-2">

@@ -6,6 +6,10 @@ import {
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import type { prisma } from "@/lib/prisma";
+import {
+  calculatePromotionDiscount,
+  checkPromotionEligibility,
+} from "@/lib/promotions/promotion-eligibility";
 import { adminProcedure, publicProcedure, staffProcedure } from "../trpc";
 
 // Activates SCHEDULED promotions past their start date and expires ACTIVE
@@ -144,7 +148,9 @@ export const createPromotion = adminProcedure
   .input(
     z.object({
       name: z.string().min(1, "Name is required"),
-      code: z.string().min(1, "Code is required").toUpperCase(),
+      // Optional — a promotion with no code auto-applies to every eligible
+      // cart at checkout instead of requiring a customer-typed code.
+      code: z.string().min(1).toUpperCase().optional(),
       description: z.string().optional(),
       type: z.nativeEnum(PromotionType),
       value: z.number().min(0),
@@ -160,16 +166,19 @@ export const createPromotion = adminProcedure
     }),
   )
   .mutation(async ({ input, ctx }) => {
-    // Check if code already exists
-    const existing = await ctx.prisma.promotion.findUnique({
-      where: { code: input.code },
-    });
-
-    if (existing) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "A promotion with this code already exists",
+    // Check if code already exists (only when a code was actually provided —
+    // codeless promotions auto-apply and don't need uniqueness checked)
+    if (input.code) {
+      const existing = await ctx.prisma.promotion.findUnique({
+        where: { code: input.code },
       });
+
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A promotion with this code already exists",
+        });
+      }
     }
 
     // Validate dates
@@ -212,7 +221,11 @@ export const updatePromotion = adminProcedure
     z.object({
       id: z.string(),
       name: z.string().min(1).optional(),
-      code: z.string().min(1).toUpperCase().optional(),
+      // undefined = leave unchanged; null = explicitly clear back to
+      // codeless/auto-apply; non-empty string = set a new code.
+      code: z
+        .union([z.string().min(1).transform((v) => v.toUpperCase()), z.null()])
+        .optional(),
       description: z.string().optional(),
       type: z.nativeEnum(PromotionType).optional(),
       value: z.number().min(0).optional(),
@@ -355,7 +368,6 @@ export const validatePromoCode = publicProcedure
   )
   .query(async ({ input, ctx }) => {
     const { code, subtotal, userId } = input;
-    const now = new Date();
 
     // Find promotion by code
     const promotion = await ctx.prisma.promotion.findUnique({
@@ -369,92 +381,22 @@ export const validatePromoCode = publicProcedure
       });
     }
 
-    // Check if promotion is active
-    if (promotion.status !== "ACTIVE") {
+    const eligibility = await checkPromotionEligibility(ctx.prisma, promotion, {
+      subtotal,
+      userId,
+    });
+
+    if (!eligibility.eligible) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "This promo code is not currently active",
+        message: eligibility.reason,
       });
     }
 
-    // Check date validity
-    if (now < promotion.start_date || now > promotion.end_date) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "This promo code is not valid at this time",
-      });
-    }
-
-    // Check minimum order value
-    if (subtotal < Number(promotion.min_order_value)) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Minimum order value of ₦${Number(promotion.min_order_value).toLocaleString()} required`,
-      });
-    }
-
-    // Check usage limit
-    if (
-      promotion.usage_limit > 0 &&
-      promotion.usage_count >= promotion.usage_limit
-    ) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "This promo code has reached its usage limit",
-      });
-    }
-
-    // Check user-specific limits if user is provided
-    if (userId && promotion.usage_limit_per_user) {
-      const userUsageCount = await ctx.prisma.promotionUsage.count({
-        where: {
-          promotion_id: promotion.id,
-          user_id: userId,
-        },
-      });
-
-      if (userUsageCount >= promotion.usage_limit_per_user) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You have reached the usage limit for this promo code",
-        });
-      }
-    }
-
-    // Check target customers
-    if (promotion.target_customers === "NEW_CUSTOMERS" && userId) {
-      // Check if user has previous orders
-      const previousOrders = await ctx.prisma.order.count({
-        where: { user_id: userId },
-      });
-
-      if (previousOrders > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This promo code is only available for new customers",
-        });
-      }
-    }
-
-    // Calculate discount amount
-    let discountAmount = 0;
-    if (promotion.type === "PERCENTAGE") {
-      discountAmount = (subtotal * Number(promotion.value)) / 100;
-      if (promotion.max_discount) {
-        discountAmount = Math.min(
-          discountAmount,
-          Number(promotion.max_discount),
-        );
-      }
-    } else if (promotion.type === "FIXED_AMOUNT") {
-      discountAmount = Number(promotion.value);
-    } else if (promotion.type === "FREE_SHIPPING") {
-      // Free shipping discount will be applied separately
-      discountAmount = 0;
-    }
-
-    // Ensure discount doesn't exceed subtotal
-    discountAmount = Math.min(discountAmount, subtotal);
+    const { discountAmount, isFreeShipping } = calculatePromotionDiscount(
+      promotion,
+      subtotal,
+    );
 
     return {
       promotion: {
@@ -469,8 +411,64 @@ export const validatePromoCode = publicProcedure
           : null,
       },
       discountAmount,
-      isFreeShipping: promotion.type === "FREE_SHIPPING",
+      isFreeShipping,
     };
+  });
+
+// Find the best codeless "automatic" promotion for a cart, if any — used by
+// checkout to apply a discount with no code typed by the customer. Manual
+// code entry (validatePromoCode) always takes priority over this on the
+// client; this procedure only ever looks at codeless promotions.
+export const getAutoApplyPromotion = publicProcedure
+  .input(
+    z.object({
+      subtotal: z.number().min(0),
+      userId: z.string().optional(), // Optional for guest checkout
+    }),
+  )
+  .query(async ({ input, ctx }) => {
+    await syncPromotionStatuses(ctx.prisma);
+
+    const { subtotal, userId } = input;
+    const now = new Date();
+
+    const candidates = await ctx.prisma.promotion.findMany({
+      where: {
+        code: null,
+        status: "ACTIVE",
+        start_date: { lte: now },
+        end_date: { gte: now },
+        min_order_value: { lte: subtotal },
+      },
+      orderBy: { created_at: "desc" }, // newest wins, same tie-break as getBannerPromotion
+    });
+
+    for (const promotion of candidates) {
+      const eligibility = await checkPromotionEligibility(ctx.prisma, promotion, {
+        subtotal,
+        userId,
+      });
+
+      if (eligibility.eligible) {
+        const { discountAmount, isFreeShipping } = calculatePromotionDiscount(
+          promotion,
+          subtotal,
+        );
+
+        return {
+          promotion: {
+            id: promotion.id,
+            name: promotion.name,
+            description: promotion.description,
+            type: promotion.type,
+          },
+          discountAmount,
+          isFreeShipping,
+        };
+      }
+    }
+
+    return null;
   });
 
 // Get the promotion (if any) flagged to display on the site banner (public)

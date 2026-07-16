@@ -1,4 +1,20 @@
-import { summarizeDailyAnalytics, type DailyAnalytics } from "./aggregate";
+const findManyMock = jest.fn();
+const visitorFindManyMock = jest.fn();
+
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    order: { findMany: (...args: unknown[]) => findManyMock(...args) },
+    visitorDailyStat: {
+      findMany: (...args: unknown[]) => visitorFindManyMock(...args),
+    },
+  },
+}));
+
+import {
+  getDailyAnalytics,
+  summarizeDailyAnalytics,
+  type DailyAnalytics,
+} from "./aggregate";
 
 function day(overrides: Partial<DailyAnalytics>): DailyAnalytics {
   return {
@@ -57,5 +73,53 @@ describe("summarizeDailyAnalytics", () => {
       avgConversionRate: 0,
       avgBounceRate: 0,
     });
+  });
+});
+
+describe("getDailyAnalytics", () => {
+  beforeEach(() => {
+    findManyMock.mockReset();
+    visitorFindManyMock.mockReset();
+    visitorFindManyMock.mockResolvedValue([]);
+  });
+
+  it("excludes the Paystack processing fee from daily revenue", async () => {
+    findManyMock.mockResolvedValue([
+      {
+        created_at: new Date("2026-01-01T10:00:00Z"),
+        total: 15325,
+        processing_fee: 325,
+      },
+    ]);
+
+    const [day] = await getDailyAnalytics(
+      new Date("2026-01-01"),
+      new Date("2026-01-01"),
+    );
+
+    expect(day.revenue).toBe(15000);
+  });
+
+  it("sums revenue net of fees across multiple orders on the same day", async () => {
+    findManyMock.mockResolvedValue([
+      {
+        created_at: new Date("2026-01-01T09:00:00Z"),
+        total: 15325,
+        processing_fee: 325,
+      },
+      {
+        created_at: new Date("2026-01-01T11:00:00Z"),
+        total: 5000,
+        processing_fee: 0,
+      },
+    ]);
+
+    const [day] = await getDailyAnalytics(
+      new Date("2026-01-01"),
+      new Date("2026-01-01"),
+    );
+
+    expect(day.revenue).toBe(20000);
+    expect(day.orders).toBe(2);
   });
 });

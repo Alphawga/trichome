@@ -254,16 +254,21 @@ export default function AdminPromotionsPage() {
       },
       {
         header: "Code",
-        cell: (promotion) => (
-          <button
-            type="button"
-            onClick={() => handleCopyCode(promotion.code)}
-            className="bg-gray-100 px-2 py-1 rounded text-sm font-mono hover:bg-gray-200 transition-colors cursor-pointer"
-            title="Click to copy"
-          >
-            {promotion.code}
-          </button>
-        ),
+        cell: (promotion) =>
+          promotion.code ? (
+            <button
+              type="button"
+              onClick={() => handleCopyCode(promotion.code as string)}
+              className="bg-gray-100 px-2 py-1 rounded text-sm font-mono hover:bg-gray-200 transition-colors cursor-pointer"
+              title="Click to copy"
+            >
+              {promotion.code}
+            </button>
+          ) : (
+            <span className="bg-gray-50 px-2 py-1 rounded text-sm text-gray-500 border border-gray-200">
+              Automatic
+            </span>
+          ),
       },
       {
         header: "Discount",
@@ -393,13 +398,15 @@ export default function AdminPromotionsPage() {
                 <EditIcon className="w-4 h-4 mr-2" />
                 Edit Promotion
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyCode(promotion.code)}
-                className="cursor-pointer"
-              >
-                <CopyIcon className="w-4 h-4 mr-2" />
-                Copy Code
-              </DropdownMenuItem>
+              {promotion.code && (
+                <DropdownMenuItem
+                  onClick={() => handleCopyCode(promotion.code as string)}
+                  className="cursor-pointer"
+                >
+                  <CopyIcon className="w-4 h-4 mr-2" />
+                  Copy Code
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => handleToggleStatus(promotion.id)}

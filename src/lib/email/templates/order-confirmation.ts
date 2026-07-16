@@ -22,6 +22,7 @@ export interface OrderConfirmationEmailData {
   shipping: number;
   tax: number;
   discount: number;
+  processingFee: number;
   total: number;
   shippingAddress: {
     first_name: string;
@@ -49,6 +50,7 @@ export function generateOrderConfirmationEmail(
     shipping,
     tax,
     discount,
+    processingFee,
     total,
     shippingAddress,
     trackingNumber,
@@ -125,6 +127,16 @@ export function generateOrderConfirmationEmail(
         `
             : ""
         }
+        ${
+          processingFee > 0
+            ? `
+        <tr>
+          <td style="padding: 5px 0;">Payment processing fee:</td>
+          <td style="text-align: right; padding: 5px 0;">₦${processingFee.toLocaleString()}</td>
+        </tr>
+        `
+            : ""
+        }
         <tr style="border-top: 2px solid #e0e0e0; font-weight: bold; font-size: 18px;">
           <td style="padding: 10px 0;">Total:</td>
           <td style="text-align: right; padding: 10px 0;">₦${total.toLocaleString()}</td>
@@ -188,7 +200,7 @@ ${itemsText}
 Order Summary:
 Subtotal: ₦${subtotal.toLocaleString()}
 ${discount > 0 ? `Discount: -₦${discount.toLocaleString()}\n` : ""}Shipping: ₦${shipping.toLocaleString()}
-${tax > 0 ? `Tax: ₦${tax.toLocaleString()}\n` : ""}Total: ₦${total.toLocaleString()}
+${tax > 0 ? `Tax: ₦${tax.toLocaleString()}\n` : ""}${processingFee > 0 ? `Payment processing fee: ₦${processingFee.toLocaleString()}\n` : ""}Total: ₦${total.toLocaleString()}
 
 Shipping Address:
 ${shippingAddress.first_name} ${shippingAddress.last_name}

@@ -43,6 +43,7 @@ interface PaymentHandlerProps {
   customerName: string;
   customerEmail: string;
   promoCode?: string;
+  promotionId?: string;
   onPaymentOpen?: () => void;
   onPaymentClose?: () => void;
   showStatus?: boolean;
@@ -240,6 +241,7 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
               currency: props.currency || "NGN",
               notes: props.notes,
               promo_code: props.promoCode,
+              promotion_id: props.promotionId,
             });
           } else {
             setPaymentStatus("error");

@@ -124,6 +124,7 @@ export default function OrderConfirmationClient() {
   const shipping = Number(order.shipping_cost);
   const tax = Number(order.tax);
   const discount = Number(order.discount);
+  const fee = Number(order.processing_fee);
   const total = Number(order.total);
 
   return (
@@ -233,6 +234,7 @@ export default function OrderConfirmationClient() {
               shipping={shipping}
               tax={tax}
               discount={discount}
+              fee={fee}
               total={total}
               variant="confirmation"
               showItemDetails={false}

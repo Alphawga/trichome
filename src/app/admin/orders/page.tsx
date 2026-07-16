@@ -66,6 +66,7 @@ interface AdminOrder {
   tax: number;
   shippingCost: number;
   discount: number;
+  processingFee: number;
   total: number;
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded";
@@ -132,6 +133,7 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
     tax: Number(order.tax),
     shippingCost: Number(order.shipping_cost),
     discount: Number(order.discount),
+    processingFee: Number(order.processing_fee),
     total: Number(order.total),
     status: mapOrderStatus(order.status),
     paymentStatus: mapPaymentStatus(order.payment_status),

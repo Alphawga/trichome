@@ -48,7 +48,7 @@ interface PromotionFormSheetProps {
 
 interface PromotionFormData {
   name: string;
-  code: string;
+  code?: string;
   description?: string;
   type: PromotionType;
   value: number;
@@ -124,7 +124,7 @@ export function PromotionFormSheet({
     if (promotion) {
       reset({
         name: promotion.name,
-        code: promotion.code,
+        code: promotion.code || "",
         description: promotion.description || "",
         type: promotion.type,
         value: Number(promotion.value),
@@ -173,13 +173,21 @@ export function PromotionFormSheet({
   }, [promotion, template, reset]);
 
   const onSubmit = async (data: PromotionFormData) => {
+    const trimmedCode = data.code?.trim();
+
     if (isEdit && promotion) {
       await updateMutation.mutateAsync({
         id: promotion.id,
         ...data,
+        // Blank input means "make this codeless/auto-apply" — explicitly
+        // clear it (null) rather than leaving the existing code unchanged.
+        code: trimmedCode || null,
       });
     } else {
-      await createMutation.mutateAsync(data);
+      await createMutation.mutateAsync({
+        ...data,
+        code: trimmedCode || undefined,
+      });
     }
   };
 
@@ -230,12 +238,11 @@ export function PromotionFormSheet({
             {/* Code */}
             <div>
               <Label htmlFor="code" className="text-gray-700">
-                Promotion Code <span className="text-red-500">*</span>
+                Promotion Code
               </Label>
               <Input
                 id="code"
                 {...register("code", {
-                  required: "Code is required",
                   pattern: {
                     value: /^[A-Z0-9]+$/,
                     message: "Code must be uppercase letters and numbers only",
@@ -251,7 +258,8 @@ export function PromotionFormSheet({
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-1">
-                Uppercase letters and numbers only
+                Uppercase letters and numbers only. Leave blank to auto-apply
+                this promotion to every eligible customer without a code.
               </p>
             </div>
 
