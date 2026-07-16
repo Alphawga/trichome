@@ -26,8 +26,16 @@ Paystack amounts are always in **kobo** (amount × 100) on the wire — verify r
 
 The webhook's duplicate-delivery guard is a simple status check (`payment.status === "COMPLETED" && status === "success"`), not an event-id ledger. A retried webhook after a transient failure can still double-write `OrderStatusHistory`. Known limitation, not yet fixed — see `docs/changelog/2026-07-02-paystack-payment-verification.md`.
 
-## Current gaps (as of 2026-07-02)
+## Processing fee (added 2026-07-15) — the charged amount is fee-inclusive
+
+Paystack's transaction fee is passed through to the customer, not absorbed. `calculatePaystackFee(amount)` (`src/lib/payments/calculate-paystack-fee.ts`) is a pure function — 1.5% + ₦100 flat, the ₦100 waived below ₦2,500, capped at ₦2,000 total — used identically client- and server-side (safe to import client-side, no secrets). `Order.processing_fee` (`Decimal`, default `0`) persists it; `Order.total`/`Payment.amount` are now **fee-inclusive** (`subtotal + shipping + tax - discount + fee`), a semantic change from before this date. It's recomputed server-side (never trusted from the client) at every real Paystack-verification site: `createOrderWithPayment`, `createGuestOrderWithPayment`, and `adminCreateOrder`'s `payment.mode === "verify"` branch only (the manual/offline branch has no gateway involved, so `processing_fee: 0` there). `OrderSummary.tsx` and every order-detail view (`OrderConfirmationClient.tsx`, `order-history/[id]/page.tsx`, `admin/orders/OrderViewSheet.tsx`, `admin/orders/[id]/page.tsx`, `CreateOrderSheet.tsx`) show a "Payment processing fee" line, itemized (not folded silently into Total).
+
+## Testing checkout procedures — the rate limiter bypasses `ctx.prisma`
+
+`checkoutRateLimited`/`guestCheckoutRateLimited` (`src/server/trpc.ts`) call `checkRateLimit()` (`src/lib/rate-limit.ts`), which uses a **module-level `prisma` singleton import**, not `ctx.prisma` — a mocked `ctx.prisma` in a test does **not** intercept it. Any test exercising `createOrderWithPayment`/`createGuestOrderWithPayment` must `jest.mock("@/lib/rate-limit", () => ({ checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }) }))` or the test silently hits the real (often production) database. Same applies to `getShippingRates` (`src/lib/shipping/get-shipping-rate.ts`) if you don't want shipping-cost assertions coupled to the real state-rate table — mock it to a fixed `[{ cost: 0 }]` and let `get-shipping-rate.test.ts` own that logic's own coverage.
+
+## Current gaps (as of 2026-07-15)
 
 - No `.env.example`-documented onboarding beyond the two Paystack vars (now added).
 - Testing/planning docs (`TESTING_PLAN.md`, `COMPREHENSIVE_TESTING_PLAN.md`, `TODO_IMPLEMENTATION_GUIDE.md`) still reference Monnify exclusively — not updated for Paystack.
-- No automated test coverage for any of this (no test infra in the repo yet).
+- Test coverage now exists (`jest.config.js`, `src/server/modules/orders.test.ts`, `src/lib/payments/calculate-paystack-fee.test.ts`) — CLAUDE.md's "no test files" note is stale, don't trust it.

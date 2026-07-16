@@ -148,7 +148,8 @@ export const sendTestEmail = adminProcedure
             shipping: 1500,
             tax: 1312,
             discount: 0,
-            total: 20312,
+            processingFee: 388,
+            total: 20700,
             shippingAddress: {
               first_name: "Test",
               last_name: "Customer",

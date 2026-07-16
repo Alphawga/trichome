@@ -27,6 +27,8 @@ interface OrderSummaryProps {
   tax: number;
   /** Discount amount (optional) */
   discount?: number;
+  /** Paystack processing fee, passed through to the customer (optional) */
+  fee?: number;
   /** Total amount */
   total: number;
   /** Show action buttons (checkout button, etc.) */
@@ -51,6 +53,7 @@ export function OrderSummary({
   shippingNote,
   tax,
   discount = 0,
+  fee = 0,
   total,
   showActions = false,
   variant = "checkout",
@@ -150,6 +153,15 @@ export function OrderSummary({
             <span className="font-semibold">
               -₦
               {discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        )}
+
+        {fee > 0 && (
+          <div className="flex justify-between text-[14px] sm:text-[15px]">
+            <span>Payment processing fee</span>
+            <span className="font-semibold text-trichomes-forest">
+              ₦{fee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
           </div>
         )}

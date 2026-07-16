@@ -324,6 +324,14 @@ export default function OrderViewPage() {
                   </span>
                 </p>
               )}
+              {Number(order.processing_fee) > 0 && (
+                <p className="text-gray-600">
+                  Payment processing fee:{" "}
+                  <span className="font-medium text-black">
+                    ₦{Number(order.processing_fee).toLocaleString()}
+                  </span>
+                </p>
+              )}
               <p className="font-bold text-lg mt-2">
                 Total:{" "}
                 <span className="text-black">

@@ -355,6 +355,17 @@ export default function OrderDetailsPage() {
                     </span>
                   </div>
                 )}
+                {order.processing_fee && Number(order.processing_fee) > 0 && (
+                  <div className="flex justify-between text-[14px] sm:text-[15px] font-body">
+                    <span className="text-gray-600">Payment processing fee</span>
+                    <span className="text-gray-900 font-semibold">
+                      ₦
+                      {Number(order.processing_fee).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between text-[16px] sm:text-[18px] font-heading font-semibold mb-6">
                 <span className="text-gray-900">Total</span>

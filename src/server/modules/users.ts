@@ -433,6 +433,7 @@ export const getCustomers = staffProcedure
             },
             select: {
               total: true,
+              processing_fee: true,
               created_at: true,
             },
           },
@@ -455,8 +456,11 @@ export const getCustomers = staffProcedure
 
     // Calculate totals for each customer
     const customersWithStats = customers.map((customer) => {
+      // processing_fee is a Paystack pass-through, not spend on products —
+      // exclude it so loyalty points aren't earned on the gateway fee.
       const totalSpent = customer.orders.reduce(
-        (sum, order) => sum + Number(order.total),
+        (sum, order) =>
+          sum + Number(order.total) - Number(order.processing_fee),
         0,
       );
       const lastOrder =

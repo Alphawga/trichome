@@ -51,6 +51,7 @@ interface CreateOrderWithPaymentInput {
   currency?: Currency;
   notes?: string;
   promo_code?: string;
+  promotion_id?: string;
   onOrderCreated?: () => void | Promise<void>;
 }
 
@@ -120,6 +121,7 @@ export function useOrderCreation() {
         currency: input.currency || "NGN",
         notes: input.notes,
         promo_code: input.promo_code,
+        promotion_id: input.promotion_id,
       });
     },
     [createOrderMutation],

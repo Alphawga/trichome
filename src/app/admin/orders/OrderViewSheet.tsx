@@ -32,6 +32,7 @@ interface AdminOrder {
   tax: number;
   shippingCost: number;
   discount: number;
+  processingFee: number;
   total: number;
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded";
@@ -503,6 +504,14 @@ export function OrderViewSheet({
                     ₦{order.shippingCost.toLocaleString()}
                   </span>
                 </div>
+                {order.processingFee > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payment processing fee</span>
+                    <span className="font-medium">
+                      ₦{order.processingFee.toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="border-t pt-2 mt-2 flex justify-between">
                   <span className="text-lg font-semibold">Total</span>
                   <span className="text-lg font-bold text-[#38761d]">

@@ -12,6 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ServerSearchCombobox } from "@/components/ui/server-search-combobox";
+import { calculatePaystackFee } from "@/lib/payments/calculate-paystack-fee";
 import { trpc } from "@/utils/trpc";
 
 interface CreateOrderSheetProps {
@@ -313,6 +314,10 @@ export function CreateOrderSheet({
     0,
   );
   const total = subtotal + shippingCost - discount;
+  // The Paystack fee only applies when verifying a real transaction — manual
+  // /offline payments have no gateway involved, matching adminCreateOrder.
+  const fee = paymentMode === "verify" ? calculatePaystackFee(total) : 0;
+  const grandTotal = total + fee;
 
   const handleSubmit = () => {
     if (validItems.length === 0) {
@@ -573,9 +578,15 @@ export function CreateOrderSheet({
             <span className="text-gray-600">Subtotal</span>
             <span className="text-gray-900">₦{subtotal.toLocaleString()}</span>
           </div>
+          {fee > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Payment processing fee</span>
+              <span className="text-gray-900">₦{fee.toLocaleString()}</span>
+            </div>
+          )}
           <div className="flex justify-between font-medium border-t pt-3">
             <span>Total</span>
-            <span>₦{total.toLocaleString()}</span>
+            <span>₦{grandTotal.toLocaleString()}</span>
           </div>
 
           {/* Payment */}
@@ -627,7 +638,8 @@ export function CreateOrderSheet({
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Verified server-side against Paystack; the paid amount must
-                  match the order total above.
+                  match the order total above, which includes the ₦
+                  {fee.toLocaleString()} Paystack processing fee.
                 </p>
               </div>
             ) : (
@@ -689,8 +701,8 @@ export function CreateOrderSheet({
                   />
                 </div>
                 <p className="text-xs text-gray-500">
-                  Amount charged: ₦{total.toLocaleString()} (matches order
-                  total)
+                  Amount charged: ₦{grandTotal.toLocaleString()} (matches
+                  order total)
                 </p>
               </div>
             )}

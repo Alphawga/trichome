@@ -90,9 +90,15 @@ export function PromotionViewSheet({
                 <h3 className="text-2xl font-bold text-gray-900">
                   {promotion.name}
                 </h3>
-                <code className="inline-block mt-2 bg-white px-3 py-1.5 rounded text-lg font-mono border border-gray-300">
-                  {promotion.code}
-                </code>
+                {promotion.code ? (
+                  <code className="inline-block mt-2 bg-white px-3 py-1.5 rounded text-lg font-mono border border-gray-300">
+                    {promotion.code}
+                  </code>
+                ) : (
+                  <span className="inline-block mt-2 bg-white px-3 py-1.5 rounded text-sm font-medium border border-gray-300 text-gray-600">
+                    Automatic — no code required
+                  </span>
+                )}
               </div>
               <span
                 className={`px-3 py-1.5 text-sm font-semibold rounded-full ${statusColors[promotion.status]}`}
