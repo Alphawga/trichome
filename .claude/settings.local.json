@@ -29,7 +29,8 @@
       "Bash(grep -n 'ctx.prisma.$transaction\\\\|middleware' /Users/alpha/trichome/src/server/trpc.ts)",
       "Bash(npx biome *)",
       "Bash(git -C /Users/alpha/trichome diff --stat)",
-      "Bash(git -C /Users/alpha/trichome log --oneline -5)"
+      "Bash(git -C /Users/alpha/trichome log --oneline -5)",
+      "Bash(git log *)"
     ],
     "deny": [],
     "ask": []

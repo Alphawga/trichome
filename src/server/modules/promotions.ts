@@ -439,6 +439,6 @@ export const getPromotionStats = staffProcedure.query(async ({ ctx }) => {
 });
 
 // Public, storefront-facing promotion procedures (validatePromoCode,
-// getAutoApplyPromotions, getActiveProductTagPromotions, getBannerPromotion)
+// getAutoApplyPromotions, getActiveProductTagPromotions, getBannerPromotions)
 // live in ./promotions-storefront.ts — split out to stay under this repo's
 // ~600-line file convention. Both files are spread into appRouter.

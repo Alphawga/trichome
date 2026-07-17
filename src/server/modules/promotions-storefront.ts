@@ -158,13 +158,13 @@ export const getActiveProductTagPromotions = publicProcedure
     return eligible;
   });
 
-// Get the promotion (if any) flagged to display on the site banner (public)
-export const getBannerPromotion = publicProcedure.query(async ({ ctx }) => {
+// Get all promotions flagged to display on the site banner (public)
+export const getBannerPromotions = publicProcedure.query(async ({ ctx }) => {
   await syncPromotionStatuses(ctx.prisma);
 
   const now = new Date();
 
-  const promotion = await ctx.prisma.promotion.findFirst({
+  const promotions = await ctx.prisma.promotion.findMany({
     where: {
       show_on_banner: true,
       status: "ACTIVE",
@@ -174,13 +174,10 @@ export const getBannerPromotion = publicProcedure.query(async ({ ctx }) => {
     orderBy: { created_at: "desc" },
   });
 
-  if (!promotion) {
-    return null;
-  }
-
-  return {
+  return promotions.map((promotion) => ({
+    id: promotion.id,
     name: promotion.name,
     description: promotion.description,
     code: promotion.code,
-  };
+  }));
 });
