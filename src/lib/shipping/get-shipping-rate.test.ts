@@ -41,34 +41,16 @@ describe("getShippingRates (static fallback, no TERMINAL_SECRET_KEY)", () => {
     if (originalKey) process.env.TERMINAL_SECRET_KEY = originalKey;
   });
 
-  it("returns free shipping for Akure orders at or above ₦30,000", async () => {
+  it("charges the normal Ondo state rate for Akure orders regardless of subtotal", async () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Ondo", city: "Akure" },
-      subtotal: 30000,
-    });
-    expect(rates[0].cost).toBe(0);
-  });
-
-  it("matches Akure case-insensitively and trimmed", async () => {
-    const rates = await getShippingRates({
-      ...baseInput,
-      destination: { state: "Ondo", city: " AKURE " },
-      subtotal: 30000,
-    });
-    expect(rates[0].cost).toBe(0);
-  });
-
-  it("does not give free shipping to Akure orders below ₦30,000", async () => {
-    const rates = await getShippingRates({
-      ...baseInput,
-      destination: { state: "Ondo", city: "Akure" },
-      subtotal: 29999,
+      subtotal: 100000,
     });
     expect(rates[0].cost).toBe(4500);
   });
 
-  it("no longer gives free shipping for large non-Akure orders", async () => {
+  it("no longer gives free shipping for large orders", async () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Lagos" },

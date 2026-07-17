@@ -22,7 +22,6 @@ interface GuestPaymentHandlerProps {
   currency?: Currency;
   notes?: string;
   promoCode?: string;
-  promotionId?: string;
 }
 
 function loadPaystackScript(): Promise<void> {
@@ -102,7 +101,6 @@ export function useGuestPaymentHandler(props: GuestPaymentHandlerProps) {
               currency: props.currency || "NGN",
               notes: props.notes,
               promo_code: props.promoCode,
-              promotion_id: props.promotionId,
             });
           } else {
             setPaymentStatus("error");

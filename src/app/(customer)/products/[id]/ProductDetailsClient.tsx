@@ -17,6 +17,7 @@ import { addToLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
 import { useCompare } from "@/app/contexts/compare-context";
 import { CompareIcon } from "@/components/ui/icons";
+import { calculateProductTagDiscount } from "@/lib/promotions/product-tag-discount";
 
 type ProductWithRelations = Product & {
   category: Pick<Category, "id" | "name" | "slug">;
@@ -43,6 +44,9 @@ export function ProductDetailsClient() {
     isLoading,
     error,
   } = trpc.getProductById.useQuery({ id: String(id) }, { enabled: !!id });
+  const { data: tagPromotions } = trpc.getActiveProductTagPromotions.useQuery(
+    {},
+  );
 
   const [quantity, setQuantity] = useState(1);
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -271,24 +275,46 @@ export function ProductDetailsClient() {
                 {product?.description}
               </p>
 
-              <div className="flex gap-3 items-baseline mb-6">
-                <p className="text-[26px] sm:text-[30px] font-bold text-gray-900">
-                  ₦
-                  {Number(product?.price || 0).toLocaleString("en-NG", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-                {product?.compare_price && (
-                  <p className="text-[16px] sm:text-[18px] font-semibold text-gray-400 line-through">
-                    ₦
-                    {Number(product.compare_price).toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                )}
-              </div>
+              {(() => {
+                const basePrice = Number(product?.price || 0);
+                const tagDiscount = calculateProductTagDiscount(
+                  tagPromotions ?? [],
+                  basePrice,
+                );
+                const displayPrice =
+                  tagDiscount > 0 ? basePrice - tagDiscount : basePrice;
+
+                return (
+                  <div className="flex gap-3 items-baseline mb-6">
+                    <p className="text-[26px] sm:text-[30px] font-bold text-gray-900">
+                      ₦
+                      {displayPrice.toLocaleString("en-NG", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                    {tagDiscount > 0 ? (
+                      <p className="text-[16px] sm:text-[18px] font-semibold text-gray-400 line-through">
+                        ₦
+                        {basePrice.toLocaleString("en-NG", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    ) : (
+                      product?.compare_price && (
+                        <p className="text-[16px] sm:text-[18px] font-semibold text-gray-400 line-through">
+                          ₦
+                          {Number(product.compare_price).toLocaleString("en-NG", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      )
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Stock Status */}
               <div className="mb-5">

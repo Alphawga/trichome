@@ -388,6 +388,9 @@ const PROMOTION = {
   usage_count: 0,
   usage_limit_per_user: null,
   show_on_banner: false,
+  applicable_state: null,
+  applicable_city: null,
+  display_location: "CHECKOUT",
   created_at: new Date(),
   updated_at: new Date(),
   created_by: null,
@@ -405,6 +408,12 @@ function buildCheckoutPrismaMock(
       ? null
       : { ...PROMOTION, ...overrides.promotion };
 
+  // Mirrors the real query: findMany (codeless candidates) only ever
+  // returns promotions with code === null; a coded promotion is only
+  // reachable via findUnique-by-code.
+  const codelessCandidates =
+    promotion && promotion.code === null ? [promotion] : [];
+
   const prisma = {
     product: {
       findMany: jest.fn().mockResolvedValue([product]),
@@ -415,6 +424,7 @@ function buildCheckoutPrismaMock(
       create: jest.fn().mockResolvedValue({ id: "addr-1" }),
     },
     promotion: {
+      findMany: jest.fn().mockResolvedValue(codelessCandidates),
       findUnique: jest.fn().mockResolvedValue(promotion),
       update: jest.fn().mockResolvedValue({}),
     },
@@ -513,14 +523,12 @@ describe("createOrderWithPayment", () => {
           discount: 54000,
           total: 6000,
         },
-        promotion_id: "promo-1",
       }),
     ).rejects.toThrow(/payment amount mismatch/i);
     expect(prisma.promotion.update).not.toHaveBeenCalled();
   });
 
-  it("applies an auto-resolved promotion (by id) and recomputes the discount server-side", async () => {
-    // promotion_id resolution only ever trusts codeless (auto-apply) promotions.
+  it("automatically stacks an eligible codeless promotion and recomputes the discount server-side", async () => {
     const { prisma } = buildCheckoutPrismaMock({ promotion: { code: null } });
     // subtotal 15000, 10% off = 1500 discount -> preFeeTotal 13500,
     // Paystack fee on 13500 = 13500*1.5%+100 = 302.5, total = 13802.5
@@ -536,12 +544,8 @@ describe("createOrderWithPayment", () => {
       address: baseAddress,
       items: [{ product_id: "prod-1", quantity: 1 }],
       totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 0, total: 15000 },
-      promotion_id: "promo-1",
     });
 
-    expect(prisma.promotion.findUnique).toHaveBeenCalledWith({
-      where: { id: "promo-1" },
-    });
     const createArgs = prisma.order.create.mock.calls[0][0];
     expect(createArgs.data.discount).toBe(1500);
     expect(createArgs.data.total).toBe(13802.5);
@@ -558,26 +562,25 @@ describe("createOrderWithPayment", () => {
     });
   });
 
-  it("rejects promotion_id for a coded promotion — id-based resolution only ever trusts codeless auto-apply promotions", async () => {
-    // A malicious/guessed promotion_id pointing at a real, coded (non-auto-apply)
-    // promotion must NOT be usable to skip typing its code.
+  it("does not auto-apply a coded promotion when no code is entered", async () => {
+    // Codeless-candidate lookup filters code === null at the query level —
+    // a coded promotion is never in the automatic stack without its code.
     const { prisma } = buildCheckoutPrismaMock({ promotion: { code: "SAVE10" } });
+    // No discount applied — 15000 naira + Paystack fee (15000*1.5%+100=325) = 15325
     verifyPaystackTransactionMock.mockResolvedValue({
       status: "success",
-      amount: 1500000, // no discount applied — 15000 naira, no fee waiver bypass either
+      amount: 1532500,
       reference: "ref-1",
     });
     const caller = appRouter.createCaller(buildContext(prisma));
 
-    await expect(
-      caller.createOrderWithPayment({
-        paymentResponse: basePaymentResponse,
-        address: baseAddress,
-        items: [{ product_id: "prod-1", quantity: 1 }],
-        totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 1500, total: 13500 },
-        promotion_id: "promo-1",
-      }),
-    ).rejects.toThrow(/payment amount mismatch/i);
+    await caller.createOrderWithPayment({
+      paymentResponse: basePaymentResponse,
+      address: baseAddress,
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 0, total: 15000 },
+    });
+
     expect(prisma.promotion.update).not.toHaveBeenCalled();
     expect(prisma.promotionUsage.create).not.toHaveBeenCalled();
   });

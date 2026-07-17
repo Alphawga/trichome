@@ -1,33 +1,14 @@
 import {
+  PromotionDisplayLocation,
   PromotionStatus,
   PromotionTarget,
   PromotionType,
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import type { prisma } from "@/lib/prisma";
-import {
-  calculatePromotionDiscount,
-  checkPromotionEligibility,
-} from "@/lib/promotions/promotion-eligibility";
-import { adminProcedure, publicProcedure, staffProcedure } from "../trpc";
-
-// Activates SCHEDULED promotions past their start date and expires ACTIVE
-// promotions past their end date; there is no cron in this app, so status is
-// self-healed lazily whenever promotions are read.
-async function syncPromotionStatuses(db: typeof prisma) {
-  const now = new Date();
-  await Promise.all([
-    db.promotion.updateMany({
-      where: { status: "SCHEDULED", start_date: { lte: now } },
-      data: { status: "ACTIVE" },
-    }),
-    db.promotion.updateMany({
-      where: { status: "ACTIVE", end_date: { lt: now } },
-      data: { status: "EXPIRED" },
-    }),
-  ]);
-}
+import { canDisplayOnProductTag } from "@/lib/promotions/promotion-display-rules";
+import { syncPromotionStatuses } from "@/lib/promotions/sync-promotion-statuses";
+import { adminProcedure, staffProcedure } from "../trpc";
 
 // Get all promotions (staff/admin only)
 export const getPromotions = staffProcedure
@@ -163,6 +144,11 @@ export const createPromotion = adminProcedure
       usage_limit: z.number().min(0).default(0),
       usage_limit_per_user: z.number().min(0).optional(),
       show_on_banner: z.boolean().default(false),
+      applicable_state: z.string().optional(),
+      applicable_city: z.string().optional(),
+      display_location: z
+        .nativeEnum(PromotionDisplayLocation)
+        .default("CHECKOUT"),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -192,6 +178,36 @@ export const createPromotion = adminProcedure
       });
     }
 
+    if (input.applicable_city && !input.applicable_state) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A city-scoped promotion also requires a state",
+      });
+    }
+
+    const wantsProductTag =
+      input.display_location === "PRODUCT_TAG" ||
+      input.display_location === "BOTH";
+
+    if (wantsProductTag && !canDisplayOnProductTag(input.type)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Only percentage or fixed-amount promotions can display on the product price tag",
+      });
+    }
+
+    if (wantsProductTag && input.applicable_state) {
+      // Product-tag display has no cart/destination context to check a
+      // location restriction against — a location-scoped promotion would
+      // silently never appear on any tag.
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "A location-restricted promotion can't display on the product price tag",
+      });
+    }
+
     const promotion = await ctx.prisma.promotion.create({
       data: {
         name: input.name,
@@ -208,6 +224,9 @@ export const createPromotion = adminProcedure
         usage_limit: input.usage_limit,
         usage_limit_per_user: input.usage_limit_per_user,
         show_on_banner: input.show_on_banner,
+        applicable_state: input.applicable_state,
+        applicable_city: input.applicable_city,
+        display_location: input.display_location,
         created_by: ctx.user.id,
       },
     });
@@ -238,6 +257,11 @@ export const updatePromotion = adminProcedure
       usage_limit: z.number().min(0).optional(),
       usage_limit_per_user: z.number().min(0).optional(),
       show_on_banner: z.boolean().optional(),
+      // undefined = leave unchanged; null = explicitly clear back to
+      // store-wide/no restriction; non-empty string = set.
+      applicable_state: z.union([z.string().min(1), z.null()]).optional(),
+      applicable_city: z.union([z.string().min(1), z.null()]).optional(),
+      display_location: z.nativeEnum(PromotionDisplayLocation).optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -270,6 +294,63 @@ export const updatePromotion = adminProcedure
           code: "BAD_REQUEST",
           message: "End date must be after start date",
         });
+      }
+    }
+
+    // Location/display-location validation needs the effective (post-update)
+    // values, so fetch the existing row whenever any of the involved fields
+    // are touched rather than assuming the partial update is self-contained.
+    if (
+      data.applicable_state !== undefined ||
+      data.applicable_city !== undefined ||
+      data.display_location !== undefined ||
+      data.type !== undefined
+    ) {
+      const existing = await ctx.prisma.promotion.findUnique({
+        where: { id },
+      });
+
+      if (existing) {
+        const effectiveState =
+          data.applicable_state !== undefined
+            ? data.applicable_state
+            : existing.applicable_state;
+        const effectiveCity =
+          data.applicable_city !== undefined
+            ? data.applicable_city
+            : existing.applicable_city;
+
+        if (effectiveCity && !effectiveState) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A city-scoped promotion also requires a state",
+          });
+        }
+
+        const effectiveType = data.type !== undefined ? data.type : existing.type;
+        const effectiveDisplayLocation =
+          data.display_location !== undefined
+            ? data.display_location
+            : existing.display_location;
+        const effectiveWantsProductTag =
+          effectiveDisplayLocation === "PRODUCT_TAG" ||
+          effectiveDisplayLocation === "BOTH";
+
+        if (effectiveWantsProductTag && !canDisplayOnProductTag(effectiveType)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Only percentage or fixed-amount promotions can display on the product price tag",
+          });
+        }
+
+        if (effectiveWantsProductTag && effectiveState) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "A location-restricted promotion can't display on the product price tag",
+          });
+        }
       }
     }
 
@@ -357,143 +438,7 @@ export const getPromotionStats = staffProcedure.query(async ({ ctx }) => {
   };
 });
 
-// Validate and get promotion by code (public)
-export const validatePromoCode = publicProcedure
-  .input(
-    z.object({
-      code: z.string().min(1).toUpperCase(),
-      subtotal: z.number().min(0),
-      userId: z.string().optional(), // Optional for guest checkout
-    }),
-  )
-  .query(async ({ input, ctx }) => {
-    const { code, subtotal, userId } = input;
-
-    // Find promotion by code
-    const promotion = await ctx.prisma.promotion.findUnique({
-      where: { code },
-    });
-
-    if (!promotion) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Invalid promo code",
-      });
-    }
-
-    const eligibility = await checkPromotionEligibility(ctx.prisma, promotion, {
-      subtotal,
-      userId,
-    });
-
-    if (!eligibility.eligible) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: eligibility.reason,
-      });
-    }
-
-    const { discountAmount, isFreeShipping } = calculatePromotionDiscount(
-      promotion,
-      subtotal,
-    );
-
-    return {
-      promotion: {
-        id: promotion.id,
-        code: promotion.code,
-        name: promotion.name,
-        description: promotion.description,
-        type: promotion.type,
-        value: Number(promotion.value),
-        max_discount: promotion.max_discount
-          ? Number(promotion.max_discount)
-          : null,
-      },
-      discountAmount,
-      isFreeShipping,
-    };
-  });
-
-// Find the best codeless "automatic" promotion for a cart, if any — used by
-// checkout to apply a discount with no code typed by the customer. Manual
-// code entry (validatePromoCode) always takes priority over this on the
-// client; this procedure only ever looks at codeless promotions.
-export const getAutoApplyPromotion = publicProcedure
-  .input(
-    z.object({
-      subtotal: z.number().min(0),
-      userId: z.string().optional(), // Optional for guest checkout
-    }),
-  )
-  .query(async ({ input, ctx }) => {
-    await syncPromotionStatuses(ctx.prisma);
-
-    const { subtotal, userId } = input;
-    const now = new Date();
-
-    const candidates = await ctx.prisma.promotion.findMany({
-      where: {
-        code: null,
-        status: "ACTIVE",
-        start_date: { lte: now },
-        end_date: { gte: now },
-        min_order_value: { lte: subtotal },
-      },
-      orderBy: { created_at: "desc" }, // newest wins, same tie-break as getBannerPromotion
-    });
-
-    for (const promotion of candidates) {
-      const eligibility = await checkPromotionEligibility(ctx.prisma, promotion, {
-        subtotal,
-        userId,
-      });
-
-      if (eligibility.eligible) {
-        const { discountAmount, isFreeShipping } = calculatePromotionDiscount(
-          promotion,
-          subtotal,
-        );
-
-        return {
-          promotion: {
-            id: promotion.id,
-            name: promotion.name,
-            description: promotion.description,
-            type: promotion.type,
-          },
-          discountAmount,
-          isFreeShipping,
-        };
-      }
-    }
-
-    return null;
-  });
-
-// Get the promotion (if any) flagged to display on the site banner (public)
-export const getBannerPromotion = publicProcedure.query(async ({ ctx }) => {
-  await syncPromotionStatuses(ctx.prisma);
-
-  const now = new Date();
-
-  const promotion = await ctx.prisma.promotion.findFirst({
-    where: {
-      show_on_banner: true,
-      status: "ACTIVE",
-      start_date: { lte: now },
-      end_date: { gte: now },
-    },
-    orderBy: { created_at: "desc" },
-  });
-
-  if (!promotion) {
-    return null;
-  }
-
-  return {
-    name: promotion.name,
-    description: promotion.description,
-    code: promotion.code,
-  };
-});
+// Public, storefront-facing promotion procedures (validatePromoCode,
+// getAutoApplyPromotions, getActiveProductTagPromotions, getBannerPromotions)
+// live in ./promotions-storefront.ts — split out to stay under this repo's
+// ~600-line file convention. Both files are spread into appRouter.

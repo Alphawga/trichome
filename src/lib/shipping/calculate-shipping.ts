@@ -33,11 +33,6 @@ export interface ShippingCalculationResult {
 }
 
 /**
- * Free shipping threshold for Akure orders, in NGN
- */
-const AKURE_FREE_SHIPPING_THRESHOLD = 30000; // ₦30,000
-
-/**
  * Base shipping costs by state (in NGN)
  * Lagos and Abuja have lower costs due to proximity to warehouses
  */
@@ -116,25 +111,7 @@ function lookupByNormalizedState<T>(
 export function calculateShipping(
   input: ShippingCalculationInput,
 ): ShippingCalculationResult {
-  const {
-    subtotal,
-    weight = 0,
-    state,
-    city,
-    country: _country = "Nigeria",
-  } = input;
-
-  // Free shipping for Akure orders above the Akure threshold
-  const isAkure = city?.trim().toLowerCase() === "akure";
-  if (isAkure && subtotal >= AKURE_FREE_SHIPPING_THRESHOLD) {
-    return {
-      cost: 0,
-      isFree: true,
-      estimatedDays:
-        (state && lookupByNormalizedState(DELIVERY_DAYS, state)) ||
-        DELIVERY_DAYS.default,
-    };
-  }
+  const { weight = 0, state, country: _country = "Nigeria" } = input;
 
   // Get base shipping cost for state
   const baseCost =

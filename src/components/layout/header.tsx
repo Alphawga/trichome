@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/contexts/auth-context";
 import { trpc } from "@/utils/trpc";
 import { SearchBar } from "../search/SearchBar";
@@ -233,10 +233,41 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   const searchParams = useSearchParams();
   const searchParam = searchParams.get("search");
   const [searchQuery, setSearchQuery] = useState(searchParam || "");
-  const { data: bannerPromo } = trpc.getBannerPromotion.useQuery();
-  const bannerText = bannerPromo
-    ? `${bannerPromo.name}${bannerPromo.description ? ` - ${bannerPromo.description}` : ""}${bannerPromo.code ? ` - USE CODE ${bannerPromo.code}` : ""}`
-    : "FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE";
+  const { data: bannerPromotions } = trpc.getBannerPromotions.useQuery();
+
+  const bannerItems: { key: string; content: React.ReactNode }[] = [
+    {
+      key: "tagline",
+      content: (
+        <span>
+          NATURAL BEAUTY, NATURALLY YOURS -{" "}
+          <Link
+            href="/products"
+            className="underline hover:text-[#3A643B] transition-colors"
+          >
+            SHOP NOW
+          </Link>
+        </span>
+      ),
+    },
+    ...(bannerPromotions ?? []).map((promo) => {
+      const text = `${promo.name}${promo.description ? ` - ${promo.description}` : ""}${promo.code ? ` - USE CODE ${promo.code}` : ""}`;
+      return {
+        key: promo.id,
+        content: (
+          <span>
+            {text}-{" "}
+            <Link
+              href="/products"
+              className="underline hover:text-[#3A643B] transition-colors"
+            >
+              LEARN MORE
+            </Link>
+          </span>
+        ),
+      };
+    }),
+  ];
 
   // Sync search input with URL search param
   useEffect(() => {
@@ -570,43 +601,45 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
     <header className="bg-[#FAFAF7] lg:sticky lg:top-0 z-50 shadow-sm">
       <div className="bg-[#FFEFE0] text-sm sm:text-sm text-[#000000] font-medium ">
         <div className="w-full px-4 sm:px-4 lg:px-8 py-3 sm:py-3">
-          {/* Desktop: Full announcement */}
-          <div className="hidden md:flex justify-center items-center">
-            <p className="uppercase tracking-wide text-center overflow-hidden whitespace-nowrap">
-              <span>
-                NATURAL BEAUTY, NATURALLY YOURS -{" "}
-                <Link
-                  href="/products"
-                  className="underline hover:text-[#3A643B] transition-colors"
-                >
-                  SHOP NOW
-                </Link>
-              </span>
-              <span className="mx-2">•</span>
-              <span>
-                {bannerText}-{" "}
-                <Link
-                  href="/products"
-                  className="underline hover:text-[#3A643B] transition-colors"
-                >
-                  LEARN MORE
-                </Link>
-              </span>
-            </p>
-          </div>
-
-          {/* Mobile: Simplified announcement */}
-          <div className="md:hidden text-center">
-            <p className="uppercase tracking-wide">
-              {bannerText}-{" "}
-              <Link
-                href="/products"
-                className="underline hover:text-[#3A643B] transition-colors"
+          {bannerItems.length > 1 ? (
+            <div className="overflow-hidden">
+              <div
+                className="flex w-max animate-marquee"
+                style={{
+                  animationDuration: `${Math.max(15, bannerItems.length * 6)}s`,
+                }}
               >
-                SHOP NOW
-              </Link>
-            </p>
-          </div>
+                {[
+                  { prefix: "a", hidden: false },
+                  { prefix: "dup", hidden: true },
+                ].map(({ prefix, hidden }) => (
+                  <p
+                    key={prefix}
+                    className="uppercase tracking-wide flex items-center shrink-0 pr-8"
+                    aria-hidden={hidden || undefined}
+                    inert={hidden}
+                  >
+                    {bannerItems.map((item, index) => (
+                      <Fragment key={`${prefix}-${item.key}`}>
+                        {index > 0 && (
+                          <span className="mx-2" aria-hidden="true">
+                            •
+                          </span>
+                        )}
+                        {item.content}
+                      </Fragment>
+                    ))}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center items-center text-center">
+              <p className="uppercase tracking-wide overflow-hidden whitespace-nowrap">
+                {bannerItems[0].content}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
