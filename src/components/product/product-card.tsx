@@ -6,6 +6,8 @@ import { useState } from "react";
 import { HeartIcon, MinusIcon, PlusIcon, CompareIcon } from "../ui/icons";
 import type { ProductWithRelations } from "./product-grid";
 import { useCompare } from "@/app/contexts/compare-context";
+import { calculateProductTagDiscount } from "@/lib/promotions/product-tag-discount";
+import { trpc } from "@/utils/trpc";
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -26,6 +28,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isInWishlist = wishlist.includes(product.id);
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const isCompared = isInCompare(product.id);
+
+  // Shared query key across every card on the page — React Query dedupes
+  // this to a single request regardless of how many cards render.
+  const { data: tagPromotions } = trpc.getActiveProductTagPromotions.useQuery(
+    {},
+  );
+  const price = Number(product.price);
+  const tagDiscount = calculateProductTagDiscount(tagPromotions ?? [], price);
+  const displayPrice = tagDiscount > 0 ? price - tagDiscount : price;
 
 
   const primaryImage =
@@ -125,20 +136,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-4">
           <p className="text-sm md:text-base font-body font-bold text-[#1E3024]">
-            ₦{Number(product.price).toLocaleString(undefined, {
+            ₦{displayPrice.toLocaleString(undefined, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
           </p>
-          {product.compare_price &&
-            Number(product.compare_price) > Number(product.price) && (
+          {tagDiscount > 0 ? (
+            <p className="text-[8px] md:text-xs font-body text-[#1E3024]/40 line-through decoration-[#1E3024]/40">
+              ₦{price.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          ) : (
+            product.compare_price &&
+            Number(product.compare_price) > price && (
               <p className="text-[8px] md:text-xs font-body text-[#1E3024]/40 line-through decoration-[#1E3024]/40">
                 ₦{Number(product.compare_price).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </p>
-            )}
+            )
+          )}
         </div>
 
         {/* Action Buttons */}

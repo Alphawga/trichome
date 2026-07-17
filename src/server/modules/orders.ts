@@ -10,7 +10,7 @@ import { z } from "zod";
 import { getRevenueTotal } from "@/lib/analytics/revenue";
 import { adminCreateOrderSchema } from "@/lib/dto";
 import { calculatePaystackFee } from "@/lib/payments/calculate-paystack-fee";
-import { resolveOrderPromotion } from "@/lib/promotions/promotion-eligibility";
+import { resolveOrderPromotions } from "@/lib/promotions/promotion-eligibility";
 import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
@@ -514,9 +514,6 @@ export const createOrderWithPayment = checkoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
-      // Set when the client resolved its discount via an auto-applied
-      // codeless promotion rather than a typed code.
-      promotion_id: z.string().optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -529,7 +526,6 @@ export const createOrderWithPayment = checkoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
-      promotion_id,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -577,18 +573,19 @@ export const createOrderWithPayment = checkoutRateLimited
       return sum + (product ? Number(product.price) * item.quantity : 0);
     }, 0);
 
-    // Resolve which promotion (if any) applies — a client-typed code, an
-    // auto-applied codeless promotion (identified by id), or none. Never
+    // Resolve every promotion that applies — all eligible codeless
+    // promotions stack together, plus a client-typed code on top. Never
     // trust totals.discount: eligibility and the discount amount are always
     // recomputed server-side, same standard as shipping/fee below.
-    const resolvedPromotion = await resolveOrderPromotion(ctx.prisma, {
-      promotionId: promotion_id,
+    const resolvedPromotions = await resolveOrderPromotions(ctx.prisma, {
       promoCode: _promo_code,
       subtotal: verifiedSubtotal,
       userId: ctx.user.id,
+      state: address.state,
+      city: address.city,
     });
-    const serverDiscount = resolvedPromotion?.discountAmount ?? 0;
-    const isFreeShipping = resolvedPromotion?.isFreeShipping ?? false;
+    const serverDiscount = resolvedPromotions.totalDiscountAmount;
+    const isFreeShipping = resolvedPromotions.isFreeShipping;
 
     // Recompute shipping server-side — never trust totals.shipping/totals.total
     const serverShippingCost = isFreeShipping
@@ -652,17 +649,17 @@ export const createOrderWithPayment = checkoutRateLimited
       });
     }
 
-    if (resolvedPromotion) {
+    for (const { promotion, discountAmount } of resolvedPromotions.promotions) {
       await ctx.prisma.promotion.update({
-        where: { id: resolvedPromotion.promotion.id },
+        where: { id: promotion.id },
         data: { usage_count: { increment: 1 } },
       });
 
       await ctx.prisma.promotionUsage.create({
         data: {
-          promotion_id: resolvedPromotion.promotion.id,
+          promotion_id: promotion.id,
           user_id: ctx.user.id,
-          discount_amount: serverDiscount,
+          discount_amount: discountAmount,
         },
       });
     }
@@ -916,9 +913,6 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
-      // Set when the client resolved its discount via an auto-applied
-      // codeless promotion rather than a typed code.
-      promotion_id: z.string().optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -931,7 +925,6 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
-      promotion_id,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -979,19 +972,20 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       return sum + (product ? Number(product.price) * item.quantity : 0);
     }, 0);
 
-    // Resolve which promotion (if any) applies — a client-typed code, an
-    // auto-applied codeless promotion (identified by id), or none. Never
+    // Resolve every promotion that applies — all eligible codeless
+    // promotions stack together, plus a client-typed code on top. Never
     // trust totals.discount: eligibility and the discount amount are always
     // recomputed server-side, same standard as shipping/fee below. This was
     // previously a gap — guest checkout accepted promo_code but never
     // validated it or recomputed the discount server-side at all.
-    const resolvedPromotion = await resolveOrderPromotion(ctx.prisma, {
-      promotionId: promotion_id,
+    const resolvedPromotions = await resolveOrderPromotions(ctx.prisma, {
       promoCode: _promo_code,
       subtotal: verifiedSubtotal,
+      state: address.state,
+      city: address.city,
     });
-    const serverDiscount = resolvedPromotion?.discountAmount ?? 0;
-    const isFreeShipping = resolvedPromotion?.isFreeShipping ?? false;
+    const serverDiscount = resolvedPromotions.totalDiscountAmount;
+    const isFreeShipping = resolvedPromotions.isFreeShipping;
 
     // Recompute shipping server-side — never trust totals.shipping/totals.total
     const serverShippingCost = isFreeShipping
@@ -1029,13 +1023,13 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
     // The Order model already stores address info in its own fields
     // shipping_address_id will be undefined for guest orders
 
-    if (resolvedPromotion) {
-      // PromotionUsage.user_id is non-nullable and guest orders have no
-      // user_id, so usage_limit_per_user can't be tracked for guests —
-      // deliberate limitation, not an oversight. The global usage_limit
-      // still applies via the increment below.
+    // PromotionUsage.user_id is non-nullable and guest orders have no
+    // user_id, so usage_limit_per_user can't be tracked for guests —
+    // deliberate limitation, not an oversight. The global usage_limit
+    // still applies via the increment below, once per applied promotion.
+    for (const { promotion } of resolvedPromotions.promotions) {
       await ctx.prisma.promotion.update({
-        where: { id: resolvedPromotion.promotion.id },
+        where: { id: promotion.id },
         data: { usage_count: { increment: 1 } },
       });
     }

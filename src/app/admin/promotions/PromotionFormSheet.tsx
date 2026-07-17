@@ -2,6 +2,7 @@
 
 import type {
   Promotion,
+  PromotionDisplayLocation,
   PromotionStatus,
   PromotionTarget,
   PromotionType,
@@ -30,6 +31,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/utils/trpc";
 import { PromotionDiscountFields } from "./PromotionDiscountFields";
+import { PromotionLocationFields } from "./PromotionLocationFields";
 
 interface PromotionFormSheetProps {
   promotion: Promotion | null;
@@ -48,6 +50,7 @@ interface PromotionFormSheetProps {
 
 interface PromotionFormData {
   name: string;
+  has_code: boolean;
   code?: string;
   description?: string;
   type: PromotionType;
@@ -61,6 +64,9 @@ interface PromotionFormData {
   usage_limit: number;
   usage_limit_per_user?: number;
   show_on_banner: boolean;
+  applicable_state?: string;
+  applicable_city?: string;
+  display_location: PromotionDisplayLocation;
 }
 
 export function PromotionFormSheet({
@@ -88,6 +94,8 @@ export function PromotionFormSheet({
       min_order_value: 0,
       usage_limit: 100,
       show_on_banner: false,
+      has_code: false,
+      display_location: "CHECKOUT",
     },
   });
 
@@ -124,6 +132,7 @@ export function PromotionFormSheet({
     if (promotion) {
       reset({
         name: promotion.name,
+        has_code: !!promotion.code,
         code: promotion.code || "",
         description: promotion.description || "",
         type: promotion.type,
@@ -139,6 +148,9 @@ export function PromotionFormSheet({
         usage_limit: promotion.usage_limit,
         usage_limit_per_user: promotion.usage_limit_per_user || undefined,
         show_on_banner: promotion.show_on_banner,
+        applicable_state: promotion.applicable_state || undefined,
+        applicable_city: promotion.applicable_city || undefined,
+        display_location: promotion.display_location,
       });
     } else if (template) {
       // Pre-fill from template
@@ -148,6 +160,7 @@ export function PromotionFormSheet({
 
       reset({
         name: template.name,
+        has_code: true,
         code: template.code,
         type: template.type,
         value: template.value,
@@ -158,6 +171,9 @@ export function PromotionFormSheet({
         start_date: today.toISOString().split("T")[0],
         end_date: nextMonth.toISOString().split("T")[0],
         show_on_banner: false,
+        applicable_state: undefined,
+        applicable_city: undefined,
+        display_location: "CHECKOUT",
       });
     } else {
       reset({
@@ -168,25 +184,37 @@ export function PromotionFormSheet({
         min_order_value: 0,
         usage_limit: 100,
         show_on_banner: false,
+        has_code: false,
+        applicable_state: undefined,
+        applicable_city: undefined,
+        display_location: "CHECKOUT",
       });
     }
   }, [promotion, template, reset]);
 
   const onSubmit = async (data: PromotionFormData) => {
-    const trimmedCode = data.code?.trim();
+    // has_code is a form-only affordance — unchecking it always means
+    // codeless/auto-apply, regardless of stale text left in the code input.
+    const trimmedCode = data.has_code ? data.code?.trim() : undefined;
+    const trimmedCity = data.applicable_city?.trim();
+    const { has_code: _has_code, ...rest } = data;
 
     if (isEdit && promotion) {
       await updateMutation.mutateAsync({
         id: promotion.id,
-        ...data,
+        ...rest,
         // Blank input means "make this codeless/auto-apply" — explicitly
         // clear it (null) rather than leaving the existing code unchanged.
         code: trimmedCode || null,
+        applicable_state: data.applicable_state || null,
+        applicable_city: trimmedCity || null,
       });
     } else {
       await createMutation.mutateAsync({
-        ...data,
+        ...rest,
         code: trimmedCode || undefined,
+        applicable_state: data.applicable_state || undefined,
+        applicable_city: trimmedCity || undefined,
       });
     }
   };
@@ -197,6 +225,26 @@ export function PromotionFormSheet({
   const valueSlider = watch("value") || 10;
   const minOrderSlider = watch("min_order_value") || 0;
   const usageLimitSlider = watch("usage_limit") || 100;
+  const hasCodeValue = watch("has_code");
+  const applicableStateValue = watch("applicable_state");
+  const displayLocationValue = watch("display_location");
+
+  // A FREE_SHIPPING/BUY_X_GET_Y promotion has no per-item price to show on a
+  // product tag, and a location-restricted promotion has no destination to
+  // check that restriction against on a product tag either — force
+  // display_location back to CHECKOUT in both cases, matching the
+  // server-side rejection so the form never silently produces a request
+  // that'll fail.
+  useEffect(() => {
+    const typeAllowsProductTag =
+      typeValue === "PERCENTAGE" || typeValue === "FIXED_AMOUNT";
+    if (
+      (!typeAllowsProductTag || applicableStateValue) &&
+      displayLocationValue !== "CHECKOUT"
+    ) {
+      setValue("display_location", "CHECKOUT");
+    }
+  }, [typeValue, applicableStateValue, displayLocationValue, setValue]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -237,30 +285,48 @@ export function PromotionFormSheet({
 
             {/* Code */}
             <div>
-              <Label htmlFor="code" className="text-gray-700">
-                Promotion Code
-              </Label>
-              <Input
-                id="code"
-                {...register("code", {
-                  pattern: {
-                    value: /^[A-Z0-9]+$/,
-                    message: "Code must be uppercase letters and numbers only",
-                  },
-                })}
-                className="mt-1 uppercase"
-                placeholder="e.g., SUMMER20"
-                maxLength={20}
-              />
-              {errors.code && (
-                <p className="text-sm text-red-500 mt-1">
-                  {errors.code.message}
-                </p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">
-                Uppercase letters and numbers only. Leave blank to auto-apply
-                this promotion to every eligible customer without a code.
+              <label className="flex items-center">
+                <input
+                  {...register("has_code")}
+                  type="checkbox"
+                  className="mr-2 w-4 h-4 text-trichomes-primary focus:ring-trichomes-primary/20 accent-trichomes-primary border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-700">
+                  Requires a promotion code
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">
+                Leave unchecked to auto-apply this promotion to every eligible
+                customer without a code.
               </p>
+              {hasCodeValue && (
+                <>
+                  <Label htmlFor="code" className="text-gray-700">
+                    Promotion Code
+                  </Label>
+                  <Input
+                    id="code"
+                    {...register("code", {
+                      pattern: {
+                        value: /^[A-Z0-9]+$/,
+                        message:
+                          "Code must be uppercase letters and numbers only",
+                      },
+                    })}
+                    className="mt-1 uppercase"
+                    placeholder="e.g., SUMMER20"
+                    maxLength={20}
+                  />
+                  {errors.code && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.code.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Uppercase letters and numbers only.
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Description */}
@@ -285,6 +351,8 @@ export function PromotionFormSheet({
             typeValue={typeValue}
             valueSlider={valueSlider}
             minOrderSlider={minOrderSlider}
+            displayLocationValue={displayLocationValue}
+            applicableStateValue={applicableStateValue}
           />
 
           {/* Usage Limits */}
@@ -393,6 +461,13 @@ export function PromotionFormSheet({
               </div>
             </div>
 
+            {/* Location Targeting */}
+            <PromotionLocationFields
+              register={register}
+              setValue={setValue}
+              applicableStateValue={applicableStateValue}
+            />
+
             {/* Target Customers */}
             <div>
               <Label className="text-gray-700">
@@ -461,9 +536,8 @@ export function PromotionFormSheet({
                 </span>
               </label>
               <p className="text-xs text-gray-500 mt-1">
-                Displays this promotion in the top announcement banner instead
-                of the default free shipping message, while it is active and
-                within its date range
+                Displays this promotion in the top announcement banner while
+                it is active and within its date range
               </p>
             </div>
           </div>

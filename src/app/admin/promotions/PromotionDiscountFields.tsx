@@ -1,6 +1,6 @@
 "use client";
 
-import type { PromotionType } from "@prisma/client";
+import type { PromotionDisplayLocation, PromotionType } from "@prisma/client";
 import type {
   FieldErrors,
   UseFormRegister,
@@ -16,12 +16,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { canDisplayOnProductTag } from "@/lib/promotions/promotion-display-rules";
 
 interface PromotionDiscountFieldsData {
   type: PromotionType;
   value: number;
   min_order_value: number;
   max_discount?: number;
+  display_location: PromotionDisplayLocation;
 }
 
 interface PromotionDiscountFieldsProps<T extends PromotionDiscountFieldsData> {
@@ -31,6 +33,8 @@ interface PromotionDiscountFieldsProps<T extends PromotionDiscountFieldsData> {
   typeValue: PromotionType;
   valueSlider: number;
   minOrderSlider: number;
+  displayLocationValue: PromotionDisplayLocation;
+  applicableStateValue: string | undefined;
 }
 
 export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
@@ -40,7 +44,11 @@ export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
   typeValue,
   valueSlider,
   minOrderSlider,
+  displayLocationValue,
+  applicableStateValue,
 }: PromotionDiscountFieldsProps<T>) {
+  const typeAllowsProductTag = canDisplayOnProductTag(typeValue);
+  const locationBlocksProductTag = !!applicableStateValue;
   return (
     <div className="space-y-4 border-t pt-4">
       <h3 className="text-lg font-semibold">Discount Settings</h3>
@@ -164,6 +172,39 @@ export function PromotionDiscountFields<T extends PromotionDiscountFieldsData>({
           />
           <p className="text-xs text-gray-500 mt-1">
             Cap the maximum discount amount for percentage-based promotions
+          </p>
+        </div>
+      )}
+
+      {/* Display Location — only meaningful for a discount with a per-item
+          price to show; FREE_SHIPPING/BUY_X_GET_Y stay checkout-only. */}
+      {typeAllowsProductTag && (
+        <div>
+          <Label className="text-gray-700">Show This Discount</Label>
+          <Select
+            value={displayLocationValue}
+            onValueChange={(value: PromotionDisplayLocation) =>
+              setValue("display_location" as never, value as never)
+            }
+            disabled={locationBlocksProductTag}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select where this displays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="CHECKOUT">Checkout only</SelectItem>
+              <SelectItem value="PRODUCT_TAG" disabled={locationBlocksProductTag}>
+                Product price tag only
+              </SelectItem>
+              <SelectItem value="BOTH" disabled={locationBlocksProductTag}>
+                Both
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-500 mt-1">
+            {locationBlocksProductTag
+              ? "Location-restricted promotions can only show at checkout — the product price tag has no destination to check the restriction against."
+              : "Product price tag shows a struck-through original price and the discounted price on every product store-wide, replacing any manually set compare-at price while this promotion is active."}
           </p>
         </div>
       )}

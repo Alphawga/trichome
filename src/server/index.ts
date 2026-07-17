@@ -14,6 +14,7 @@ import * as ordersModule from "./modules/orders";
 import * as paymentsModule from "./modules/payments";
 import * as productsModule from "./modules/products";
 import * as promotionsModule from "./modules/promotions";
+import * as promotionsStorefrontModule from "./modules/promotions-storefront";
 import * as reviewsModule from "./modules/reviews";
 import * as searchModule from "./modules/search";
 import * as settingsModule from "./modules/settings";
@@ -40,6 +41,7 @@ export const appRouter = router({
   ...analyticsModule,
   ...dashboardModule,
   ...promotionsModule,
+  ...promotionsStorefrontModule,
   ...consultationsModule,
   ...reviewsModule,
   ...trackingModule,

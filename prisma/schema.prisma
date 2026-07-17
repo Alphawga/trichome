@@ -411,6 +411,9 @@ model Promotion {
   usage_count          Int              @default(0)
   usage_limit_per_user Int?
   show_on_banner       Boolean          @default(false)
+  applicable_state     String?
+  applicable_city      String?
+  display_location     PromotionDisplayLocation @default(CHECKOUT)
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
   created_by           String?
@@ -640,6 +643,12 @@ enum PromotionTarget {
   NEW_CUSTOMERS
   VIP
   SPECIFIC_GROUP
+}
+
+enum PromotionDisplayLocation {
+  CHECKOUT
+  PRODUCT_TAG
+  BOTH
 }
 
 enum ConsultationType {

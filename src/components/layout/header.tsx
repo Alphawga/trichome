@@ -234,9 +234,11 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
   const searchParam = searchParams.get("search");
   const [searchQuery, setSearchQuery] = useState(searchParam || "");
   const { data: bannerPromo } = trpc.getBannerPromotion.useQuery();
+  // No default/fallback text — the banner's second segment only shows when
+  // an admin has actually flagged a promotion with show_on_banner.
   const bannerText = bannerPromo
     ? `${bannerPromo.name}${bannerPromo.description ? ` - ${bannerPromo.description}` : ""}${bannerPromo.code ? ` - USE CODE ${bannerPromo.code}` : ""}`
-    : "FREE SHIPPING OVER ₦30,000 FOR ANYWHERE WITHIN AKURE";
+    : null;
 
   // Sync search input with URL search param
   useEffect(() => {
@@ -582,29 +584,47 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, wishlistCount }) => {
                   SHOP NOW
                 </Link>
               </span>
-              <span className="mx-2">•</span>
-              <span>
-                {bannerText}-{" "}
-                <Link
-                  href="/products"
-                  className="underline hover:text-[#3A643B] transition-colors"
-                >
-                  LEARN MORE
-                </Link>
-              </span>
+              {bannerText && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span>
+                    {bannerText}-{" "}
+                    <Link
+                      href="/products"
+                      className="underline hover:text-[#3A643B] transition-colors"
+                    >
+                      LEARN MORE
+                    </Link>
+                  </span>
+                </>
+              )}
             </p>
           </div>
 
           {/* Mobile: Simplified announcement */}
           <div className="md:hidden text-center">
             <p className="uppercase tracking-wide">
-              {bannerText}-{" "}
-              <Link
-                href="/products"
-                className="underline hover:text-[#3A643B] transition-colors"
-              >
-                SHOP NOW
-              </Link>
+              {bannerText ? (
+                <>
+                  {bannerText}-{" "}
+                  <Link
+                    href="/products"
+                    className="underline hover:text-[#3A643B] transition-colors"
+                  >
+                    SHOP NOW
+                  </Link>
+                </>
+              ) : (
+                <>
+                  NATURAL BEAUTY, NATURALLY YOURS -{" "}
+                  <Link
+                    href="/products"
+                    className="underline hover:text-[#3A643B] transition-colors"
+                  >
+                    SHOP NOW
+                  </Link>
+                </>
+              )}
             </p>
           </div>
         </div>

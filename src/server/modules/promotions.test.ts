@@ -29,6 +29,9 @@ function buildPromotion(overrides: Partial<Promotion> = {}): Promotion {
     usage_count: 0,
     usage_limit_per_user: null,
     show_on_banner: false,
+    applicable_state: null,
+    applicable_city: null,
+    display_location: "CHECKOUT",
     created_at: yesterday,
     updated_at: yesterday,
     created_by: null,
@@ -213,6 +216,74 @@ describe("checkPromotionEligibility", () => {
     });
     expect(result.eligible).toBe(true);
   });
+
+  it("rejects a state-scoped promotion when the destination state doesn't match", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion({ applicable_state: "Ondo" });
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+      state: "Lagos",
+    });
+    expect(result.eligible).toBe(false);
+  });
+
+  it("rejects a state-scoped promotion when no destination state is known yet", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion({ applicable_state: "Ondo" });
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+    });
+    expect(result.eligible).toBe(false);
+  });
+
+  it("allows a state-scoped promotion when the destination state matches (case/whitespace-insensitive)", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion({ applicable_state: "Ondo" });
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+      state: " ondo ",
+    });
+    expect(result.eligible).toBe(true);
+  });
+
+  it("rejects a city-scoped promotion when the state matches but the city doesn't", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion({
+      applicable_state: "Ondo",
+      applicable_city: "Akure",
+    });
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+      state: "Ondo",
+      city: "Ondo Town",
+    });
+    expect(result.eligible).toBe(false);
+  });
+
+  it("allows a city-scoped promotion when both state and city match", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion({
+      applicable_state: "Ondo",
+      applicable_city: "Akure",
+    });
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+      state: "Ondo",
+      city: " AKURE ",
+    });
+    expect(result.eligible).toBe(true);
+  });
+
+  it("allows an unscoped promotion regardless of destination", async () => {
+    const db = buildDb();
+    const promotion = buildPromotion();
+    const result = await checkPromotionEligibility(db, promotion, {
+      subtotal: 5000,
+      state: "Kano",
+      city: "Kano",
+    });
+    expect(result.eligible).toBe(true);
+  });
 });
 
 function buildAdminContext(prisma: unknown): Context {
@@ -280,6 +351,38 @@ describe("createPromotion", () => {
     expect(findUnique).toHaveBeenCalledWith({ where: { code: "SUMMER20" } });
     expect(result.message).toBe("Promotion created successfully");
   });
+
+  it("rejects a FREE_SHIPPING promotion flagged for the product price tag", async () => {
+    const findUnique = jest.fn();
+    const create = jest.fn();
+    const prisma = { promotion: { findUnique, create } };
+    const caller = appRouter.createCaller(buildAdminContext(prisma));
+
+    await expect(
+      caller.createPromotion({
+        ...baseCreateInput,
+        type: "FREE_SHIPPING",
+        display_location: "PRODUCT_TAG",
+      }),
+    ).rejects.toThrow(/product price tag/i);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a location-restricted promotion flagged for the product price tag", async () => {
+    const findUnique = jest.fn();
+    const create = jest.fn();
+    const prisma = { promotion: { findUnique, create } };
+    const caller = appRouter.createCaller(buildAdminContext(prisma));
+
+    await expect(
+      caller.createPromotion({
+        ...baseCreateInput,
+        applicable_state: "Ondo",
+        display_location: "BOTH",
+      }),
+    ).rejects.toThrow(/location-restricted/i);
+    expect(create).not.toHaveBeenCalled();
+  });
 });
 
 describe("updatePromotion", () => {
@@ -325,58 +428,41 @@ describe("updatePromotion", () => {
     ).rejects.toThrow(/already exists/i);
     expect(update).not.toHaveBeenCalled();
   });
-});
 
-function buildAutoApplyPrisma(candidates: Promotion[]) {
-  return {
-    promotion: {
-      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-      findMany: jest.fn().mockResolvedValue(candidates),
-    },
-    promotionUsage: { count: jest.fn().mockResolvedValue(0) },
-    order: { count: jest.fn().mockResolvedValue(0) },
-  };
-}
-
-describe("getAutoApplyPromotion", () => {
-  it("returns null when there are no codeless candidates", async () => {
-    const prisma = buildAutoApplyPrisma([]);
+  it("rejects flagging an existing FREE_SHIPPING promotion for the product price tag", async () => {
+    const findFirst = jest.fn();
+    const findUnique = jest
+      .fn()
+      .mockResolvedValue(buildPromotion({ type: "FREE_SHIPPING" }));
+    const update = jest.fn();
+    const prisma = { promotion: { findFirst, findUnique, update } };
     const caller = appRouter.createCaller(buildAdminContext(prisma));
 
-    const result = await caller.getAutoApplyPromotion({ subtotal: 5000 });
-
-    expect(result).toBeNull();
-    expect(prisma.promotion.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ code: null, status: "ACTIVE" }),
-        orderBy: { created_at: "desc" },
+    await expect(
+      caller.updatePromotion({
+        id: "promo-1",
+        display_location: "PRODUCT_TAG",
       }),
+    ).rejects.toThrow(/product price tag/i);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects adding a state restriction to a promotion already flagged for the product price tag", async () => {
+    const findFirst = jest.fn();
+    const findUnique = jest.fn().mockResolvedValue(
+      buildPromotion({ display_location: "PRODUCT_TAG" }),
     );
-  });
-
-  it("returns the first eligible candidate in newest-first order", async () => {
-    const newest = buildPromotion({ id: "newest", code: null });
-    const prisma = buildAutoApplyPrisma([newest]);
+    const update = jest.fn();
+    const prisma = { promotion: { findFirst, findUnique, update } };
     const caller = appRouter.createCaller(buildAdminContext(prisma));
 
-    const result = await caller.getAutoApplyPromotion({ subtotal: 5000 });
-
-    expect(result?.promotion.id).toBe("newest");
-  });
-
-  it("skips an ineligible candidate and falls through to the next one", async () => {
-    const ineligible = buildPromotion({
-      id: "ineligible",
-      code: null,
-      usage_limit: 1,
-      usage_count: 1,
-    });
-    const eligible = buildPromotion({ id: "eligible", code: null });
-    const prisma = buildAutoApplyPrisma([ineligible, eligible]);
-    const caller = appRouter.createCaller(buildAdminContext(prisma));
-
-    const result = await caller.getAutoApplyPromotion({ subtotal: 5000 });
-
-    expect(result?.promotion.id).toBe("eligible");
+    await expect(
+      caller.updatePromotion({ id: "promo-1", applicable_state: "Lagos" }),
+    ).rejects.toThrow(/location-restricted/i);
+    expect(update).not.toHaveBeenCalled();
   });
 });
+
+// getAutoApplyPromotions / resolveOrderPromotions (stacking) tests live in
+// promotions-storefront.test.ts, mirroring the promotions-storefront.ts
+// module split.

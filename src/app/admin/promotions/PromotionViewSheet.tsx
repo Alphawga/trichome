@@ -244,6 +244,31 @@ export function PromotionViewSheet({
             </div>
           </div>
 
+          {/* Location & Display */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Location & Display</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Location</p>
+                <p className="font-semibold text-gray-900">
+                  {promotion.applicable_state
+                    ? `${promotion.applicable_city ? `${promotion.applicable_city}, ` : ""}${promotion.applicable_state} only`
+                    : "Store-wide"}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Shown At</p>
+                <p className="font-semibold text-gray-900">
+                  {promotion.display_location === "PRODUCT_TAG"
+                    ? "Product price tag"
+                    : promotion.display_location === "BOTH"
+                      ? "Checkout & product price tag"
+                      : "Checkout"}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Metadata */}
           <div className="border-t pt-4">
             <h3 className="text-lg font-semibold mb-3">Metadata</h3>

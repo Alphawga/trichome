@@ -162,39 +162,97 @@ function CheckoutPageContent() {
     [cartItems],
   );
 
-  // Validate promo code query — must send the same userId the server will
-  // use to re-validate at order-creation time (usage_limit_per_user,
-  // NEW_CUSTOMERS), or a promo can validate here and then fail the
-  // Paystack amount-match check after the customer has already been charged.
+  // Debounce the address/contact fields that drive the live shipping quote
+  // (and location-scoped promotion eligibility) so we don't fire a request
+  // (and, once a carrier key is set, a real external API call) on every
+  // keystroke.
+  const [debouncedAddress, setDebouncedAddress] = useState({
+    state: formData.state,
+    city: formData.city,
+    postal_code: formData.postal_code,
+    country: formData.country,
+    address_1: formData.address_1,
+    contactName: `${formData.first_name} ${formData.last_name}`.trim(),
+    email: formData.email,
+    phone: formData.phone,
+  });
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedAddress({
+        state: formData.state,
+        city: formData.city,
+        postal_code: formData.postal_code,
+        country: formData.country,
+        address_1: formData.address_1,
+        contactName: `${formData.first_name} ${formData.last_name}`.trim(),
+        email: formData.email,
+        phone: formData.phone,
+      });
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [
+    formData.state,
+    formData.city,
+    formData.postal_code,
+    formData.country,
+    formData.address_1,
+    formData.first_name,
+    formData.last_name,
+    formData.email,
+    formData.phone,
+  ]);
+
+  // Validate promo code query — must send the same userId/state/city the
+  // server will use to re-validate at order-creation time (usage_limit_per_user,
+  // NEW_CUSTOMERS, location scoping), or a promo can validate here and then
+  // fail the Paystack amount-match check after the customer has already
+  // been charged.
   const validatePromoCodeQuery = trpc.validatePromoCode.useQuery(
     {
       code: promoCode,
       subtotal,
       userId: isAuthenticated ? session?.user.id : undefined,
+      state: debouncedAddress.state,
+      city: debouncedAddress.city,
     },
     { enabled: false, retry: false },
   );
 
-  // Automatically find and apply a codeless promotion, if one is eligible.
-  // A manually entered code always takes priority — see the `activePromo`
-  // derivation below.
-  const autoApplyPromotionQuery = trpc.getAutoApplyPromotion.useQuery(
-    { subtotal, userId: isAuthenticated ? session?.user.id : undefined },
+  // Every eligible codeless promotion stacks together automatically. A
+  // manually entered code (below) adds on top of this set rather than
+  // replacing it. Not gated on having a full address yet — a location-scoped
+  // promotion just won't be eligible until the destination is known;
+  // store-wide ones auto-apply immediately.
+  const autoApplyPromotionsQuery = trpc.getAutoApplyPromotions.useQuery(
+    {
+      subtotal,
+      userId: isAuthenticated ? session?.user.id : undefined,
+      state: debouncedAddress.state,
+      city: debouncedAddress.city,
+    },
     { enabled: subtotal > 0 },
   );
 
-  const activePromo = appliedPromoCode
-    ? { ...appliedPromoCode, isAutoApplied: false }
-    : autoApplyPromotionQuery.data
-      ? {
-          code: undefined,
-          promotionId: autoApplyPromotionQuery.data.promotion.id,
-          discount: autoApplyPromotionQuery.data.discountAmount,
-          isFreeShipping: autoApplyPromotionQuery.data.isFreeShipping,
-          isAutoApplied: true,
-          name: autoApplyPromotionQuery.data.promotion.name,
-        }
-      : null;
+  const autoAppliedPromos = useMemo(
+    () =>
+      (autoApplyPromotionsQuery.data ?? []).map((entry) => ({
+        promotionId: entry.promotion.id,
+        name: entry.promotion.name,
+        discount: entry.discountAmount,
+        isFreeShipping: entry.isFreeShipping,
+      })),
+    [autoApplyPromotionsQuery.data],
+  );
+
+  const isFreeShipping =
+    appliedPromoCode?.isFreeShipping ||
+    autoAppliedPromos.some((p) => p.isFreeShipping);
+  const discount = Math.min(
+    autoAppliedPromos.reduce((sum, p) => sum + p.discount, 0) +
+      (appliedPromoCode?.discount ?? 0),
+    subtotal,
+  );
 
   const handleApplyPromoCode = async () => {
     if (!promoCode.trim()) {
@@ -241,48 +299,6 @@ function CheckoutPageContent() {
       ),
     [cartItems],
   );
-
-  // Debounce the address/contact fields that drive the live shipping quote
-  // so we don't fire a request (and, once a carrier key is set, a real
-  // external API call) on every keystroke. Terminal Africa's rate quote
-  // requires all of these fields, so they're debounced together and the
-  // query is only enabled once every one of them is present.
-  const [debouncedAddress, setDebouncedAddress] = useState({
-    state: formData.state,
-    city: formData.city,
-    postal_code: formData.postal_code,
-    country: formData.country,
-    address_1: formData.address_1,
-    contactName: `${formData.first_name} ${formData.last_name}`.trim(),
-    email: formData.email,
-    phone: formData.phone,
-  });
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedAddress({
-        state: formData.state,
-        city: formData.city,
-        postal_code: formData.postal_code,
-        country: formData.country,
-        address_1: formData.address_1,
-        contactName: `${formData.first_name} ${formData.last_name}`.trim(),
-        email: formData.email,
-        phone: formData.phone,
-      });
-    }, 500);
-    return () => clearTimeout(timeout);
-  }, [
-    formData.state,
-    formData.city,
-    formData.postal_code,
-    formData.country,
-    formData.address_1,
-    formData.first_name,
-    formData.last_name,
-    formData.email,
-    formData.phone,
-  ]);
 
   const hasCompleteShippingContactDetails = Boolean(
     debouncedAddress.state &&
@@ -337,11 +353,8 @@ function CheckoutPageContent() {
 
   const selectedRate = shippingRateQuery.data?.rates?.[0];
 
-  const shipping = activePromo?.isFreeShipping
-    ? 0
-    : (selectedRate?.cost ?? 0);
+  const shipping = isFreeShipping ? 0 : (selectedRate?.cost ?? 0);
   const tax = 0; // Tax removed for now (business decision, 2026-07-02)
-  const discount = activePromo?.discount || 0;
   const total = subtotal + shipping + tax - discount;
   // Paystack's transaction fee is passed through to the customer, itemized
   // separately so the charged amount matches what the server will verify.
@@ -385,10 +398,7 @@ function CheckoutPageContent() {
     },
     customerName: `${formData.first_name} ${formData.last_name}`,
     customerEmail: formData.email,
-    promoCode: activePromo?.code,
-    promotionId: activePromo?.isAutoApplied
-      ? activePromo.promotionId
-      : undefined,
+    promoCode: appliedPromoCode?.code,
   });
 
   const guestPaymentHandler = useGuestPaymentHandler({
@@ -404,10 +414,7 @@ function CheckoutPageContent() {
       discount,
       total: grandTotal,
     },
-    promoCode: activePromo?.code,
-    promotionId: activePromo?.isAutoApplied
-      ? activePromo.promotionId
-      : undefined,
+    promoCode: appliedPromoCode?.code,
   });
 
   const paymentHandler =
@@ -904,7 +911,8 @@ function CheckoutPageContent() {
                         disabled={
                           !isValid ||
                           paymentHandler.isLoading ||
-                          isShippingQuotePending
+                          isShippingQuotePending ||
+                          autoApplyPromotionsQuery.isFetching
                         }
                         className="w-full bg-[#1E3024] text-white py-3 sm:py-4 rounded-full hover:bg-[#1E3024]/90 font-semibold disabled:bg-gray-200 disabled:cursor-not-allowed transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
                       >
@@ -917,13 +925,20 @@ function CheckoutPageContent() {
 
                       {/* Promo Code Section */}
                       <div className="mt-4">
-                        {activePromo?.isAutoApplied && (
-                          <p className="mb-2 text-xs text-trichomes-primary font-body">
-                            &quot;{activePromo.name}&quot; auto-applied
-                            {!activePromo.isFreeShipping &&
-                              ` — -₦${activePromo.discount.toLocaleString()}`}
-                            . Have a code? Entering one below will replace it.
-                          </p>
+                        {autoAppliedPromos.length > 0 && (
+                          <ul className="mb-2 space-y-1">
+                            {autoAppliedPromos.map((promo) => (
+                              <li
+                                key={promo.promotionId}
+                                className="text-xs text-trichomes-primary font-body"
+                              >
+                                &quot;{promo.name}&quot; auto-applied
+                                {promo.isFreeShipping
+                                  ? " — free shipping"
+                                  : ` — -₦${promo.discount.toLocaleString()}`}
+                              </li>
+                            ))}
+                          </ul>
                         )}
                         {!appliedPromoCode ? (
                           <div className="space-y-2">
