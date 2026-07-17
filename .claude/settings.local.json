@@ -30,7 +30,10 @@
       "Bash(npx biome *)",
       "Bash(git -C /Users/alpha/trichome diff --stat)",
       "Bash(git -C /Users/alpha/trichome log --oneline -5)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(cp /tmp/check_promo.mjs /Users/alpha/trichome/check_promo.mjs)",
+      "Bash(node check_promo.mjs)",
+      "Bash(rm -f /Users/alpha/trichome/check_promo.mjs)"
     ],
     "deny": [],
     "ask": []

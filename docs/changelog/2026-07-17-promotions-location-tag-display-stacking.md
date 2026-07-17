@@ -1,5 +1,9 @@
 # 2026-07-17 — Location-scoped promotions, product price-tag display, and promotion stacking
 
+## Follow-up fix (same day): product-tag promotions never displayed
+
+User created a `PRODUCT_TAG`/`BOTH` promotion with `min_order_value: 2000` and it showed nowhere (homepage, listing, PDP). Root cause: `getActiveProductTagPromotions` (`promotions-storefront.ts`) called `checkPromotionEligibility(..., { subtotal: 0, ... })` — since that function rejects whenever `subtotal < min_order_value`, passing a hardcoded `0` silently excluded *any* promotion with `min_order_value > 0`, the opposite of the intended "ignore min_order_value, there's no cart context on a listing page" behavior. Verified directly against the live DB before and after. Fixed by passing `Number.MAX_SAFE_INTEGER` instead of `0`, so the minimum-order check always passes for this read-only, no-cart-context path; every other caller (`validatePromoCode`, `getAutoApplyPromotions`, `resolveOrderPromotions`) is unaffected and still enforces the real cart subtotal. Added two regression tests in `promotions-storefront.test.ts`.
+
 ## What changed
 
 Three related changes to the Promotion system, requested together by the client:
