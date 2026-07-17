@@ -102,6 +102,37 @@ describe("getAutoApplyPromotions", () => {
   });
 });
 
+describe("getActiveProductTagPromotions", () => {
+  it("returns a PRODUCT_TAG promotion even when min_order_value is set (no cart context to check it against)", async () => {
+    const promotion = buildPromotion({
+      code: null,
+      display_location: "PRODUCT_TAG",
+      min_order_value: 2000 as unknown as Promotion["min_order_value"],
+    });
+    const prisma = buildAutoApplyPrisma([promotion]);
+    const caller = appRouter.createCaller(buildAdminContext(prisma));
+
+    const result = await caller.getActiveProductTagPromotions({});
+
+    expect(result.map((p) => p.id)).toEqual(["promo-1"]);
+  });
+
+  it("excludes a candidate that fails eligibility for a reason other than min_order_value", async () => {
+    const promotion = buildPromotion({
+      code: null,
+      display_location: "BOTH",
+      usage_limit: 1,
+      usage_count: 1,
+    });
+    const prisma = buildAutoApplyPrisma([promotion]);
+    const caller = appRouter.createCaller(buildAdminContext(prisma));
+
+    const result = await caller.getActiveProductTagPromotions({});
+
+    expect(result).toEqual([]);
+  });
+});
+
 function buildResolvePrisma(
   candidates: Promotion[],
   codedPromotion?: Promotion | null,

@@ -110,10 +110,13 @@ export const getAutoApplyPromotions = publicProcedure
 // Codeless PERCENTAGE/FIXED_AMOUNT promotions flagged to display on the
 // product price tag (strikethrough + new price) — store-wide, since
 // Promotion has no product/category scoping. No cart context exists on a
-// listing/PDP page, so min_order_value can't be honored here; admins should
-// leave it at 0 for any PRODUCT_TAG/BOTH promotion. Returns raw promo terms,
-// not a precomputed price, since the discount is applied per-product
-// client-side against that product's own price.
+// listing/PDP page, so min_order_value is intentionally ignored here (pass
+// Number.MAX_SAFE_INTEGER so checkPromotionEligibility's subtotal-vs-minimum
+// check always passes) rather than gated on it — a min_order_value promotion
+// should still show its tag price, it just won't discount a cart below that
+// minimum at checkout. Returns raw promo terms, not a precomputed price,
+// since the discount is applied per-product client-side against that
+// product's own price.
 export const getActiveProductTagPromotions = publicProcedure
   .input(z.object({ userId: z.string().optional() }))
   .query(async ({ input, ctx }) => {
@@ -138,7 +141,7 @@ export const getActiveProductTagPromotions = publicProcedure
         ctx.prisma,
         promotion,
         {
-          subtotal: 0,
+          subtotal: Number.MAX_SAFE_INTEGER,
           userId: input.userId,
         },
       );
