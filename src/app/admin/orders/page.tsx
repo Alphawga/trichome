@@ -82,6 +82,8 @@ const mapOrderStatus = (status: OrderStatus): AdminOrder["status"] => {
     PROCESSING: "Processing",
     SHIPPED: "Shipped",
     DELIVERED: "Delivered",
+    READY_FOR_PICKUP: "Shipped",
+    PICKED_UP: "Delivered",
     CANCELLED: "Cancelled",
     RETURNED: "Cancelled",
     REFUNDED: "Cancelled",
@@ -259,6 +261,8 @@ export default function AdminOrdersPage() {
     "PROCESSING",
     "SHIPPED",
     "DELIVERED",
+    "READY_FOR_PICKUP",
+    "PICKED_UP",
     "CANCELLED",
   ];
   const paymentStatuses: Array<PaymentStatus | "All"> = [
@@ -277,6 +281,8 @@ export default function AdminOrdersPage() {
     PROCESSING: "Processing",
     SHIPPED: "Shipped",
     DELIVERED: "Delivered",
+    READY_FOR_PICKUP: "Ready for Pickup",
+    PICKED_UP: "Picked Up",
     CANCELLED: "Cancelled",
     RETURNED: "Returned",
     REFUNDED: "Refunded",

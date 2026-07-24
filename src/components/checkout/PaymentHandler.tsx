@@ -2,8 +2,7 @@
 
 import type { Currency, PaymentMethod } from "@prisma/client";
 import { useCallback, useState } from "react";
-import { useOrderCreation } from "@/hooks/useOrderCreation";
-import { OrderCreationStatus } from "./OrderCreationStatus";
+import { useCheckoutOrder } from "@/hooks/useCheckoutOrder";
 
 type PaystackResponse = PaystackPopResponse;
 
@@ -12,9 +11,10 @@ interface AddressData {
   last_name: string;
   email: string;
   phone?: string;
-  address_1: string;
+  // Only required for delivery orders — omitted/ignored for pickup.
+  address_1?: string;
   address_2?: string;
-  city: string;
+  city?: string;
   state?: string;
   postal_code?: string;
   country?: string;
@@ -34,6 +34,7 @@ interface OrderTotals {
 }
 
 interface PaymentHandlerProps {
+  isGuestMode: boolean;
   address: AddressData;
   items: OrderItem[];
   totals: OrderTotals;
@@ -43,9 +44,8 @@ interface PaymentHandlerProps {
   customerName: string;
   customerEmail: string;
   promoCode?: string;
-  onPaymentOpen?: () => void;
-  onPaymentClose?: () => void;
-  showStatus?: boolean;
+  deliveryMethod?: "DELIVERY" | "PICKUP";
+  pickupStoreId?: string;
 }
 
 function loadPaystackScript(): Promise<void> {
@@ -69,134 +69,19 @@ function loadPaystackScript(): Promise<void> {
   });
 }
 
-export function PaymentHandler({
-  address,
-  items,
-  totals,
-  paymentMethod = "PAYSTACK",
-  currency = "NGN",
-  notes,
-  customerName,
-  customerEmail,
-  onPaymentOpen,
-  onPaymentClose,
-  showStatus = true,
-}: PaymentHandlerProps) {
-  const { createOrder, isLoading, isError, error } = useOrderCreation();
-  const [paymentStatus, setPaymentStatus] = useState<
-    "idle" | "processing" | "success" | "error"
-  >("idle");
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-
-  const initializePayment = useCallback(async () => {
-    if (typeof window === "undefined") {
-      setPaymentError("Payment can only be initialized on the client side");
-      return;
-    }
-
-    setPaymentStatus("processing");
-    setPaymentError(null);
-    onPaymentOpen?.();
-
-    try {
-      await loadPaystackScript();
-
-      const paymentReference = `TRICHOMES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
-      const handler = window.PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
-        email: customerEmail,
-        amount: Math.round(totals.total * 100), // kobo
-        currency: currency,
-        ref: paymentReference,
-        label: customerName,
-        callback: (response: PaystackResponse) => {
-          if (response.status === "success") {
-            setPaymentStatus("success");
-
-            createOrder({
-              paymentResponse: {
-                paymentStatus: "PAID",
-                transactionReference: response.trans,
-                paymentReference: response.reference,
-                amountPaid: totals.total.toString(),
-                paymentDescription: "Trichomes Product Payment",
-                customerEmail,
-                customerName,
-              },
-              address,
-              items,
-              totals,
-              payment_method: paymentMethod,
-              currency,
-              notes,
-            });
-          } else {
-            setPaymentStatus("error");
-            setPaymentError(response.message || "Payment not successful. Please try again.");
-            onPaymentClose?.();
-          }
-        },
-        onClose: () => {
-          if (paymentStatus === "processing") {
-            setPaymentStatus("idle");
-            setPaymentError("Payment was cancelled");
-          }
-          onPaymentClose?.();
-        },
-      });
-
-      handler.openIframe();
-    } catch (err) {
-      console.error("Error initializing payment:", err);
-      setPaymentStatus("error");
-      setPaymentError(
-        err instanceof Error ? err.message : "Failed to initialize payment. Please try again.",
-      );
-      onPaymentClose?.();
-    }
-  }, [
-    address,
-    items,
-    totals,
-    paymentMethod,
-    currency,
-    notes,
-    customerName,
-    customerEmail,
-    createOrder,
-    paymentStatus,
-    onPaymentOpen,
-    onPaymentClose,
-  ]);
-
-  if (!showStatus) {
-    return null;
-  }
-
-  if (isError || (paymentStatus === "error" && paymentError)) {
-    return (
-      <OrderCreationStatus
-        status="error"
-        error={error?.message || paymentError || "An error occurred"}
-        onRetry={initializePayment}
-      />
-    );
-  }
-
-  if (isLoading || paymentStatus === "success") {
-    return <OrderCreationStatus status="processing" />;
-  }
-
-  return null;
-}
-
+/**
+ * Drives the Paystack inline popup and hands the verified result to
+ * useCheckoutOrder — same flow for guest and authenticated checkout, only the
+ * underlying order-creation mutation (chosen via isGuestMode) differs.
+ */
 export function usePaymentHandler(props: PaymentHandlerProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "success" | "error"
   >("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const { createOrder, isLoading, isError, error } = useOrderCreation();
+  const { createOrder, isLoading, isError, error } = useCheckoutOrder(
+    props.isGuestMode,
+  );
 
   const initializePayment = useCallback(async () => {
     if (typeof window === "undefined") {
@@ -210,12 +95,12 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
     try {
       await loadPaystackScript();
 
-      const paymentReference = `TRICHOMES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const paymentReference = `TRICHOMES-${props.isGuestMode ? "GUEST-" : ""}${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
       const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
         email: props.customerEmail,
-        amount: Math.round(props.totals.total * 100),
+        amount: Math.round(props.totals.total * 100), // kobo
         currency: props.currency || "NGN",
         ref: paymentReference,
         label: props.customerName,
@@ -229,7 +114,9 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
                 transactionReference: response.trans,
                 paymentReference: response.reference,
                 amountPaid: props.totals.total.toString(),
-                paymentDescription: "Trichomes Product Payment",
+                paymentDescription: props.isGuestMode
+                  ? "Trichomes Guest Order Payment"
+                  : "Trichomes Product Payment",
                 customerEmail: props.customerEmail,
                 customerName: props.customerName,
               },
@@ -240,6 +127,8 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
               currency: props.currency || "NGN",
               notes: props.notes,
               promo_code: props.promoCode,
+              deliveryMethod: props.deliveryMethod,
+              pickupStoreId: props.pickupStoreId,
             });
           } else {
             setPaymentStatus("error");

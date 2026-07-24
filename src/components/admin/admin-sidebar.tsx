@@ -16,6 +16,7 @@ import {
   PromotionsIcon,
   ReviewsIcon,
   SettingsIcon,
+  StoreIcon,
   WebsiteContentIcon,
 } from "../ui/icons";
 
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { path: "/admin/products", label: "Products", icon: <ProductsIcon />, requiredPermission: "products.read" },
   { path: "/admin/categories", label: "Categories", icon: <CategoriesIcon />, requiredPermission: "categories.read" },
   { path: "/admin/brands", label: "Brands", icon: <BrandsIcon />, requiredPermission: "brands.read" },
+  { path: "/admin/stores", label: "Stores", icon: <StoreIcon />, requiredPermission: "stores.read" },
   { path: "/admin/orders", label: "Orders", icon: <OrdersIcon />, requiredPermission: "orders.read" },
   { path: "/admin/customers", label: "Customers", icon: <CustomersIcon />, requiredPermission: "customers.read" },
   { path: "/admin/promotions", label: "Promotions", icon: <PromotionsIcon />, requiredPermission: "promotions.read" },

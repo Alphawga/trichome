@@ -488,9 +488,9 @@ export const createOrderWithPayment = checkoutRateLimited
         last_name: z.string().min(1),
         email: z.string().email(),
         phone: z.string().optional(),
-        address_1: z.string().min(1),
+        address_1: z.string().optional(),
         address_2: z.string().optional(),
-        city: z.string().min(1),
+        city: z.string().optional(),
         state: z.string().optional(),
         postal_code: z.string().optional(),
         country: z.string().default("Nigeria"),
@@ -514,6 +514,24 @@ export const createOrderWithPayment = checkoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
+      deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+      pickupStoreId: z.string().optional(),
+    }).superRefine((data, ctx) => {
+      if (data.deliveryMethod === "DELIVERY") {
+        if (!data.address.address_1 || !data.address.city) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["address"],
+            message: "Address is required for delivery orders",
+          });
+        }
+      } else if (!data.pickupStoreId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["pickupStoreId"],
+          message: "A pickup store is required for pickup orders",
+        });
+      }
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -526,6 +544,8 @@ export const createOrderWithPayment = checkoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
+      deliveryMethod,
+      pickupStoreId,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -587,15 +607,42 @@ export const createOrderWithPayment = checkoutRateLimited
     const serverDiscount = resolvedPromotions.totalDiscountAmount;
     const isFreeShipping = resolvedPromotions.isFreeShipping;
 
-    // Recompute shipping server-side — never trust totals.shipping/totals.total
-    const serverShippingCost = isFreeShipping
-      ? 0
-      : await computeServerShippingCost(
-          address,
-          orderItems,
-          products,
-          verifiedSubtotal,
-        );
+    // Pickup orders skip shipping entirely (no address, no cost) — validated
+    // against an active Store rather than trusting a client-picked name.
+    let serverShippingCost: number;
+    let pickupStore: { id: string; name: string; address: string } | null =
+      null;
+
+    if (deliveryMethod === "PICKUP") {
+      const store = pickupStoreId
+        ? await ctx.prisma.store.findUnique({ where: { id: pickupStoreId } })
+        : null;
+      if (!store || !store.is_active) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected pickup store is not available",
+        });
+      }
+      pickupStore = store;
+      serverShippingCost = 0;
+    } else {
+      const address_1 = address.address_1;
+      const city = address.city;
+      if (!address_1 || !city) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Address is required for delivery orders",
+        });
+      }
+      serverShippingCost = isFreeShipping
+        ? 0
+        : await computeServerShippingCost(
+            { ...address, address_1, city },
+            orderItems,
+            products,
+            verifiedSubtotal,
+          );
+    }
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.
     const serverTax = 0;
@@ -618,35 +665,38 @@ export const createOrderWithPayment = checkoutRateLimited
       });
     }
 
-    // Create or get shipping address
-    let shippingAddress: { id: string };
-    const existingAddress = await ctx.prisma.address.findFirst({
-      where: {
-        user_id: ctx.user.id,
-        address_1: address.address_1,
-        city: address.city,
-        postal_code: address.postal_code || "",
-      },
-    });
-
-    if (existingAddress) {
-      shippingAddress = existingAddress;
-    } else {
-      shippingAddress = await ctx.prisma.address.create({
-        data: {
+    // Create or get shipping address (delivery orders only — pickup orders
+    // never create/link an Address row)
+    let shippingAddress: { id: string } | null = null;
+    if (deliveryMethod === "DELIVERY") {
+      const existingAddress = await ctx.prisma.address.findFirst({
+        where: {
           user_id: ctx.user.id,
-          first_name: address.first_name,
-          last_name: address.last_name,
           address_1: address.address_1,
-          address_2: address.address_2,
           city: address.city,
-          state: address.state || "",
           postal_code: address.postal_code || "",
-          country: address.country,
-          phone: address.phone,
-          is_default: false, // Don't set as default automatically
         },
       });
+
+      if (existingAddress) {
+        shippingAddress = existingAddress;
+      } else {
+        shippingAddress = await ctx.prisma.address.create({
+          data: {
+            user_id: ctx.user.id,
+            first_name: address.first_name,
+            last_name: address.last_name,
+            address_1: address.address_1 || "",
+            address_2: address.address_2,
+            city: address.city || "",
+            state: address.state || "",
+            postal_code: address.postal_code || "",
+            country: address.country,
+            phone: address.phone,
+            is_default: false, // Don't set as default automatically
+          },
+        });
+      }
     }
 
     for (const { promotion, discountAmount } of resolvedPromotions.promotions) {
@@ -678,7 +728,9 @@ export const createOrderWithPayment = checkoutRateLimited
         phone: address.phone,
         payment_method,
         currency,
-        shipping_address_id: shippingAddress.id,
+        shipping_address_id: shippingAddress?.id,
+        delivery_method: deliveryMethod,
+        pickup_store_id: pickupStore?.id,
         notes,
         subtotal: verifiedSubtotal,
         shipping_cost: serverShippingCost,
@@ -814,16 +866,10 @@ export const createOrderWithPayment = checkoutRateLimited
               postal_code: order.shipping_address.postal_code,
               country: order.shipping_address.country,
             }
-          : {
-              first_name: order.first_name,
-              last_name: order.last_name,
-              address_1: "", // Guest orders don't have saved addresses
-              address_2: undefined,
-              city: "",
-              state: "",
-              postal_code: "",
-              country: "Nigeria",
-            },
+          : undefined,
+        pickup: pickupStore
+          ? { storeName: pickupStore.name, storeAddress: pickupStore.address }
+          : undefined,
         trackingNumber: order.tracking_number || undefined,
         orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}`,
       });
@@ -887,9 +933,9 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         last_name: z.string().min(1),
         email: z.string().email(),
         phone: z.string().optional(),
-        address_1: z.string().min(1),
+        address_1: z.string().optional(),
         address_2: z.string().optional(),
-        city: z.string().min(1),
+        city: z.string().optional(),
         state: z.string().optional(),
         postal_code: z.string().optional(),
         country: z.string().default("Nigeria"),
@@ -913,6 +959,24 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency: z.nativeEnum(Currency).default("NGN"),
       notes: z.string().optional(),
       promo_code: z.string().optional(),
+      deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+      pickupStoreId: z.string().optional(),
+    }).superRefine((data, ctx) => {
+      if (data.deliveryMethod === "DELIVERY") {
+        if (!data.address.address_1 || !data.address.city) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["address"],
+            message: "Address is required for delivery orders",
+          });
+        }
+      } else if (!data.pickupStoreId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["pickupStoreId"],
+          message: "A pickup store is required for pickup orders",
+        });
+      }
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -925,6 +989,8 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       currency,
       notes,
       promo_code: _promo_code,
+      deliveryMethod,
+      pickupStoreId,
     } = input;
 
     // Verify the charge directly with Paystack — never trust client-reported status
@@ -987,15 +1053,42 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
     const serverDiscount = resolvedPromotions.totalDiscountAmount;
     const isFreeShipping = resolvedPromotions.isFreeShipping;
 
-    // Recompute shipping server-side — never trust totals.shipping/totals.total
-    const serverShippingCost = isFreeShipping
-      ? 0
-      : await computeServerShippingCost(
-          address,
-          orderItems,
-          products,
-          verifiedSubtotal,
-        );
+    // Pickup orders skip shipping entirely (no address, no cost) — validated
+    // against an active Store rather than trusting a client-picked name.
+    let serverShippingCost: number;
+    let pickupStore: { id: string; name: string; address: string } | null =
+      null;
+
+    if (deliveryMethod === "PICKUP") {
+      const store = pickupStoreId
+        ? await ctx.prisma.store.findUnique({ where: { id: pickupStoreId } })
+        : null;
+      if (!store || !store.is_active) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected pickup store is not available",
+        });
+      }
+      pickupStore = store;
+      serverShippingCost = 0;
+    } else {
+      const address_1 = address.address_1;
+      const city = address.city;
+      if (!address_1 || !city) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Address is required for delivery orders",
+        });
+      }
+      serverShippingCost = isFreeShipping
+        ? 0
+        : await computeServerShippingCost(
+            { ...address, address_1, city },
+            orderItems,
+            products,
+            verifiedSubtotal,
+          );
+    }
     // Tax removed for now (business decision, 2026-07-02) — never trust
     // totals.tax from the client, same reasoning as shipping above.
     const serverTax = 0;
@@ -1049,6 +1142,8 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         payment_method,
         currency,
         shipping_address_id: undefined, // Guest orders don't have a shipping_address_id
+        delivery_method: deliveryMethod,
+        pickup_store_id: pickupStore?.id,
         notes,
         subtotal: verifiedSubtotal,
         shipping_cost: serverShippingCost,
@@ -1168,16 +1263,21 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         discount: Number(order.discount),
         processingFee: Number(order.processing_fee),
         total: Number(order.total),
-        shippingAddress: {
-          first_name: order.first_name,
-          last_name: order.last_name,
-          address_1: address.address_1,
-          address_2: address.address_2 || undefined,
-          city: address.city,
-          state: address.state || "",
-          postal_code: address.postal_code || "",
-          country: address.country || "Nigeria",
-        },
+        shippingAddress: pickupStore
+          ? undefined
+          : {
+              first_name: order.first_name,
+              last_name: order.last_name,
+              address_1: address.address_1 || "",
+              address_2: address.address_2 || undefined,
+              city: address.city || "",
+              state: address.state || "",
+              postal_code: address.postal_code || "",
+              country: address.country || "Nigeria",
+            },
+        pickup: pickupStore
+          ? { storeName: pickupStore.name, storeAddress: pickupStore.address }
+          : undefined,
         trackingNumber: order.tracking_number || undefined,
         orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}&guest=true&email=${encodeURIComponent(order.email)}`,
       });

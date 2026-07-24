@@ -55,6 +55,11 @@ export type Permission =
     // Consultation management
     | "consultations.read"
     | "consultations.update"
+    // Store management
+    | "stores.create"
+    | "stores.read"
+    | "stores.update"
+    | "stores.delete"
     // Analytics
     | "analytics.read";
 
@@ -96,6 +101,10 @@ export const ALL_PERMISSIONS: Permission[] = [
     "categories.delete",
     "consultations.read",
     "consultations.update",
+    "stores.create",
+    "stores.read",
+    "stores.update",
+    "stores.delete",
     "analytics.read",
 ];
 
@@ -157,6 +166,11 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     // Consultations
     { id: "consultations.read", name: "View Consultations", description: "Can view consultations", module: "Consultations" },
     { id: "consultations.update", name: "Manage Consultations", description: "Can update consultation status", module: "Consultations" },
+    // Stores
+    { id: "stores.create", name: "Create Stores", description: "Can create pickup stores", module: "Stores" },
+    { id: "stores.read", name: "View Stores", description: "Can view pickup stores", module: "Stores" },
+    { id: "stores.update", name: "Edit Stores", description: "Can edit pickup stores", module: "Stores" },
+    { id: "stores.delete", name: "Delete Stores", description: "Can delete pickup stores", module: "Stores" },
     // Analytics
     { id: "analytics.read", name: "View Analytics", description: "Can view analytics dashboard", module: "Analytics" },
 ];
@@ -208,6 +222,9 @@ export const ROLE_CONFIGS: RoleConfig[] = [
             "categories.update",
             "consultations.read",
             "consultations.update",
+            "stores.create",
+            "stores.read",
+            "stores.update",
             "analytics.read",
         ],
     },

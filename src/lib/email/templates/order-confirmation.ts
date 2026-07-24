@@ -24,7 +24,7 @@ export interface OrderConfirmationEmailData {
   discount: number;
   processingFee: number;
   total: number;
-  shippingAddress: {
+  shippingAddress?: {
     first_name: string;
     last_name: string;
     address_1: string;
@@ -33,6 +33,10 @@ export interface OrderConfirmationEmailData {
     state: string;
     postal_code: string;
     country: string;
+  };
+  pickup?: {
+    storeName: string;
+    storeAddress: string;
   };
   trackingNumber?: string;
   orderUrl?: string;
@@ -53,6 +57,7 @@ export function generateOrderConfirmationEmail(
     processingFee,
     total,
     shippingAddress,
+    pickup,
     trackingNumber,
     orderUrl,
   } = data;
@@ -144,6 +149,17 @@ export function generateOrderConfirmationEmail(
       </table>
     </div>
 
+    ${
+      pickup
+        ? `
+    <h3 style="color: #333; margin-top: 30px;">Pickup Location</h3>
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>${pickup.storeName}</strong></p>
+      <p style="margin: 5px 0;">${pickup.storeAddress}</p>
+    </div>
+    `
+        : shippingAddress
+          ? `
     <h3 style="color: #333; margin-top: 30px;">Shipping Address</h3>
     <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0;">
       <p style="margin: 5px 0;">${shippingAddress.first_name} ${shippingAddress.last_name}</p>
@@ -152,6 +168,9 @@ export function generateOrderConfirmationEmail(
       <p style="margin: 5px 0;">${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postal_code}</p>
       <p style="margin: 5px 0;">${shippingAddress.country}</p>
     </div>
+    `
+          : ""
+    }
 
     ${
       trackingNumber
@@ -202,12 +221,13 @@ Subtotal: ₦${subtotal.toLocaleString()}
 ${discount > 0 ? `Discount: -₦${discount.toLocaleString()}\n` : ""}Shipping: ₦${shipping.toLocaleString()}
 ${tax > 0 ? `Tax: ₦${tax.toLocaleString()}\n` : ""}${processingFee > 0 ? `Payment processing fee: ₦${processingFee.toLocaleString()}\n` : ""}Total: ₦${total.toLocaleString()}
 
-Shipping Address:
-${shippingAddress.first_name} ${shippingAddress.last_name}
-${shippingAddress.address_1}
-${shippingAddress.address_2 ? `${shippingAddress.address_2}\n` : ""}${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postal_code}
-${shippingAddress.country}
-
+${
+  pickup
+    ? `Pickup Location:\n${pickup.storeName}\n${pickup.storeAddress}\n`
+    : shippingAddress
+      ? `Shipping Address:\n${shippingAddress.first_name} ${shippingAddress.last_name}\n${shippingAddress.address_1}\n${shippingAddress.address_2 ? `${shippingAddress.address_2}\n` : ""}${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postal_code}\n${shippingAddress.country}\n`
+      : ""
+}
 ${trackingNumber ? "You can track your order using the tracking number above. We'll send you updates as your order ships." : "We'll send you a tracking number once your order ships."}
 
 If you have any questions about your order, please contact our support team.

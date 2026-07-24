@@ -46,6 +46,8 @@ export function OrderStatusTimeline({
     "PROCESSING",
     "SHIPPED",
     "DELIVERED",
+    "READY_FOR_PICKUP",
+    "PICKED_UP",
     "CANCELLED",
     "RETURNED",
     "REFUNDED",
@@ -160,6 +162,52 @@ export function OrderStatusTimeline({
             viewBox="0 0 24 24"
           >
             <title>Delivered</title>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        ),
+      },
+      READY_FOR_PICKUP: {
+        label: "Ready for Pickup",
+        description: "Order is ready for collection in-store",
+        color: "text-trichomes-primary",
+        bgColor: "bg-trichomes-primary/10",
+        borderColor: "border-trichomes-primary/30",
+        icon: (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <title>Ready for Pickup</title>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 9l1.5-5.5A2 2 0 016.42 2h11.16a2 2 0 011.92 1.5L21 9M5 11v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+            />
+          </svg>
+        ),
+      },
+      PICKED_UP: {
+        label: "Picked Up",
+        description: "Order has been picked up in-store",
+        color: "text-trichomes-primary",
+        bgColor: "bg-trichomes-primary/10",
+        borderColor: "border-trichomes-primary/30",
+        icon: (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <title>Picked Up</title>
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

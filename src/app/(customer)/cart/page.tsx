@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { PromoCodeSection } from "@/components/checkout/PromoCodeSection";
 import { OrderSummary } from "@/components/orders/OrderSummary";
 import {
   ChevronRightIcon,
@@ -14,6 +15,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@/components/ui/icons";
+import { usePromoCode } from "@/hooks/usePromoCode";
 import {
   getLocalCart,
   removeFromLocalCart,
@@ -24,7 +26,7 @@ import { useAuth } from "../../contexts/auth-context";
 
 export default function CartPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const utils = trpc.useUtils();
   const [localCartItems, setLocalCartItems] = useState(getLocalCart());
 
@@ -138,9 +140,26 @@ export default function CartPage() {
     }, 0);
   }, [cartItems]);
 
+  const {
+    promoCode,
+    setPromoCode,
+    appliedPromoCode,
+    promoCodeError,
+    setPromoCodeError,
+    autoAppliedPromos,
+    discount,
+    isApplyingCode,
+    applyPromoCode,
+    removePromoCode,
+  } = usePromoCode({
+    subtotal,
+    userId: user?.id,
+    persistOnApply: true,
+  });
+
   // Real shipping cost depends on the delivery address, which isn't known
   // yet on the cart page — it's calculated at checkout instead.
-  const total = subtotal;
+  const total = subtotal - discount;
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -455,7 +474,7 @@ export default function CartPage() {
                 shipping={0}
                 shippingNote="Calculated at checkout"
                 tax={0}
-                discount={0}
+                discount={discount}
                 total={total}
                 variant="checkout"
                 showItemDetails={false}
@@ -470,14 +489,19 @@ export default function CartPage() {
                       Proceed to Checkout
                     </button>
 
-                    <div className="mt-6 text-center">
-                      <button
-                        type="button"
-                        className="text-[#407029] hover:text-gray-900 underline text-[13px] sm:text-[14px] font-body font-medium transition-colors duration-150"
-                      >
-                        Have a promo code?
-                      </button>
-                    </div>
+                    <PromoCodeSection
+                      autoAppliedPromos={autoAppliedPromos}
+                      appliedPromoCode={appliedPromoCode}
+                      promoCode={promoCode}
+                      onPromoCodeChange={(value) => {
+                        setPromoCode(value);
+                        setPromoCodeError(null);
+                      }}
+                      promoCodeError={promoCodeError}
+                      isApplyingCode={isApplyingCode}
+                      onApply={() => applyPromoCode()}
+                      onRemove={removePromoCode}
+                    />
                   </>
                 }
               />
