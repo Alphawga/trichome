@@ -78,6 +78,7 @@ function CheckoutPageContent() {
     handleSubmit: handleFormSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors, isValid },
     reset,
   } = useForm<AddressFormData>({
@@ -103,9 +104,13 @@ function CheckoutPageContent() {
   // Update form when session data is available
   useEffect(() => {
     if (session?.user && isAuthenticated && !isGuestMode) {
-      setValue("first_name", session.user.first_name || "");
-      setValue("last_name", session.user.last_name || "");
-      setValue("email", session.user.email || "");
+      setValue("first_name", session.user.first_name || "", {
+        shouldValidate: true,
+      });
+      setValue("last_name", session.user.last_name || "", {
+        shouldValidate: true,
+      });
+      setValue("email", session.user.email || "", { shouldValidate: true });
     }
   }, [session, isAuthenticated, isGuestMode, setValue]);
 
@@ -119,7 +124,7 @@ function CheckoutPageContent() {
     if (phonePrefilledRef.current || !profileQuery.data) return;
     phonePrefilledRef.current = true;
     if (profileQuery.data.phone && !formData.phone) {
-      setValue("phone", profileQuery.data.phone);
+      setValue("phone", profileQuery.data.phone, { shouldValidate: true });
     }
   }, [profileQuery.data, formData.phone, setValue]);
 
@@ -153,6 +158,16 @@ function CheckoutPageContent() {
     "DELIVERY",
   );
   const [pickupStoreId, setPickupStoreId] = useState<string | undefined>();
+
+  // A user whose profile is fully pre-filled (name/email/phone all set via
+  // setValue above, not typed) may never fire a single onChange event —
+  // isValid then never gets computed and stays stuck false. Re-validate
+  // explicitly whenever delivery method toggles, since that's also when
+  // address_1/city's requiredness changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliveryMethod isn't read in the body — it's the intentional re-run trigger, not a used value.
+  useEffect(() => {
+    trigger();
+  }, [deliveryMethod, trigger]);
   const storesQuery = trpc.getActiveStores.useQuery();
 
   // Calculate totals
