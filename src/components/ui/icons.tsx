@@ -933,6 +933,29 @@ export const BrandsIcon: React.FC<{ className?: string }> = ({
   </svg>
 );
 
+export const StoreIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <title>Stores</title>
+    <path d="M3 9l1.5-5.5A2 2 0 016.42 2h11.16a2 2 0 011.92 1.5L21 9"></path>
+    <path d="M3 9a2 2 0 002 2h1a2 2 0 002-2 2 2 0 002 2 2 2 0 002-2 2 2 0 002 2 2 2 0 002-2 2 2 0 002 2h1a2 2 0 002-2"></path>
+    <path d="M5 11v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+    <path d="M9 21v-5a1 1 0 011-1h4a1 1 0 011 1v5"></path>
+  </svg>
+);
+
 export const ConsultationsIcon: React.FC<{ className?: string }> = ({
   className,
 }) => (

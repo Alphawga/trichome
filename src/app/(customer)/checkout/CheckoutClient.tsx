@@ -8,11 +8,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useGuestPaymentHandler } from "@/components/checkout/GuestPaymentHandler";
 import { OrderCreationStatus } from "@/components/checkout/OrderCreationStatus";
 import { usePaymentHandler } from "@/components/checkout/PaymentHandler";
+import { PromoCodeSection } from "@/components/checkout/PromoCodeSection";
 import { SavedAddressesSelector } from "@/components/checkout/SavedAddressesSelector";
 import { OrderSummary } from "@/components/orders/OrderSummary";
+import { usePromoCode } from "@/hooks/usePromoCode";
 import { NIGERIAN_STATES } from "@/lib/constants/nigerian-states";
 import { calculatePaystackFee } from "@/lib/payments/calculate-paystack-fee";
 import { getLocalCart } from "@/utils/local-cart";
@@ -25,9 +26,12 @@ const addressFormSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(1, "Phone number is required"),
-  address_1: z.string().min(1, "Street address is required"),
+  // Only required for delivery orders — enforced via deliveryAddressComplete
+  // below rather than the resolver, since requiredness depends on the
+  // delivery method the customer picks, not a fixed schema.
+  address_1: z.string().optional(),
   address_2: z.string().optional(),
-  city: z.string().min(1, "City is required"),
+  city: z.string().optional(),
   state: z.string().optional(),
   postal_code: z.string().optional(),
   country: z.string().min(1, "Country is required"),
@@ -143,14 +147,13 @@ function CheckoutPageContent() {
     string | undefined
   >();
 
-  // Promo code state
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedPromoCode, setAppliedPromoCode] = useState<{
-    code: string;
-    discount: number;
-    isFreeShipping: boolean;
-  } | null>(null);
-  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  // Delivery method: DELIVERY ships to the address form below, PICKUP skips
+  // shipping/address entirely in favor of a store selection.
+  const [deliveryMethod, setDeliveryMethod] = useState<"DELIVERY" | "PICKUP">(
+    "DELIVERY",
+  );
+  const [pickupStoreId, setPickupStoreId] = useState<string | undefined>();
+  const storesQuery = trpc.getActiveStores.useQuery();
 
   // Calculate totals
   const subtotal = useMemo(
@@ -203,93 +206,26 @@ function CheckoutPageContent() {
     formData.phone,
   ]);
 
-  // Validate promo code query — must send the same userId/state/city the
-  // server will use to re-validate at order-creation time (usage_limit_per_user,
-  // NEW_CUSTOMERS, location scoping), or a promo can validate here and then
-  // fail the Paystack amount-match check after the customer has already
-  // been charged.
-  const validatePromoCodeQuery = trpc.validatePromoCode.useQuery(
-    {
-      code: promoCode,
-      subtotal,
-      userId: isAuthenticated ? session?.user.id : undefined,
-      state: debouncedAddress.state,
-      city: debouncedAddress.city,
-    },
-    { enabled: false, retry: false },
-  );
-
-  // Every eligible codeless promotion stacks together automatically. A
-  // manually entered code (below) adds on top of this set rather than
-  // replacing it. Not gated on having a full address yet — a location-scoped
-  // promotion just won't be eligible until the destination is known;
-  // store-wide ones auto-apply immediately.
-  const autoApplyPromotionsQuery = trpc.getAutoApplyPromotions.useQuery(
-    {
-      subtotal,
-      userId: isAuthenticated ? session?.user.id : undefined,
-      state: debouncedAddress.state,
-      city: debouncedAddress.city,
-    },
-    { enabled: subtotal > 0 },
-  );
-
-  const autoAppliedPromos = useMemo(
-    () =>
-      (autoApplyPromotionsQuery.data ?? []).map((entry) => ({
-        promotionId: entry.promotion.id,
-        name: entry.promotion.name,
-        discount: entry.discountAmount,
-        isFreeShipping: entry.isFreeShipping,
-      })),
-    [autoApplyPromotionsQuery.data],
-  );
-
-  const isFreeShipping =
-    appliedPromoCode?.isFreeShipping ||
-    autoAppliedPromos.some((p) => p.isFreeShipping);
-  const discount = Math.min(
-    autoAppliedPromos.reduce((sum, p) => sum + p.discount, 0) +
-      (appliedPromoCode?.discount ?? 0),
+  const {
+    promoCode,
+    setPromoCode,
+    appliedPromoCode,
+    promoCodeError,
+    setPromoCodeError,
+    autoAppliedPromos,
+    discount,
+    isFreeShipping,
+    isApplyingCode,
+    isAutoApplyLoading,
+    applyPromoCode,
+    removePromoCode,
+  } = usePromoCode({
     subtotal,
-  );
-
-  const handleApplyPromoCode = async () => {
-    if (!promoCode.trim()) {
-      setPromoCodeError("Please enter a promo code");
-      return;
-    }
-
-    try {
-      const result = await validatePromoCodeQuery.refetch();
-
-      if (result.isError) {
-        setPromoCodeError(result.error.message || "Invalid promo code");
-        setAppliedPromoCode(null);
-        return;
-      }
-
-      if (result.data) {
-        setAppliedPromoCode({
-          code: promoCode,
-          discount: result.data.discountAmount,
-          isFreeShipping: result.data.isFreeShipping,
-        });
-        setPromoCodeError(null);
-        toast.success("Promo code applied successfully!");
-      }
-    } catch (error) {
-      setPromoCodeError("Failed to validate promo code");
-    }
-  };
-
-  const handleRemovePromoCode = () => {
-    setAppliedPromoCode(null);
-    setPromoCode("");
-    setPromoCodeError(null);
-  };
-
-
+    userId: isAuthenticated ? session?.user.id : undefined,
+    state: debouncedAddress.state,
+    city: debouncedAddress.city,
+    autoApplyFromStorage: true,
+  });
 
   const cartWeightKg = useMemo(
     () =>
@@ -312,10 +248,10 @@ function CheckoutPageContent() {
   const shippingRateQuery = trpc.getShippingRate.useQuery(
     {
       state: debouncedAddress.state || "",
-      city: debouncedAddress.city,
+      city: debouncedAddress.city || "",
       postalCode: debouncedAddress.postal_code,
       country: debouncedAddress.country || "Nigeria",
-      addressLine: debouncedAddress.address_1,
+      addressLine: debouncedAddress.address_1 || "",
       contactName: debouncedAddress.contactName,
       contactEmail: debouncedAddress.email,
       contactPhone: debouncedAddress.phone,
@@ -329,7 +265,7 @@ function CheckoutPageContent() {
       })),
     },
     {
-      enabled: hasCompleteShippingContactDetails,
+      enabled: deliveryMethod === "DELIVERY" && hasCompleteShippingContactDetails,
       staleTime: 60_000,
     },
   );
@@ -337,23 +273,39 @@ function CheckoutPageContent() {
   // True while the 500ms debounce hasn't caught up with the latest typed
   // shipping/contact input yet, or while a refetch triggered by it is still
   // in flight — used to block payment submission on a stale quote so the
-  // amount charged never lags behind what was just typed.
+  // amount charged never lags behind what was just typed. Pickup orders
+  // never fetch a rate, so this is always false for them.
   const isShippingQuotePending =
-    formData.state !== debouncedAddress.state ||
-    formData.city !== debouncedAddress.city ||
-    formData.postal_code !== debouncedAddress.postal_code ||
-    formData.country !== debouncedAddress.country ||
-    formData.address_1 !== debouncedAddress.address_1 ||
-    `${formData.first_name} ${formData.last_name}`.trim() !==
-      debouncedAddress.contactName ||
-    formData.email !== debouncedAddress.email ||
-    formData.phone !== debouncedAddress.phone ||
-    shippingRateQuery.isLoading ||
-    shippingRateQuery.isFetching;
+    deliveryMethod === "DELIVERY" &&
+    (formData.state !== debouncedAddress.state ||
+      formData.city !== debouncedAddress.city ||
+      formData.postal_code !== debouncedAddress.postal_code ||
+      formData.country !== debouncedAddress.country ||
+      formData.address_1 !== debouncedAddress.address_1 ||
+      `${formData.first_name} ${formData.last_name}`.trim() !==
+        debouncedAddress.contactName ||
+      formData.email !== debouncedAddress.email ||
+      formData.phone !== debouncedAddress.phone ||
+      shippingRateQuery.isLoading ||
+      shippingRateQuery.isFetching);
 
   const selectedRate = shippingRateQuery.data?.rates?.[0];
 
-  const shipping = isFreeShipping ? 0 : (selectedRate?.cost ?? 0);
+  const shipping =
+    deliveryMethod === "PICKUP"
+      ? 0
+      : isFreeShipping
+        ? 0
+        : (selectedRate?.cost ?? 0);
+
+  const selectedStore = storesQuery.data?.stores.find(
+    (store) => store.id === pickupStoreId,
+  );
+  const deliveryAddressComplete =
+    deliveryMethod === "PICKUP" ||
+    Boolean(formData.address_1 && formData.city);
+  const pickupSelectionComplete =
+    deliveryMethod === "DELIVERY" || Boolean(pickupStoreId);
   const tax = 0; // Tax removed for now (business decision, 2026-07-02)
   const total = subtotal + shipping + tax - discount;
   // Paystack's transaction fee is passed through to the customer, itemized
@@ -371,8 +323,8 @@ function CheckoutPageContent() {
     },
   });
 
-  // Use appropriate payment handler based on authentication
-  const authenticatedPaymentHandler = usePaymentHandler({
+  const paymentHandler = usePaymentHandler({
+    isGuestMode,
     address: {
       first_name: formData.first_name,
       last_name: formData.last_name,
@@ -399,28 +351,9 @@ function CheckoutPageContent() {
     customerName: `${formData.first_name} ${formData.last_name}`,
     customerEmail: formData.email,
     promoCode: appliedPromoCode?.code,
+    deliveryMethod,
+    pickupStoreId,
   });
-
-  const guestPaymentHandler = useGuestPaymentHandler({
-    address: formData,
-    items: cartItems.map((item) => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-    })),
-    totals: {
-      subtotal,
-      shipping,
-      tax,
-      discount,
-      total: grandTotal,
-    },
-    promoCode: appliedPromoCode?.code,
-  });
-
-  const paymentHandler =
-    isAuthenticated && !isGuestMode
-      ? authenticatedPaymentHandler
-      : guestPaymentHandler;
 
   const handleSelectSavedAddress = (address: Partial<AddressFormData>) => {
     // Address records don't store email, and phone may legitimately be
@@ -437,18 +370,24 @@ function CheckoutPageContent() {
     setSelectedAddressId(undefined);
   };
 
-  // Save address (called before payment if user opted in)
+  // Save address (called before payment if user opted in) — delivery orders only
   const handleSaveAddress = async () => {
-    if (!saveAddress || !isAuthenticated || isGuestMode) return;
+    if (
+      !saveAddress ||
+      !isAuthenticated ||
+      isGuestMode ||
+      deliveryMethod !== "DELIVERY"
+    )
+      return;
 
     try {
       await createAddressMutation.mutateAsync({
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone || undefined,
-        address_1: formData.address_1,
+        address_1: formData.address_1 || "",
         address_2: formData.address_2 || undefined,
-        city: formData.city,
+        city: formData.city || "",
         state: formData.state || undefined,
         postal_code: formData.postal_code || undefined,
         country: formData.country,
@@ -546,16 +485,102 @@ function CheckoutPageContent() {
             {/* Shipping Address Form */}
             <div className="lg:w-2/3">
               <h1 className="text-[24px] sm:text-[32px] font-heading font-semibold mb-4 sm:mb-6 text-gray-900">
-                Shipping Information
+                Delivery Method
+              </h1>
+
+              <div className="bg-white p-6 sm:p-8 rounded-sm border border-gray-200 shadow-sm mb-6 sm:mb-8">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("DELIVERY")}
+                    className={`px-4 py-3 rounded-sm border text-[14px] sm:text-[15px] font-semibold font-body transition-colors duration-150 ${
+                      deliveryMethod === "DELIVERY"
+                        ? "border-[#1E3024] bg-[#1E3024] text-white"
+                        : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
+                  >
+                    Delivery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("PICKUP")}
+                    className={`px-4 py-3 rounded-sm border text-[14px] sm:text-[15px] font-semibold font-body transition-colors duration-150 ${
+                      deliveryMethod === "PICKUP"
+                        ? "border-[#1E3024] bg-[#1E3024] text-white"
+                        : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
+                  >
+                    Store Pickup
+                  </button>
+                </div>
+              </div>
+
+              <h1 className="text-[24px] sm:text-[32px] font-heading font-semibold mb-4 sm:mb-6 text-gray-900">
+                {deliveryMethod === "PICKUP"
+                  ? "Pickup Details"
+                  : "Shipping Information"}
               </h1>
 
               <div className="bg-white p-6 sm:p-8 rounded-sm border border-gray-200 shadow-sm">
                 {/* Show saved addresses selector for authenticated users */}
-                {isAuthenticated && !isGuestMode && (
+                {isAuthenticated && !isGuestMode && deliveryMethod === "DELIVERY" && (
                   <SavedAddressesSelector
                     onSelectAddress={handleSelectSavedAddress}
                     selectedAddressId={selectedAddressId}
                   />
+                )}
+
+                {deliveryMethod === "PICKUP" && (
+                  <div className="mb-6">
+                    <span className="block text-[14px] sm:text-[15px] font-medium text-trichomes-forest mb-2 font-body">
+                      Select a store <span className="text-red-500">*</span>
+                    </span>
+                    {storesQuery.isLoading ? (
+                      <p className="text-sm text-gray-500 font-body">
+                        Loading stores...
+                      </p>
+                    ) : storesQuery.data?.stores.length ? (
+                      <div className="space-y-3">
+                        {storesQuery.data.stores.map((store) => (
+                          <label
+                            key={store.id}
+                            className={`flex items-start gap-3 p-4 border rounded-sm cursor-pointer transition-colors duration-150 ${
+                              pickupStoreId === store.id
+                                ? "border-[#1E3024] bg-[#1E3024]/5"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="pickupStore"
+                              className="mt-1 accent-trichomes-primary"
+                              checked={pickupStoreId === store.id}
+                              onChange={() => setPickupStoreId(store.id)}
+                            />
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm font-body">
+                                {store.name}
+                              </p>
+                              <p className="text-sm text-gray-600 font-body">
+                                {store.address}
+                              </p>
+                              {(store.phone || store.opening_hours) && (
+                                <p className="text-xs text-gray-500 font-body mt-1">
+                                  {[store.phone, store.opening_hours]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 font-body">
+                        No pickup stores are available right now.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Form Fields */}
@@ -663,6 +688,8 @@ function CheckoutPageContent() {
                     )}
                   </div>
 
+                  {deliveryMethod === "DELIVERY" && (
+                    <>
                   {/* Street Address */}
                   <div className="sm:col-span-2">
                     <label
@@ -801,10 +828,12 @@ function CheckoutPageContent() {
                       </p>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Save address checkbox for authenticated users */}
-                {isAuthenticated && !isGuestMode && (
+                {isAuthenticated && !isGuestMode && deliveryMethod === "DELIVERY" && (
                   <div className="mt-6">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -820,8 +849,25 @@ function CheckoutPageContent() {
                   </div>
                 )}
 
+                {/* Pickup summary */}
+                {deliveryMethod === "PICKUP" && selectedStore && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
+                      Pickup
+                    </h3>
+                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-sm">
+                      <div className="font-medium text-gray-900 text-sm font-body">
+                        {selectedStore.name}
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900 font-body">
+                        Free
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Shipping */}
-                {formData.city && formData.state && (
+                {deliveryMethod === "DELIVERY" && formData.city && formData.state && (
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
                       Shipping
@@ -910,9 +956,11 @@ function CheckoutPageContent() {
                         type="submit"
                         disabled={
                           !isValid ||
+                          !deliveryAddressComplete ||
+                          !pickupSelectionComplete ||
                           paymentHandler.isLoading ||
                           isShippingQuotePending ||
-                          autoApplyPromotionsQuery.isFetching
+                          isAutoApplyLoading
                         }
                         className="w-full bg-[#1E3024] text-white py-3 sm:py-4 rounded-full hover:bg-[#1E3024]/90 font-semibold disabled:bg-gray-200 disabled:cursor-not-allowed transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
                       >
@@ -923,82 +971,19 @@ function CheckoutPageContent() {
                             : "Continue to Payment"}
                       </button>
 
-                      {/* Promo Code Section */}
-                      <div className="mt-4">
-                        {autoAppliedPromos.length > 0 && (
-                          <ul className="mb-2 space-y-1">
-                            {autoAppliedPromos.map((promo) => (
-                              <li
-                                key={promo.promotionId}
-                                className="text-xs text-trichomes-primary font-body"
-                              >
-                                &quot;{promo.name}&quot; auto-applied
-                                {promo.isFreeShipping
-                                  ? " — free shipping"
-                                  : ` — -₦${promo.discount.toLocaleString()}`}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {!appliedPromoCode ? (
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={promoCode}
-                                onChange={(e) => {
-                                  setPromoCode(e.target.value.toUpperCase());
-                                  setPromoCodeError(null);
-                                }}
-                                placeholder="Enter promo code"
-                                className="flex-1 px-3 py-2 text-sm border border-gray-200 bg-white rounded-sm focus:ring-1 focus:ring-black focus:border-black outline-none font-body"
-                              />
-                              <button
-                                type="button"
-                                onClick={handleApplyPromoCode}
-                                disabled={
-                                  validatePromoCodeQuery.isFetching ||
-                                  !promoCode.trim()
-                                }
-                                className="px-4 py-2 text-sm bg-black text-white rounded-sm hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 font-body"
-                              >
-                                {validatePromoCodeQuery.isFetching
-                                  ? "..."
-                                  : "Apply"}
-                              </button>
-                            </div>
-                            {promoCodeError && (
-                              <p className="text-xs text-red-600 font-body">
-                                {promoCodeError}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between p-2 bg-gray-50 rounded-sm border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900 font-body">
-                                {appliedPromoCode.code}
-                              </span>
-                              {appliedPromoCode.isFreeShipping ? (
-                                <span className="text-xs text-gray-600 font-body">
-                                  Free Shipping
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-600 font-body">
-                                  -₦{appliedPromoCode.discount.toLocaleString()}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleRemovePromoCode}
-                              className="text-xs text-red-600 hover:text-red-700 font-body"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <PromoCodeSection
+                        autoAppliedPromos={autoAppliedPromos}
+                        appliedPromoCode={appliedPromoCode}
+                        promoCode={promoCode}
+                        onPromoCodeChange={(value) => {
+                          setPromoCode(value);
+                          setPromoCodeError(null);
+                        }}
+                        promoCodeError={promoCodeError}
+                        isApplyingCode={isApplyingCode}
+                        onApply={() => applyPromoCode()}
+                        onRemove={removePromoCode}
+                      />
                     </>
                   }
                 />

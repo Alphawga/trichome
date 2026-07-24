@@ -127,14 +127,18 @@ export default function OrderViewPage() {
     "PROCESSING",
     "SHIPPED",
     "DELIVERED",
+    "READY_FOR_PICKUP",
+    "PICKED_UP",
     "CANCELLED",
   ];
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case "DELIVERED":
+      case "PICKED_UP":
         return "bg-green-100 text-green-800";
       case "SHIPPED":
+      case "READY_FOR_PICKUP":
         return "bg-blue-100 text-blue-800";
       case "PROCESSING":
       case "CONFIRMED":
@@ -157,6 +161,8 @@ export default function OrderViewPage() {
       PROCESSING: "Processing",
       SHIPPED: "Shipped",
       DELIVERED: "Delivered",
+      READY_FOR_PICKUP: "Ready for Pickup",
+      PICKED_UP: "Picked Up",
       CANCELLED: "Cancelled",
       RETURNED: "Returned",
       REFUNDED: "Refunded",

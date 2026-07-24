@@ -246,9 +246,12 @@ model Order {
   created_at          DateTime             @default(now())
   updated_at          DateTime             @updatedAt
   shipping_address_id String?
+  delivery_method     DeliveryMethod       @default(DELIVERY)
+  pickup_store_id     String?
   items               OrderItem[]
   status_history      OrderStatusHistory[]
   shipping_address    Address?             @relation(fields: [shipping_address_id], references: [id])
+  pickup_store        Store?               @relation(fields: [pickup_store_id], references: [id])
   user                User?                @relation(fields: [user_id], references: [id])
   payments            Payment[]
   notifications       Notification[]
@@ -259,6 +262,7 @@ model Order {
   @@index([payment_status])
   @@index([created_at])
   @@index([email])
+  @@index([pickup_store_id])
   @@map("orders")
 }
 
@@ -395,30 +399,30 @@ model VisitorDailyStat {
 }
 
 model Promotion {
-  id                   String           @id @default(cuid())
+  id                   String                   @id @default(cuid())
   name                 String
-  code                 String?          @unique
+  code                 String?                  @unique
   description          String?
   type                 PromotionType
-  value                Decimal          @db.Decimal(12, 2)
-  min_order_value      Decimal          @default(0) @db.Decimal(12, 2)
-  max_discount         Decimal?         @db.Decimal(12, 2)
-  status               PromotionStatus  @default(INACTIVE)
-  target_customers     PromotionTarget  @default(ALL)
+  value                Decimal                  @db.Decimal(12, 2)
+  min_order_value      Decimal                  @default(0) @db.Decimal(12, 2)
+  max_discount         Decimal?                 @db.Decimal(12, 2)
+  status               PromotionStatus          @default(INACTIVE)
+  target_customers     PromotionTarget          @default(ALL)
   start_date           DateTime
   end_date             DateTime
-  usage_limit          Int              @default(0)
-  usage_count          Int              @default(0)
+  usage_limit          Int                      @default(0)
+  usage_count          Int                      @default(0)
   usage_limit_per_user Int?
-  show_on_banner       Boolean          @default(false)
+  show_on_banner       Boolean                  @default(false)
   applicable_state     String?
   applicable_city      String?
   display_location     PromotionDisplayLocation @default(CHECKOUT)
-  created_at           DateTime         @default(now())
-  updated_at           DateTime         @updatedAt
+  created_at           DateTime                 @default(now())
+  updated_at           DateTime                 @updatedAt
   created_by           String?
   usages               PromotionUsage[]
-  creator              User?            @relation(fields: [created_by], references: [id])
+  creator              User?                    @relation(fields: [created_by], references: [id])
 
   @@index([code])
   @@index([status])
@@ -493,6 +497,24 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+model Store {
+  id            String   @id @default(cuid())
+  name          String
+  address       String
+  phone         String?
+  opening_hours String?
+  map_url       String?
+  is_active     Boolean  @default(true)
+  sort_order    Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  orders        Order[]
+
+  @@index([is_active])
+  @@index([sort_order])
+  @@map("stores")
+}
+
 model Brand {
   id          String        @id @default(cuid())
   name        String        @unique
@@ -542,18 +564,18 @@ model Consultation {
 }
 
 model Review {
-  id             String       @id @default(cuid())
-  product_id     String
-  user_id        String
-  rating         Int
-  title          String?
-  comment        String?
-  status         ReviewStatus @default(PENDING)
-  helpful_count  Int          @default(0)
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
-  product        Product      @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  product_id    String
+  user_id       String
+  rating        Int
+  title         String?
+  comment       String?
+  status        ReviewStatus @default(PENDING)
+  helpful_count Int          @default(0)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+  product       Product      @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([product_id, user_id])
   @@index([product_id])
@@ -582,9 +604,16 @@ enum OrderStatus {
   PROCESSING
   SHIPPED
   DELIVERED
+  READY_FOR_PICKUP
+  PICKED_UP
   CANCELLED
   RETURNED
   REFUNDED
+}
+
+enum DeliveryMethod {
+  DELIVERY
+  PICKUP
 }
 
 enum PaymentStatus {
