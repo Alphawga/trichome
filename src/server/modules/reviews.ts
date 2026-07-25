@@ -1,7 +1,28 @@
-import { ReviewStatus } from "@prisma/client";
+import { type PrismaClient, ReviewStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, staffProcedure } from "../trpc";
+
+// Recomputes the denormalized average_rating/review_count used for listing-wide
+// sort, since Prisma can't orderBy a live aggregate across products.
+async function recalculateProductRating(
+  prisma: PrismaClient,
+  productId: string,
+) {
+  const stats = await prisma.review.aggregate({
+    where: { product_id: productId, status: "APPROVED" },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      average_rating: stats._avg.rating ?? 0,
+      review_count: stats._count.rating,
+    },
+  });
+}
 
 // Get reviews for a product (public)
 export const getProductReviews = publicProcedure
@@ -186,6 +207,8 @@ export const createReview = protectedProcedure
       },
     });
 
+    await recalculateProductRating(ctx.prisma, input.product_id);
+
     return { review, message: "Review submitted successfully" };
   });
 
@@ -234,6 +257,8 @@ export const updateReview = protectedProcedure
       },
     });
 
+    await recalculateProductRating(ctx.prisma, review.product_id);
+
     return { review: updatedReview, message: "Review updated successfully" };
   });
 
@@ -259,6 +284,8 @@ export const deleteReview = protectedProcedure
     await ctx.prisma.review.delete({
       where: { id: input.id },
     });
+
+    await recalculateProductRating(ctx.prisma, review.product_id);
 
     return { message: "Review deleted successfully" };
   });
@@ -365,6 +392,8 @@ export const updateReviewStatus = staffProcedure
       data: { status: input.status },
     });
 
+    await recalculateProductRating(ctx.prisma, review.product_id);
+
     return {
       review: updatedReview,
       message: "Review status updated successfully",
@@ -399,10 +428,22 @@ export const bulkUpdateReviewStatus = staffProcedure
   .mutation(async ({ input, ctx }) => {
     const { ids, status } = input;
 
+    const affectedReviews = await ctx.prisma.review.findMany({
+      where: { id: { in: ids } },
+      select: { product_id: true },
+      distinct: ["product_id"],
+    });
+
     const result = await ctx.prisma.review.updateMany({
       where: { id: { in: ids } },
       data: { status },
     });
+
+    await Promise.all(
+      affectedReviews.map((r) =>
+        recalculateProductRating(ctx.prisma, r.product_id),
+      ),
+    );
 
     return {
       count: result.count,

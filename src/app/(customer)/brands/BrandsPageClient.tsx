@@ -145,7 +145,7 @@ function BrandsPageContent() {
   }, [wishlistQuery.data]);
 
   const handleProductClick = (product: ProductWithRelations) => {
-    router.push(`/products/${product.id}`);
+    router.push(`/products/${product.slug || product.id}`);
   };
 
   const handleAddToCart = (product: ProductWithRelations, quantity: number) => {

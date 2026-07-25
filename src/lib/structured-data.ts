@@ -54,6 +54,7 @@ export function buildBreadcrumbJsonLd(items: { name: string; path: string }[]) {
 
 interface ProductForJsonLd {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   short_description: string | null;
@@ -64,7 +65,10 @@ interface ProductForJsonLd {
   category: { name: string };
 }
 
-export function buildProductJsonLd(product: ProductForJsonLd) {
+export function buildProductJsonLd(
+  product: ProductForJsonLd,
+  effectivePrice?: number,
+) {
   const primaryImage =
     product.images.find((image) => image.is_primary) ?? product.images[0];
   const imageUrl = primaryImage
@@ -83,9 +87,9 @@ export function buildProductJsonLd(product: ProductForJsonLd) {
     image: imageUrl ? [imageUrl] : undefined,
     offers: {
       "@type": "Offer",
-      url: `${SITE_URL}/products/${product.id}`,
+      url: `${SITE_URL}/products/${product.slug}`,
       priceCurrency: "NGN",
-      price: String(product.price),
+      price: String(effectivePrice ?? product.price),
       availability:
         product.quantity > 0
           ? "https://schema.org/InStock"

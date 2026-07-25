@@ -25,7 +25,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:all": "pnpm test && pnpm test:e2e",
-    "playwright:install": "playwright install"
+    "playwright:install": "playwright install",
+    "audit:product-names": "tsx scripts/audit-unicode-product-names.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

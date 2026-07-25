@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { resolveActiveProductTagPromotions } from "@/lib/promotions/active-product-tag-promotions";
 import {
   calculatePromotionDiscount,
   checkPromotionEligibility,
@@ -108,58 +109,14 @@ export const getAutoApplyPromotions = publicProcedure
   });
 
 // Codeless PERCENTAGE/FIXED_AMOUNT promotions flagged to display on the
-// product price tag (strikethrough + new price) — store-wide, since
-// Promotion has no product/category scoping. No cart context exists on a
-// listing/PDP page, so min_order_value is intentionally ignored here (pass
-// Number.MAX_SAFE_INTEGER so checkPromotionEligibility's subtotal-vs-minimum
-// check always passes) rather than gated on it — a min_order_value promotion
-// should still show its tag price, it just won't discount a cart below that
-// minimum at checkout. Returns raw promo terms, not a precomputed price,
-// since the discount is applied per-product client-side against that
-// product's own price.
+// product price tag (strikethrough + new price). Logic lives in
+// @/lib/promotions/active-product-tag-promotions so the PDP server component
+// can reuse it for promotion-aware JSON-LD pricing without going through tRPC.
 export const getActiveProductTagPromotions = publicProcedure
   .input(z.object({ userId: z.string().optional() }))
-  .query(async ({ input, ctx }) => {
-    await syncPromotionStatuses(ctx.prisma);
-
-    const now = new Date();
-    const candidates = await ctx.prisma.promotion.findMany({
-      where: {
-        code: null,
-        status: "ACTIVE",
-        start_date: { lte: now },
-        end_date: { gte: now },
-        display_location: { in: ["PRODUCT_TAG", "BOTH"] },
-        type: { in: ["PERCENTAGE", "FIXED_AMOUNT"] },
-      },
-      orderBy: { created_at: "desc" },
-    });
-
-    const eligible = [];
-    for (const promotion of candidates) {
-      const eligibility = await checkPromotionEligibility(
-        ctx.prisma,
-        promotion,
-        {
-          subtotal: Number.MAX_SAFE_INTEGER,
-          userId: input.userId,
-        },
-      );
-      if (eligibility.eligible) {
-        eligible.push({
-          id: promotion.id,
-          name: promotion.name,
-          type: promotion.type,
-          value: Number(promotion.value),
-          max_discount: promotion.max_discount
-            ? Number(promotion.max_discount)
-            : null,
-        });
-      }
-    }
-
-    return eligible;
-  });
+  .query(({ input, ctx }) =>
+    resolveActiveProductTagPromotions(ctx.prisma, input.userId),
+  );
 
 // Get all promotions flagged to display on the site banner (public)
 export const getBannerPromotions = publicProcedure.query(async ({ ctx }) => {

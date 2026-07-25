@@ -230,7 +230,7 @@ export default function OrderViewPage() {
             <p className="font-medium">{item.product_name}</p>
             {item.product && (
               <Link
-                href={`/products/${item.product.id}`}
+                href={`/products/${item.product.slug || item.product.id}`}
                 className="text-sm text-primary hover:underline"
               >
                 View Product

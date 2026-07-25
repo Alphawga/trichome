@@ -36,12 +36,14 @@ const sortOptions = [
   { label: "Price: Low to High", value: "price_asc" },
   { label: "Price: High to Low", value: "price_desc" },
   { label: "Popular", value: "popular" },
+  { label: "Rating", value: "rating" },
 ] as const;
 
 interface FilterState {
   min_price?: number;
   max_price?: number;
   category_slugs?: string[];
+  brand_slugs?: string[];
 }
 
 function ProductsPageContent() {
@@ -52,7 +54,6 @@ function ProductsPageContent() {
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
 
-  const [wishlist, setWishlist] = useState<string[]>([]); // Store product IDs only
   const [searchTerm, setSearchTerm] = useState(searchParam || "");
 
   // Sync searchTerm with URL search param changes (e.g. from SearchBar navigation)
@@ -70,6 +71,18 @@ function ProductsPageContent() {
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoryParam ? [categoryParam] : [],
+  );
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+
+  const brandsQuery = trpc.getBrands.useQuery(
+    { status: ProductStatus.ACTIVE, limit: 500 },
+    { staleTime: 300000, refetchOnWindowFocus: false },
+  );
+
+  const getBrandSlugByName = useCallback(
+    (name: string) =>
+      brandsQuery.data?.brands.find((b) => b.name === name)?.slug,
+    [brandsQuery.data],
   );
 
   // Sync selectedCategories when URL category param changes (e.g. from navbar)
@@ -108,6 +121,9 @@ function ProductsPageContent() {
       category_slugs: selectedCategories.length > 0
         ? selectedCategories
         : categoryParam ? [categoryParam] : undefined,
+      brand_slugs: selectedBrands.length > 0
+        ? selectedBrands.map((name) => getBrandSlugByName(name)).filter((s): s is string => Boolean(s))
+        : undefined,
       status: ProductStatus.ACTIVE,
       sort_by: sortBy as
         | "newest"
@@ -115,7 +131,8 @@ function ProductsPageContent() {
         | "price_asc"
         | "price_desc"
         | "popular"
-        | "featured",
+        | "featured"
+        | "rating",
     },
     {
       staleTime: 30000,
@@ -187,6 +204,41 @@ function ProductsPageContent() {
     },
   });
 
+  const wishlistQuery = trpc.getWishlist.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+  });
+
+  const wishlistProductIds = useMemo(() => {
+    if (!wishlistQuery.data?.items) return [];
+    return wishlistQuery.data.items.map((item) => item.product_id);
+  }, [wishlistQuery.data]);
+
+  const addToWishlistMutation = trpc.addToWishlist.useMutation({
+    onSuccess: () => {
+      utils.getWishlist.invalidate();
+      toast.success("Added to wishlist");
+    },
+    onError: (error) => {
+      if (!isAuthenticated) {
+        toast.error("Please sign in to add items to wishlist");
+        router.push("/auth/signin");
+      } else {
+        toast.error(error.message || "Failed to add to wishlist");
+      }
+    },
+  });
+
+  const removeFromWishlistMutation = trpc.removeFromWishlist.useMutation({
+    onSuccess: () => {
+      utils.getWishlist.invalidate();
+      toast.success("Removed from wishlist");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove from wishlist");
+    },
+  });
+
   const products = productsQuery.data?.products || [];
 
   // Update search term when URL search parameter changes
@@ -209,7 +261,7 @@ function ProductsPageContent() {
     : false;
 
   const handleProductClick = (product: ProductWithRelations) => {
-    router.push(`/products/${product.id}`);
+    router.push(`/products/${product.slug || product.id}`);
   };
 
   const handleAddToCart = (product: ProductWithRelations, quantity: number) => {
@@ -226,11 +278,14 @@ function ProductsPageContent() {
   };
 
   const handleToggleWishlist = (product: ProductWithRelations) => {
-    const isInWishlist = wishlist.includes(product.id);
-    if (isInWishlist) {
-      setWishlist(wishlist.filter((id) => id !== product.id));
+    const wishlistItem = wishlistQuery.data?.items.find(
+      (item) => item.product_id === product.id,
+    );
+
+    if (wishlistItem) {
+      removeFromWishlistMutation.mutate({ id: wishlistItem.id });
     } else {
-      setWishlist([...wishlist, product.id]);
+      addToWishlistMutation.mutate({ product_id: product.id });
     }
   };
 
@@ -266,6 +321,7 @@ function ProductsPageContent() {
   const handleClearFilters = () => {
     setActiveFilters(null);
     setSelectedCategories([]);
+    setSelectedBrands([]);
     setMinPrice(0);
     setMaxPrice(100000);
     if (categoryParam) {
@@ -313,6 +369,25 @@ function ProductsPageContent() {
       return newSlugs;
     });
   }, [categoriesQuery.data]);
+
+  // Toggle a brand (by name) in the selectedBrands array
+  const handleBrandToggle = useCallback((brandName: string) => {
+    setSelectedBrands((prev) =>
+      prev.includes(brandName)
+        ? prev.filter((b) => b !== brandName)
+        : [...prev, brandName],
+    );
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilterToggle = useCallback(
+    (category: "brands" | "concerns" | "ingredients", value: string) => {
+      if (category === "brands") {
+        handleBrandToggle(value);
+      }
+    },
+    [handleBrandToggle],
+  );
 
   const toggleMobileFilter = () => {
     if (mobileFilterOpen) {
@@ -575,10 +650,10 @@ function ProductsPageContent() {
             onPriceChange={setMaxPrice}
             minPrice={minPrice}
             onMinPriceChange={setMinPrice}
-            selectedBrands={[]}
+            selectedBrands={selectedBrands}
             selectedConcerns={[]}
             selectedIngredients={[]}
-            onToggleFilter={() => { }}
+            onToggleFilter={handleFilterToggle}
             onApplyFilters={handleApplyFilters}
             isFiltering={productsQuery.isFetching}
             selectedCategories={selectedCategories.map((slug) => {
@@ -591,13 +666,13 @@ function ProductsPageContent() {
             onCategoryToggle={handleCategoryToggle}
             categories={transformedCategories}
             filterOptions={{
-              brands: [],
+              brands: brandsQuery.data?.brands.map((b) => b.name) ?? [],
               concerns: [],
               ingredients: [],
             }}
             onProductClick={handleProductClick}
             onAddToCart={handleAddToCart}
-            wishlist={wishlist}
+            wishlist={wishlistProductIds}
             onToggleWishlist={handleToggleWishlist}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
@@ -656,10 +731,10 @@ function ProductsPageContent() {
                     onPriceChange={setMaxPrice}
                     minPrice={minPrice}
                     onMinPriceChange={setMinPrice}
-                    selectedBrands={[]}
+                    selectedBrands={selectedBrands}
                     selectedConcerns={[]}
                     selectedIngredients={[]}
-                    onToggleFilter={() => { }}
+                    onToggleFilter={handleFilterToggle}
                     onApplyFilters={() => {
                       handleApplyFilters();
                       toggleMobileFilter();
@@ -678,7 +753,7 @@ function ProductsPageContent() {
                     }}
                     categories={transformedCategories}
                     filterOptions={{
-                      brands: [],
+                      brands: brandsQuery.data?.brands.map((b) => b.name) ?? [],
                       concerns: [],
                       ingredients: [],
                     }}
