@@ -1547,7 +1547,38 @@ export const adminCreateOrder = adminProcedure
       discount,
       notes,
       payment,
+      deliveryMethod,
+      pickupStoreId,
     } = input;
+
+    // Pickup orders skip address entirely, validated against an active Store
+    // rather than trusting a client-picked name — same as customer checkout.
+    let pickupStore: { id: string; name: string; address: string } | null =
+      null;
+    let deliveryAddress1: string | undefined;
+    let deliveryCity: string | undefined;
+
+    if (deliveryMethod === "PICKUP") {
+      const store = pickupStoreId
+        ? await ctx.prisma.store.findUnique({ where: { id: pickupStoreId } })
+        : null;
+      if (!store || !store.is_active) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected pickup store is not available",
+        });
+      }
+      pickupStore = store;
+    } else {
+      deliveryAddress1 = address.address_1;
+      deliveryCity = address.city;
+      if (!deliveryAddress1 || !deliveryCity) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Address is required for delivery orders",
+        });
+      }
+    }
 
     let userId: string | undefined;
     if (user_id) {
@@ -1659,15 +1690,16 @@ export const adminCreateOrder = adminProcedure
     const orderNumber = generateOrderNumber();
 
     const runOrderTransaction = async (tx: Prisma.TransactionClient) => {
-      // Address is only persisted for registered users — Address.user_id is
-      // non-nullable, same limitation as guest checkout today.
+      // Address is only persisted for registered DELIVERY orders —
+      // Address.user_id is non-nullable (same limitation as guest checkout
+      // today), and PICKUP orders never create/link an Address row at all.
       let shippingAddressId: string | undefined;
-      if (userId) {
+      if (userId && deliveryMethod === "DELIVERY" && deliveryAddress1 && deliveryCity) {
         const existingAddress = await tx.address.findFirst({
           where: {
             user_id: userId,
-            address_1: address.address_1,
-            city: address.city,
+            address_1: deliveryAddress1,
+            city: deliveryCity,
             postal_code: address.postal_code || "",
           },
         });
@@ -1679,9 +1711,9 @@ export const adminCreateOrder = adminProcedure
               user_id: userId,
               first_name: address.first_name,
               last_name: address.last_name,
-              address_1: address.address_1,
+              address_1: deliveryAddress1,
               address_2: address.address_2,
-              city: address.city,
+              city: deliveryCity,
               state: address.state || "",
               postal_code: address.postal_code || "",
               country: address.country,
@@ -1703,6 +1735,8 @@ export const adminCreateOrder = adminProcedure
           payment_method: paymentMethod,
           currency: "NGN",
           shipping_address_id: shippingAddressId,
+          delivery_method: deliveryMethod,
+          pickup_store_id: pickupStore?.id,
           notes,
           subtotal,
           shipping_cost,
@@ -1839,16 +1873,21 @@ export const adminCreateOrder = adminProcedure
               postal_code: order.shipping_address.postal_code,
               country: order.shipping_address.country,
             }
-          : {
-              first_name: order.first_name,
-              last_name: order.last_name,
-              address_1: address.address_1,
-              address_2: address.address_2 || undefined,
-              city: address.city,
-              state: address.state || "",
-              postal_code: address.postal_code || "",
-              country: address.country || "Nigeria",
-            },
+          : deliveryMethod === "DELIVERY"
+            ? {
+                first_name: order.first_name,
+                last_name: order.last_name,
+                address_1: address.address_1 || "",
+                address_2: address.address_2 || undefined,
+                city: address.city || "",
+                state: address.state || "",
+                postal_code: address.postal_code || "",
+                country: address.country || "Nigeria",
+              }
+            : undefined,
+        pickup: pickupStore
+          ? { storeName: pickupStore.name, storeAddress: pickupStore.address }
+          : undefined,
         trackingNumber: order.tracking_number || undefined,
         orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}`,
       });

@@ -31,6 +31,8 @@ interface ServerSearchComboboxProps {
     debounceMs?: number;
     /** Minimum characters required to trigger search */
     minSearchLength?: number;
+    /** Whether typing a value with no exact match offers inline creation (default true) */
+    allowCreate?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export const ServerSearchCombobox: React.FC<ServerSearchComboboxProps> = ({
     pendingLabel,
     debounceMs = 300,
     minSearchLength = 1,
+    allowCreate = true,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState("");
@@ -76,7 +79,7 @@ export const ServerSearchCombobox: React.FC<ServerSearchComboboxProps> = ({
     );
 
     // Show create option if input has value and no exact match
-    const showCreateOption = inputValue.trim() && !exactMatchExists;
+    const showCreateOption = allowCreate && inputValue.trim() && !exactMatchExists;
 
     // Debounced search function
     const performSearch = useCallback(
@@ -203,7 +206,7 @@ export const ServerSearchCombobox: React.FC<ServerSearchComboboxProps> = ({
             e.preventDefault();
             if (showCreateOption) {
                 handleCreateNew();
-            } else if (displayOptions.length === 1) {
+            } else if (displayOptions.length === 1 || (!allowCreate && displayOptions.length > 1)) {
                 handleSelectOption(displayOptions[0]);
             }
         }
