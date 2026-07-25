@@ -261,7 +261,7 @@ export default function AdminReviewsPage() {
         cell: (review) => (
           <div>
             <Link
-              href={`/products/${review.product.id}`}
+              href={`/products/${review.product.slug || review.product.id}`}
               className="font-medium text-[#40702A] hover:text-[#1E3024] hover:underline"
             >
               {review.product.name}

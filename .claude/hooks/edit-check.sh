@@ -46,6 +46,14 @@ if grep -qE '\$queryRaw|Prisma\.sql' "$f" && grep -qE "\\\\[sSdDwW]\+?'" "$f"; t
   findings+=("Raw SQL string literal contains a backslash regex shorthand (\\s/\\d/\\w) — this DB's string-literal handling silently drops the backslash, turning e.g. '\\s+' into literal 's+'. Use POSIX bracket classes instead, e.g. '[[:space:]]+'.")
 fi
 
+case "$f" in
+  */src/server/modules/*.ts)
+    if grep -qE '^export (async function|function)\b' "$f"; then
+      findings+=("Plain function export in src/server/modules/ — every export in this directory is spread wholesale into appRouter (server/index.ts), and a non-procedure export breaks the router's type inference for the WHOLE FILE (cryptic 'not callable' errors on unrelated procedures). Move shared logic to src/lib/ instead — see the promotions skill's 'Eligibility/discount logic lives outside src/server/modules/ on purpose' section.")
+    fi
+    ;;
+esac
+
 [ ${#findings[@]} -eq 0 ] && exit 0
 
 msg="edit-check on $(basename "$f"):"

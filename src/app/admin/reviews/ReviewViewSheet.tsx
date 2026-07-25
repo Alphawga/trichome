@@ -86,7 +86,7 @@ export function ReviewViewSheet({
           <div>
             <h3 className="text-lg font-semibold mb-4">Product</h3>
             <Link
-              href={`/products/${review.product.id}`}
+              href={`/products/${review.product.slug || review.product.id}`}
               className="text-[#40702A] hover:text-[#1E3024] hover:underline font-medium"
             >
               {review.product.name}

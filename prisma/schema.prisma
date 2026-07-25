@@ -132,6 +132,8 @@ model Product {
   seo_description     String?
   view_count          Int              @default(0)
   sale_count          Int              @default(0)
+  average_rating      Decimal          @default(0) @db.Decimal(3, 2)
+  review_count        Int              @default(0)
   created_at          DateTime         @default(now())
   updated_at          DateTime         @updatedAt
   category_id         String
@@ -154,6 +156,7 @@ model Product {
   @@index([created_at])
   @@index([view_count])
   @@index([sale_count])
+  @@index([average_rating])
   @@index([brand_id])
   @@map("products")
 }

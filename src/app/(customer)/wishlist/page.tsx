@@ -48,7 +48,7 @@ const WishlistItem: React.FC<WishlistItemProps> = ({
       <div className="flex items-center gap-4 sm:gap-6 flex-grow w-full sm:w-auto">
         <button
           className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 cursor-pointer overflow-hidden rounded-sm"
-          onClick={() => onProductClick(product.id)}
+          onClick={() => onProductClick(product.slug || product.id)}
           type="button"
         >
           <Image
@@ -61,7 +61,7 @@ const WishlistItem: React.FC<WishlistItemProps> = ({
         <div className="flex-grow">
           <button
             type="button"
-            onClick={() => onProductClick(product.id)}
+            onClick={() => onProductClick(product.slug || product.id)}
             className="font-heading text-[15px] sm:text-[16px] text-left hover:text-[#407029] transition-colors duration-150 text-gray-900"
           >
             {product.name}

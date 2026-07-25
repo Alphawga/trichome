@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { resolveActiveProductTagPromotions } from "@/lib/promotions/active-product-tag-promotions";
+import { calculateProductTagDiscount } from "@/lib/promotions/product-tag-discount";
 import { SITE_URL } from "@/lib/site-config";
 import {
   buildBreadcrumbJsonLd,
@@ -9,12 +11,12 @@ import {
 import { ProductDetailsClient } from "./ProductDetailsClient";
 
 interface ProductPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
-async function getProduct(id: string) {
+async function getProductBySlug(slug: string) {
   return prisma.product.findUnique({
-    where: { id },
+    where: { slug },
     include: {
       category: { select: { name: true } },
       images: { orderBy: { sort_order: "asc" } },
@@ -22,11 +24,21 @@ async function getProduct(id: string) {
   });
 }
 
+// Legacy /products/[id] links (bookmarked, shared, or already indexed) still
+// resolve here so we can 308-redirect them to the slug URL instead of 404ing.
+async function resolveSlugFromLegacyId(id: string) {
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: { slug: true },
+  });
+  return product?.slug;
+}
+
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
-  const { id } = await params;
-  const product = await getProduct(id);
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     return { title: "Product Not Found" };
@@ -45,7 +57,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: {
-      canonical: `${SITE_URL}/products/${product.id}`,
+      canonical: `${SITE_URL}/products/${product.slug}`,
     },
     openGraph: {
       title,
@@ -56,18 +68,29 @@ export async function generateMetadata({
 }
 
 export default async function Page({ params }: ProductPageProps) {
-  const { id } = await params;
-  const product = await getProduct(id);
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
 
   if (!product) {
+    const redirectSlug = await resolveSlugFromLegacyId(slug);
+    if (redirectSlug) {
+      permanentRedirect(`/products/${redirectSlug}`);
+    }
     notFound();
   }
 
-  const productJsonLd = buildProductJsonLd(product);
+  const tagPromotions = await resolveActiveProductTagPromotions(prisma);
+  const tagDiscount = calculateProductTagDiscount(
+    tagPromotions,
+    Number(product.price),
+  );
+  const effectivePrice = Number(product.price) - tagDiscount;
+
+  const productJsonLd = buildProductJsonLd(product, effectivePrice);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Products", path: "/products" },
-    { name: product.name, path: `/products/${product.id}` },
+    { name: product.name, path: `/products/${product.slug}` },
   ]);
 
   return (

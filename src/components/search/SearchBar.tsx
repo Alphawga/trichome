@@ -51,6 +51,7 @@ export function SearchBar({
   const _pathname = usePathname();
   const { isAuthenticated: _isAuthenticated, user: _user } = useAuth();
   const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [isFocused, setIsFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -61,15 +62,17 @@ export function SearchBar({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Search suggestions (autocomplete)
+  // Search suggestions (autocomplete) — keyed off the debounced query so
+  // rapid typing doesn't fire a request per keystroke.
   const { data: suggestions = [], isLoading: suggestionsLoading } =
     trpc.searchProducts.useQuery(
       {
-        query: query.trim(),
+        query: debouncedQuery.trim(),
         limit: 5,
       },
       {
-        enabled: showSuggestions && query.trim().length >= 2 && isFocused,
+        enabled:
+          showSuggestions && debouncedQuery.trim().length >= 2 && isFocused,
         refetchOnWindowFocus: false,
       },
     );
@@ -97,9 +100,7 @@ export function SearchBar({
   // Debounced search
   const debouncedSearch = useCallback(
     debounce((searchQuery: string) => {
-      if (searchQuery.trim().length >= 2) {
-        // Trigger suggestions query
-      }
+      setDebouncedQuery(searchQuery);
     }, 300),
     [],
   );
@@ -107,6 +108,8 @@ export function SearchBar({
   useEffect(() => {
     if (query) {
       debouncedSearch(query);
+    } else {
+      setDebouncedQuery("");
     }
   }, [query, debouncedSearch]);
 
@@ -373,13 +376,13 @@ export function SearchBar({
 }
 
 // Debounce utility
-function debounce<T extends (...args: unknown[]) => void>(
-  func: T,
+function debounce<Args extends unknown[]>(
+  func: (...args: Args) => void,
   wait: number,
-): (...args: Parameters<T>) => void {
+): (...args: Args) => void {
   let timeout: NodeJS.Timeout | null = null;
 
-  return function executedFunction(...args: Parameters<T>) {
+  return function executedFunction(...args: Args) {
     const later = () => {
       timeout = null;
       func(...args);

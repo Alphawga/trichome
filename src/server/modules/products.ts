@@ -13,6 +13,7 @@ export const getProducts = publicProcedure
       category_slugs: z.array(z.string()).optional(),
       brand_id: z.string().optional(),
       brand_slug: z.string().optional(),
+      brand_slugs: z.array(z.string()).optional(),
       status: z.nativeEnum(ProductStatus).optional(),
       search: z.string().optional(),
       min_price: z.number().optional(),
@@ -26,6 +27,7 @@ export const getProducts = publicProcedure
           "price_desc",
           "popular",
           "featured",
+          "rating",
         ])
         .default("newest"),
     }),
@@ -39,6 +41,7 @@ export const getProducts = publicProcedure
       category_slugs,
       brand_id,
       brand_slug,
+      brand_slugs,
       status,
       search,
       min_price,
@@ -68,9 +71,17 @@ export const getProducts = publicProcedure
       }
     }
 
-    // Resolve brand_id from slug if provided
+    // Resolve brand IDs from slugs
     let resolvedBrandId = brand_id;
-    if (brand_slug && !brand_id) {
+    let resolvedBrandIds: string[] | undefined;
+
+    if (brand_slugs && brand_slugs.length > 0) {
+      const brands = await ctx.prisma.brand.findMany({
+        where: { slug: { in: brand_slugs } },
+        select: { id: true },
+      });
+      resolvedBrandIds = brands.map((b) => b.id);
+    } else if (brand_slug && !brand_id) {
       const brand = await ctx.prisma.brand.findUnique({
         where: { slug: brand_slug },
         select: { id: true },
@@ -100,7 +111,11 @@ export const getProducts = publicProcedure
         : resolvedCategoryId
           ? { category_id: resolvedCategoryId }
           : {}),
-      ...(resolvedBrandId && { brand_id: resolvedBrandId }),
+      ...(resolvedBrandIds && resolvedBrandIds.length > 0
+        ? { brand_id: { in: resolvedBrandIds } }
+        : resolvedBrandId
+          ? { brand_id: resolvedBrandId }
+          : {}),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
         OR: [
@@ -159,6 +174,11 @@ export const getProducts = publicProcedure
           return { price: "desc" as const };
         case "popular":
           return { sale_count: "desc" as const };
+        case "rating":
+          return [
+            { average_rating: "desc" as const },
+            { review_count: "desc" as const },
+          ];
         case "featured":
           return [
             { is_featured: "desc" as const },

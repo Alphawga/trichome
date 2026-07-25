@@ -1,6 +1,7 @@
 "use client";
 
 import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
+import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
 import { HeartIcon, MinusIcon, PlusIcon, CompareIcon } from "../ui/icons";
@@ -85,7 +86,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div
+    <Link
+      href={`/products/${product.slug || product.id}`}
       onClick={handleCardClick}
       className="bg-white pb-5 group transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl h-full w-full overflow-hidden rounded-xl flex flex-col cursor-pointer"
     >
@@ -115,6 +117,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             title={isCompared ? "Remove from compare" : "Add to compare"}
           >
             <CompareIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleWishlistClick}
+            className={`p-1.5 rounded-full shadow-sm transition-colors duration-200 ${isInWishlist
+              ? "bg-[#1E3024] text-white"
+              : "bg-white text-[#1E3024] hover:bg-[#1E3024] hover:text-white"
+              }`}
+            title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <HeartIcon className="w-4 h-4" filled={isInWishlist} />
           </button>
         </div>
       </div>
@@ -197,6 +210,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

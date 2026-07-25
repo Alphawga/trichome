@@ -1,0 +1,42 @@
+# 2026-07-25 — SEO/UX audit fix batch (5 slices)
+
+## Context
+
+An external audit of trichomesshop.com raised 9 categories of issues (product-name encoding, missing reviews, dead product links, SEO gaps, discovery/filtering, checkout trust, promo mechanics). Before planning, every claim was verified against the codebase via parallel research passes — several turned out false or already fixed (stylized Unicode names don't exist in code/seed data; reviews are fully built and rendering on the PDP; the promo banner and checkout coupon code were already shipped in prior sessions). This batch covers the 11 items confirmed real by direct inspection, done as 5 vertical slices with a checkpoint after each.
+
+## What changed
+
+**Slice A — slug-based product routing.** `Product.slug` existed and was populated but never used for routing; every PDP link used the raw `id`. Renamed `products/[id]/` → `products/[slug]/`; legacy `/products/[id]` URLs now `permanentRedirect` (308) to the slug URL rather than 404ing, preserving any indexed/shared links. Updated every internal link site: cart, wishlist, brands, catalog grid, homepage, admin reviews (list + view sheet + admin order detail), sitemap, `RelatedProducts`, `ComparisonTable`, `OrderItemList` — two of which (`ComparisonTable`, `OrderItemList`) already had `slug` threaded through their prop types and just weren't using it. Switching the PDP to `getProductBySlug` also fixes a pre-existing bug where `view_count` was never incremented (the old `getProductById` call never bumped it).
+
+**Slice B — rating sort + brand filter.** Added `Product.average_rating`/`review_count` columns (migration `20260725084349_add_product_rating_aggregates`, with a backfill `UPDATE` baked into the migration SQL so every environment running `migrate deploy` ends up consistent). `recalculateProductRating()` in `reviews.ts` recomputes both fields on every review create/update/delete/status-change/bulk-status-change. Added `"rating"` to `getProducts`' sort enum. For brand filtering: `getBrands` and single-brand server-side filtering already existed and worked (via `/brands`) — the gap was `/products` catalog page wiring, plus `getProducts` only supporting one brand at a time against a UI that renders multi-select pills. Added `brand_slugs: string[]` (mirrors the existing `category_slugs` array-resolution pattern) and wired real brand state/toggle into `ProductsPageClient.tsx`.
+
+**Slice C — JSON-LD promotion-aware pricing + wishlist sync.** `structured-data.ts`'s `offers.price` used the static base price while the PDP shows a client-side-discounted price when a tag promotion is active — crawlers saw a different price than customers (this was the exact ₦15,500-vs-₦13,950 mismatch flagged in the audit). Extracted the active-tag-promotion resolution logic to `src/lib/promotions/active-product-tag-promotions.ts` (**not** left in `promotions-storefront.ts` — that file's exports are spread wholesale into the tRPC router in `server/index.ts`, so a plain non-procedure export there broke the router's type inference for every procedure in the file; moving it to a lib module was the fix). The PDP server component now resolves the same discount server-side before building JSON-LD. Also fixed: the catalog grid's wishlist heart was pure local `useState`, never calling the real mutations — replaced with the same `getWishlist`/`addToWishlist`/`removeFromWishlist` pattern already proven on `/brands`.
+
+**Slice D — five independent fixes.**
+- `product-card.tsx`: root element was a `div`+`onClick`, not a real link — no crawlable href, no open-in-new-tab. Converted to `next/link`. Also found `HeartIcon`/`handleToggleWishlistClick` were fully wired in the component but never rendered — there was no wishlist button on the catalog grid at all, which would have made the Slice C wishlist fix untriggerable from `/products`. Added the missing heart button next to the compare button.
+- `cart`/`checkout` pages shared the generic site title. `checkout/page.tsx` was already a server component (trivial `metadata` export); `cart/page.tsx` had `"use client"` at the top, so it required a split into a server `page.tsx` + `CartPageClient.tsx`.
+- `WhatsAppWidget.tsx`: reduced size/offset on mobile (`bottom-6 right-4` vs `bottom-24 right-6` on `sm:`+) to reduce the chance of covering a catalog card's Add-to-bag button. **Not visually confirmed** — the Chrome extension wasn't connected this session, so the DevTools mobile-viewport check the plan called for didn't happen.
+- `SearchBar.tsx`: the debounce utility existed but its callback body was empty — every keystroke fired a live query via the raw `query` state. Wired a `debouncedQuery` state that the tRPC query now depends on; also fixed the `debounce()` generic (`T extends (...args: unknown[]) => void`) which had a pre-existing type error, now using a properly inferred `Args extends unknown[]` signature.
+- PDP: added a static "Secured by Paystack" badge (no other `PaymentMethod` badges — only Paystack is actually live) and a shipping estimate widget using the existing `NIGERIAN_STATES` constant + `calculateShipping()` helper directly (not `getShippingRate`, which needs full checkout-grade address fields and may hit the live Terminal Africa API — wrong tool for a pre-checkout estimate).
+
+**Slice E — Unicode product-name audit script.** No stylized-Unicode names exist anywhere in code/seed data; if real on the live site it's bad data in specific rows. `scripts/audit-unicode-product-names.ts` (`pnpm audit:product-names`, `--fix`, `--fix --yes`) scans `name`/`short_description`/`description` for specific "fancy text" Unicode ranges (Mathematical Alphanumeric Symbols, circled/fullwidth letters, double-struck letterlike symbols) and normalizes only those codepoints via NFKD — a naive whole-string normalize+strip-combining-marks pass was tested and rejected because it corrupts legitimate accented characters like "café". Slugs are deliberately never touched by `--fix`, to avoid invalidating the Slice A redirect work.
+
+## Verified
+
+- `pnpm type-check`: file-set of pre-existing errors is unchanged from baseline (12 files, same errors) except one pre-existing `SearchBar.tsx` error was incidentally fixed as a side effect of the debounce generic fix.
+- `pnpm lint`: no new violations in any touched file beyond pre-existing formatting drift (left untouched per convention) — the one new file (`audit-unicode-product-names.ts`) is fully formatted and lint-clean.
+- `pnpm build`: succeeds, `/products/[slug]` correctly registered as a dynamic route.
+- `pnpm test`: 95/95 passing, including `promotions-storefront.test.ts` (would have caught the router-spread mistake above).
+- Manual/curl verification against a local Postgres dev DB (not the shared Supabase instance — `.env`'s `DIRECT_URL` had a leftover uncommented PROD line that would have pointed the migration there; user fixed it before the migration ran):
+  - Slug URL loads (200), legacy id 308-redirects with correct `Location` header, unknown slug 404s.
+  - JSON-LD `offers.price` confirmed to match the discounted price (12400 with two stacked 10% promos, reverting to 13950 after removing the test one) — the exact bug the audit flagged, now fixed.
+  - Rating sort: seeded one APPROVED review, confirmed `average_rating`/`review_count` update and the product sorts first.
+  - Brand filter: confirmed `brand_slugs` correctly resolves to `brand_id` and filters.
+  - Unicode script: seeded a fancy-name product + a café-name control; report mode flagged only the fancy one, `--fix` corrected only that row, café was untouched in both passes.
+
+## Still open
+
+- Wishlist sync and WhatsApp widget positioning weren't confirmed in an actual browser (Chrome extension not connected this session) — worth a manual click-through: heart a product on `/products`, confirm it shows on `/wishlist` and the PDP; and a DevTools mobile-viewport scroll-through of a product grid to confirm the WhatsApp button never visually sits on an Add-to-bag button.
+- The Unicode audit script has not been run against production data — do a report-only run there first before ever considering `--fix`.
+- `ProductsPageClient.tsx` is now ~786 lines (hook flagged it at >600 repeatedly during this session) — a candidate for extraction into smaller pieces, not done here since it wasn't part of the audit scope.
+- Nothing in this batch has been committed to git yet.
