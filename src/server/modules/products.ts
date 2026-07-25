@@ -1,4 +1,4 @@
-import { ProductStatus } from "@prisma/client";
+import { Prisma, ProductStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, staffProcedure } from "../trpc";
@@ -80,6 +80,19 @@ export const getProducts = publicProcedure
       }
     }
 
+    // Whitespace-insensitive fallback: catches exact product names copy-pasted
+    // with different internal spacing (e.g. "150ML" vs "150 ml"), which would
+    // otherwise fail the word-split AND-of-OR search below on that one token.
+    let whitespaceInsensitiveIds: string[] = [];
+    const normalizedSearch = search?.trim().toLowerCase().replace(/\s+/g, "");
+    if (normalizedSearch) {
+      const rows = await ctx.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT id FROM products
+        WHERE regexp_replace(lower(name), '[[:space:]]+', '', 'g') LIKE ${`%${normalizedSearch}%`}
+      `);
+      whitespaceInsensitiveIds = rows.map((r) => r.id);
+    }
+
     const where = {
       ...(status && { status }),
       ...(resolvedCategoryIds && resolvedCategoryIds.length > 0
@@ -90,27 +103,47 @@ export const getProducts = publicProcedure
       ...(resolvedBrandId && { brand_id: resolvedBrandId }),
       ...(is_featured !== undefined && { is_featured }),
       ...(search && {
-        AND: search
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((word) => ({
-            OR: [
-              { name: { contains: word, mode: "insensitive" as const } },
-              { description: { contains: word, mode: "insensitive" as const } },
-              { sku: { contains: word, mode: "insensitive" as const } },
-              { brand: { name: { contains: word, mode: "insensitive" as const } } },
-              { category: { name: { contains: word, mode: "insensitive" as const } } },
-            ],
-          })),
+        OR: [
+          {
+            AND: search
+              .trim()
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((word) => ({
+                OR: [
+                  { name: { contains: word, mode: "insensitive" as const } },
+                  {
+                    description: {
+                      contains: word,
+                      mode: "insensitive" as const,
+                    },
+                  },
+                  { sku: { contains: word, mode: "insensitive" as const } },
+                  {
+                    brand: {
+                      name: { contains: word, mode: "insensitive" as const },
+                    },
+                  },
+                  {
+                    category: {
+                      name: { contains: word, mode: "insensitive" as const },
+                    },
+                  },
+                ],
+              })),
+          },
+          ...(whitespaceInsensitiveIds.length > 0
+            ? [{ id: { in: whitespaceInsensitiveIds } }]
+            : []),
+        ],
       }),
       ...(min_price !== undefined || max_price !== undefined
         ? {
-          price: {
-            ...(min_price !== undefined && { gte: min_price }),
-            ...(max_price !== undefined && { lte: max_price }),
-          },
-        }
+            price: {
+              ...(min_price !== undefined && { gte: min_price }),
+              ...(max_price !== undefined && { lte: max_price }),
+            },
+          }
         : {}),
     };
 

@@ -42,6 +42,10 @@ if grep -qE '"sb_(prod|sandbox)_[A-Za-z0-9]+"' "$f"; then
   findings+=("Hardcoded Shipbubble API key literal — use process.env.SHIPBUBBLE_API_KEY instead (never hardcode secrets).")
 fi
 
+if grep -qE '\$queryRaw|Prisma\.sql' "$f" && grep -qE "\\\\[sSdDwW]\+?'" "$f"; then
+  findings+=("Raw SQL string literal contains a backslash regex shorthand (\\s/\\d/\\w) — this DB's string-literal handling silently drops the backslash, turning e.g. '\\s+' into literal 's+'. Use POSIX bracket classes instead, e.g. '[[:space:]]+'.")
+fi
+
 [ ${#findings[@]} -eq 0 ] && exit 0
 
 msg="edit-check on $(basename "$f"):"

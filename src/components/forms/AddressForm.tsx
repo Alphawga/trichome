@@ -50,6 +50,8 @@ interface AddressFormProps {
   showEmail?: boolean;
   /** Show address_2 field (default: true) */
   showAddress2?: boolean;
+  /** Show street address/city/state/postal/country fields (default: true) — hide for pickup orders where only contact info is needed */
+  showAddressFields?: boolean;
   /** Custom submit button */
   submitButton?: React.ReactNode;
   /** Render as div instead of form (for controlled usage) */
@@ -90,6 +92,7 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
       readOnly = false,
       showEmail = true,
       showAddress2 = true,
+      showAddressFields = true,
       submitButton,
       showErrors = true,
       isLoading = false,
@@ -449,23 +452,25 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
           />
 
           {/* Street Address */}
-          <div className="sm:col-span-2">
-            <InputField
-              id={`${formId}-address_1`}
-              name="address_1"
-              label="Street Address"
-              required
-              placeholder="Street address"
-              value={formData.address_1}
-              onChange={(value) => handleChange("address_1", value)}
-              onBlur={() => handleBlur("address_1")}
-              error={errors.address_1}
-              readOnly={readOnly}
-            />
-          </div>
+          {showAddressFields && (
+            <div className="sm:col-span-2">
+              <InputField
+                id={`${formId}-address_1`}
+                name="address_1"
+                label="Street Address"
+                required
+                placeholder="Street address"
+                value={formData.address_1}
+                onChange={(value) => handleChange("address_1", value)}
+                onBlur={() => handleBlur("address_1")}
+                error={errors.address_1}
+                readOnly={readOnly}
+              />
+            </div>
+          )}
 
           {/* Address Line 2 */}
-          {showAddress2 && (
+          {showAddressFields && showAddress2 && (
             <div className="sm:col-span-2">
               <InputField
                 id={`${formId}-address_2`}
@@ -482,57 +487,65 @@ export const AddressForm = React.forwardRef<AddressFormRef, AddressFormProps>(
           )}
 
           {/* City */}
-          <InputField
-            id={`${formId}-city`}
-            name="city"
-            label="City"
-            required
-            placeholder="City"
-            value={formData.city}
-            onChange={(value) => handleChange("city", value)}
-            onBlur={() => handleBlur("city")}
-            error={errors.city}
-            readOnly={readOnly}
-          />
+          {showAddressFields && (
+            <InputField
+              id={`${formId}-city`}
+              name="city"
+              label="City"
+              required
+              placeholder="City"
+              value={formData.city}
+              onChange={(value) => handleChange("city", value)}
+              onBlur={() => handleBlur("city")}
+              error={errors.city}
+              readOnly={readOnly}
+            />
+          )}
 
           {/* State */}
-          <StateField
-            id={`${formId}-state`}
-            name="state"
-            label="State"
-            value={formData.state || ""}
-            onChange={(value) => handleChange("state", value)}
-            onBlur={() => handleBlur("state")}
-            error={errors.state}
-            readOnly={readOnly}
-          />
+          {showAddressFields && (
+            <StateField
+              id={`${formId}-state`}
+              name="state"
+              label="State"
+              value={formData.state || ""}
+              onChange={(value) => handleChange("state", value)}
+              onBlur={() => handleBlur("state")}
+              error={errors.state}
+              readOnly={readOnly}
+            />
+          )}
 
           {/* Postal Code */}
-          <InputField
-            id={`${formId}-postal_code`}
-            name="postal_code"
-            label="Postal Code"
-            placeholder="Postal code"
-            value={formData.postal_code || ""}
-            onChange={(value) => handleChange("postal_code", value)}
-            onBlur={() => handleBlur("postal_code")}
-            error={errors.postal_code}
-            readOnly={readOnly}
-          />
+          {showAddressFields && (
+            <InputField
+              id={`${formId}-postal_code`}
+              name="postal_code"
+              label="Postal Code"
+              placeholder="Postal code"
+              value={formData.postal_code || ""}
+              onChange={(value) => handleChange("postal_code", value)}
+              onBlur={() => handleBlur("postal_code")}
+              error={errors.postal_code}
+              readOnly={readOnly}
+            />
+          )}
 
           {/* Country */}
-          <InputField
-            id={`${formId}-country`}
-            name="country"
-            label="Country"
-            required
-            placeholder="Country"
-            value={formData.country}
-            onChange={(value) => handleChange("country", value)}
-            onBlur={() => handleBlur("country")}
-            error={errors.country}
-            readOnly={readOnly}
-          />
+          {showAddressFields && (
+            <InputField
+              id={`${formId}-country`}
+              name="country"
+              label="Country"
+              required
+              placeholder="Country"
+              value={formData.country}
+              onChange={(value) => handleChange("country", value)}
+              onBlur={() => handleBlur("country")}
+              error={errors.country}
+              readOnly={readOnly}
+            />
+          )}
         </div>
 
         {/* Submit Button */}

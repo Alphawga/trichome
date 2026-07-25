@@ -96,6 +96,12 @@ export function CreateOrderSheet({
   const [addressData, setAddressData] = useState<AddressFormData>(defaultAddress);
   const [addressKey, setAddressKey] = useState(0);
 
+  const [deliveryMethod, setDeliveryMethod] = useState<"DELIVERY" | "PICKUP">(
+    "DELIVERY",
+  );
+  const [pickupStoreId, setPickupStoreId] = useState<string | undefined>();
+  const storesQuery = trpc.getActiveStores.useQuery();
+
   const [lineItems, setLineItems] = useState<LineItemRow[]>([newLineItem()]);
   const [productCache, setProductCache] = useState<Record<string, ProductInfo>>(
     {},
@@ -137,6 +143,8 @@ export function CreateOrderSheet({
     setSelectedCustomerLabel("");
     setAddressData(defaultAddress);
     setAddressKey((k) => k + 1);
+    setDeliveryMethod("DELIVERY");
+    setPickupStoreId(undefined);
     setLineItems([newLineItem()]);
     setShippingCost(0);
     setDiscount(0);
@@ -226,7 +234,6 @@ export function CreateOrderSheet({
     const result = await utils.client.getProducts.query({
       search: query,
       limit: 20,
-      status: "ACTIVE",
     });
     setProductCache((prev) => {
       const next = { ...prev };
@@ -343,6 +350,10 @@ export function CreateOrderSheet({
       );
       return;
     }
+    if (deliveryMethod === "PICKUP" && !pickupStoreId) {
+      toast.error("Select a pickup store");
+      return;
+    }
 
     createMutation.mutate({
       user_id: selectedCustomerId || undefined,
@@ -354,6 +365,8 @@ export function CreateOrderSheet({
       shipping_cost: shippingCost,
       discount,
       notes: notes || undefined,
+      deliveryMethod,
+      pickupStoreId,
       payment:
         paymentMode === "verify"
           ? { mode: "verify", paystack_reference: paystackReference.trim() }
@@ -402,6 +415,7 @@ export function CreateOrderSheet({
               onSearch={searchCustomers}
               placeholder="Search registered customers, or leave blank for a guest order..."
               createLabel=""
+              allowCreate={false}
               debounceMs={300}
               minSearchLength={1}
               initialOptions={
@@ -443,19 +457,106 @@ export function CreateOrderSheet({
               </div>
             )}
 
+          {/* Delivery method */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Delivery method
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("DELIVERY")}
+                disabled={isSubmitting}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg border ${
+                  deliveryMethod === "DELIVERY"
+                    ? "border-[#38761d] bg-green-50 text-[#38761d] font-medium"
+                    : "border-gray-300 text-gray-600"
+                }`}
+              >
+                Delivery
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("PICKUP")}
+                disabled={isSubmitting}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg border ${
+                  deliveryMethod === "PICKUP"
+                    ? "border-[#38761d] bg-green-50 text-[#38761d] font-medium"
+                    : "border-gray-300 text-gray-600"
+                }`}
+              >
+                Pickup
+              </button>
+            </div>
+          </div>
+
           {/* Address / contact */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">
-              Contact & shipping address
+              {deliveryMethod === "PICKUP"
+                ? "Contact details"
+                : "Contact & shipping address"}
             </p>
             <AddressForm
               key={addressKey}
               asDiv
+              showAddressFields={deliveryMethod === "DELIVERY"}
               initialValues={addressData}
               onChange={setAddressData}
               isLoading={isSubmitting}
             />
           </div>
+
+          {/* Pickup store */}
+          {deliveryMethod === "PICKUP" && (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Pickup store
+              </p>
+              {storesQuery.isLoading ? (
+                <p className="text-sm text-gray-500">Loading stores...</p>
+              ) : storesQuery.data?.stores.length ? (
+                <div className="space-y-2">
+                  {storesQuery.data.stores.map((store) => (
+                    <label
+                      key={store.id}
+                      className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer ${
+                        pickupStoreId === store.id
+                          ? "border-[#38761d] bg-green-50"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="admin-pickup-store"
+                        className="mt-1 accent-[#38761d]"
+                        checked={pickupStoreId === store.id}
+                        onChange={() => setPickupStoreId(store.id)}
+                        disabled={isSubmitting}
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {store.name}
+                        </p>
+                        <p className="text-sm text-gray-600">{store.address}</p>
+                        {(store.phone || store.opening_hours) && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {[store.phone, store.opening_hours]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No active stores available for pickup
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Line items */}
           <div>
@@ -472,6 +573,7 @@ export function CreateOrderSheet({
                       onSearch={searchProducts}
                       placeholder="Search products..."
                       createLabel=""
+                      allowCreate={false}
                       debounceMs={300}
                       minSearchLength={1}
                       disabled={isSubmitting}

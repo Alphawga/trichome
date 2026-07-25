@@ -195,9 +195,9 @@ export const adminCreateOrderAddressSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  address_1: z.string().min(1, "Street address is required"),
+  address_1: z.string().optional(),
   address_2: z.string().optional(),
-  city: z.string().min(1, "City is required"),
+  city: z.string().optional(),
   state: z.string().optional(),
   postal_code: z.string().optional(),
   country: z.string().default("Nigeria"),
@@ -224,18 +224,40 @@ export const adminCreateOrderPaymentSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
-export const adminCreateOrderSchema = z.object({
-  // Optional link to a registered account — the order's contact fields
-  // (email/first_name/last_name/phone) always come from `address`, same as
-  // the customer-facing checkout mutations, regardless of user_id.
-  user_id: z.string().optional(),
-  address: adminCreateOrderAddressSchema,
-  items: z.array(createOrderItemSchema).min(1, "At least one item is required"),
-  shipping_cost: z.number().min(0).default(0),
-  discount: z.number().min(0).default(0),
-  notes: z.string().optional(),
-  payment: adminCreateOrderPaymentSchema,
-});
+export const adminCreateOrderSchema = z
+  .object({
+    // Optional link to a registered account — the order's contact fields
+    // (email/first_name/last_name/phone) always come from `address`, same as
+    // the customer-facing checkout mutations, regardless of user_id.
+    user_id: z.string().optional(),
+    address: adminCreateOrderAddressSchema,
+    items: z
+      .array(createOrderItemSchema)
+      .min(1, "At least one item is required"),
+    shipping_cost: z.number().min(0).default(0),
+    discount: z.number().min(0).default(0),
+    notes: z.string().optional(),
+    payment: adminCreateOrderPaymentSchema,
+    deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+    pickupStoreId: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.deliveryMethod === "DELIVERY") {
+      if (!data.address.address_1 || !data.address.city) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["address"],
+          message: "Address is required for delivery orders",
+        });
+      }
+    } else if (!data.pickupStoreId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["pickupStoreId"],
+        message: "A pickup store is required for pickup orders",
+      });
+    }
+  });
 
 export const updateOrderStatusSchema = z.object({
   id: z.string(),
