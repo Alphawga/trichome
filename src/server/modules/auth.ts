@@ -31,6 +31,19 @@ export const register = publicProcedure
       });
     }
 
+    if (input.phone) {
+      const existingPhone = await ctx.prisma.user.findUnique({
+        where: { phone: input.phone },
+      });
+
+      if (existingPhone) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "User with this phone number already exists",
+        });
+      }
+    }
+
     // Validate password strength
     const passwordValidation = validatePasswordStrength(input.password);
     if (!passwordValidation.isValid) {

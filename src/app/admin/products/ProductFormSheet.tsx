@@ -125,6 +125,7 @@ export function ProductFormSheet({
   useEffect(() => {
     if (productName && !productId) {
       const slug = productName
+        .normalize("NFKD")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");

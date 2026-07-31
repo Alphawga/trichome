@@ -1,4 +1,4 @@
-import { UserRole, UserStatus } from "@prisma/client";
+import { Prisma, UserRole, UserStatus } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
@@ -26,9 +26,28 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { message: "User with this email already exists" },
+        {
+          message: "User with this email already exists",
+          field: "email",
+        },
         { status: 409 },
       );
+    }
+
+    if (validatedData.phone) {
+      const existingPhone = await prisma.user.findUnique({
+        where: { phone: validatedData.phone },
+      });
+
+      if (existingPhone) {
+        return NextResponse.json(
+          {
+            message: "An account with this phone number already exists",
+            field: "phone",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Validate password strength
@@ -84,6 +103,24 @@ export async function POST(request: NextRequest) {
           })),
         },
         { status: 400 },
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const target = error.meta?.target;
+      const field = Array.isArray(target) ? target[0] : undefined;
+      return NextResponse.json(
+        {
+          message:
+            field === "phone"
+              ? "An account with this phone number already exists"
+              : "An account with this email already exists",
+          field: field === "phone" ? "phone" : "email",
+        },
+        { status: 409 },
       );
     }
 
