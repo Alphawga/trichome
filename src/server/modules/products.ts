@@ -1,7 +1,16 @@
 import { Prisma, ProductStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { SLUG_REGEX } from "@/lib/dto";
 import { publicProcedure, staffProcedure } from "../trpc";
+
+const slugField = z
+  .string()
+  .min(1)
+  .regex(
+    SLUG_REGEX,
+    "Slug must be lowercase letters/numbers separated by hyphens (e.g. product-name)",
+  );
 
 export const getProducts = publicProcedure
   .input(
@@ -309,7 +318,7 @@ export const createProduct = staffProcedure
   .input(
     z.object({
       name: z.string().min(1),
-      slug: z.string().min(1),
+      slug: slugField,
       description: z.string().optional(),
       short_description: z.string().optional(),
       sku: z.string().min(1),
@@ -369,7 +378,7 @@ export const updateProduct = staffProcedure
     z.object({
       id: z.string(),
       name: z.string().min(1).optional(),
-      slug: z.string().min(1).optional(),
+      slug: slugField.optional(),
       description: z.string().optional(),
       short_description: z.string().optional(),
       sku: z.string().min(1).optional(),

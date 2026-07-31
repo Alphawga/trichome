@@ -73,9 +73,13 @@ export const productImageSchema = z.object({
   is_primary: z.boolean().optional(),
 });
 
+export const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const SLUG_ERROR =
+  "Slug must be lowercase letters/numbers separated by hyphens (e.g. product-name)";
+
 export const createProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  slug: z.string().min(1, "Slug is required"),
+  slug: z.string().min(1, "Slug is required").regex(SLUG_REGEX, SLUG_ERROR),
   description: z.string().optional(),
   short_description: z.string().optional(),
   sku: z.string().min(1, "SKU is required"),
@@ -102,7 +106,7 @@ export const createProductSchema = z.object({
 export const updateProductSchema = z.object({
   id: z.string(),
   name: z.string().min(1).optional(),
-  slug: z.string().min(1).optional(),
+  slug: z.string().min(1).regex(SLUG_REGEX, SLUG_ERROR).optional(),
   description: z.string().optional(),
   short_description: z.string().optional(),
   sku: z.string().min(1).optional(),

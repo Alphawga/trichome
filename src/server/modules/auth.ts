@@ -1,4 +1,4 @@
-import { UserRole, UserStatus } from "@prisma/client";
+import { Prisma, UserRole, UserStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -20,14 +20,24 @@ export const register = publicProcedure
     }),
   )
   .mutation(async ({ input, ctx }) => {
-    const existingUser = await ctx.prisma.user.findUnique({
-      where: { email: input.email },
-    });
+    const [existingUser, existingPhone] = await Promise.all([
+      ctx.prisma.user.findUnique({ where: { email: input.email } }),
+      input.phone
+        ? ctx.prisma.user.findUnique({ where: { phone: input.phone } })
+        : Promise.resolve(null),
+    ]);
 
     if (existingUser) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "User with this email already exists",
+      });
+    }
+
+    if (existingPhone) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "User with this phone number already exists",
       });
     }
 
@@ -43,29 +53,42 @@ export const register = publicProcedure
     // Hash password
     const hashedPassword = await hashPassword(input.password);
 
-    const user = await ctx.prisma.user.create({
-      data: {
-        email: input.email,
-        password_hash: hashedPassword,
-        first_name: input.first_name,
-        last_name: input.last_name,
-        phone: input.phone,
-        name:
-          input.first_name && input.last_name
-            ? `${input.first_name} ${input.last_name}`
-            : input.email,
-        role: UserRole.CUSTOMER,
-        status: UserStatus.ACTIVE,
-      },
-      select: {
-        id: true,
-        email: true,
-        first_name: true,
-        last_name: true,
-        role: true,
-        status: true,
-      },
-    });
+    const user = await ctx.prisma.user
+      .create({
+        data: {
+          email: input.email,
+          password_hash: hashedPassword,
+          first_name: input.first_name,
+          last_name: input.last_name,
+          phone: input.phone,
+          name:
+            input.first_name && input.last_name
+              ? `${input.first_name} ${input.last_name}`
+              : input.email,
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+        },
+        select: {
+          id: true,
+          email: true,
+          first_name: true,
+          last_name: true,
+          role: true,
+          status: true,
+        },
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "User with this phone number already exists",
+          });
+        }
+        throw error;
+      });
 
     // Send welcome email if enabled
     try {

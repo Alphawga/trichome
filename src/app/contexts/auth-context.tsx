@@ -8,6 +8,16 @@ import { createContext, useContext, useCallback } from "react";
 import { type Permission, hasRolePermission, isAdminRole, isStaffOrAdmin } from "@/lib/permissions";
 
 
+export class RegistrationError extends Error {
+  field?: string;
+
+  constructor(message: string, field?: string) {
+    super(message);
+    this.name = "RegistrationError";
+    this.field = field;
+  }
+}
+
 interface AuthUser {
   id: string;
   email: string;
@@ -110,7 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
+        throw new RegistrationError(
+          errorData.message || "Registration failed",
+          errorData.field,
+        );
       }
 
      

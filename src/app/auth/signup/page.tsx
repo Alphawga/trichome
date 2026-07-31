@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { ZodError } from "zod";
 import { EyeIcon } from "@/components/ui/icons";
 import { signUpSchema } from "@/lib/validations/user";
-import { useAuth } from "../../contexts/auth-context";
+import { RegistrationError, useAuth } from "../../contexts/auth-context";
 
 interface SignUpForm {
   first_name: string;
@@ -64,6 +64,7 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<SignUpForm>>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isLoading = authLoading || isSubmitting;
@@ -137,6 +138,7 @@ export default function SignUpPage() {
 
     if (!validateForm()) return;
 
+    setGeneralError(null);
     setIsSubmitting(true);
     try {
       // Following CODING_RULES.md - data aligned with Prisma model
@@ -156,12 +158,15 @@ export default function SignUpPage() {
       router.push(redirectUrl);
     } catch (err: unknown) {
       // Following CODING_RULES.md - proper error handling
-      if (err instanceof Error && err.message.includes("already exists")) {
-        setErrors({ email: "An account with this email already exists" });
+      if (
+        err instanceof RegistrationError &&
+        (err.field === "email" || err.field === "phone")
+      ) {
+        setErrors({ [err.field]: err.message } as Partial<SignUpForm>);
       } else if (err instanceof Error) {
-        setErrors({ email: err.message });
+        setGeneralError(err.message);
       } else {
-        setErrors({ email: "Registration failed. Please try again." });
+        setGeneralError("Registration failed. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -460,6 +465,12 @@ export default function SignUpPage() {
                 </label>
               </div>
             </div>
+
+            {generalError && (
+              <p className="text-sm text-red-600" role="alert">
+                {generalError}
+              </p>
+            )}
 
             <button
               type="submit"

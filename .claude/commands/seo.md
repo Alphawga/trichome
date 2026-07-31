@@ -24,6 +24,12 @@ This means `<title>`/meta description/canonical/JSON-LD are always server-render
 
 If a future task needs the actual body content crawlable without JS (some AI browsing tools don't execute JS), that requires prefetching the tRPC query server-side (`createServerSideHelpers`/tRPC server caller) and passing initial data into the client component — bigger scope than a metadata-only pass, do it as its own task.
 
+## Product slugs must be validated, not just auto-generated
+
+`ProductFormSheet.tsx`'s auto-slug effect only fires for new products and remains a fully-editable text input — nothing stops someone retyping a non-slug value over it, and until 2026-07-27 neither the client Zod schema (`src/lib/dto.ts`) nor the server tRPC input (`src/server/modules/products.ts`) enforced slug format. Both now reject anything that isn't `^[a-z0-9]+(-[a-z0-9]+)*$` via a shared `SLUG_REGEX`. If you add another slug-bearing model or another mutation path for `Product.slug`, reuse `SLUG_REGEX` rather than a bare `z.string().min(1)`.
+
+Many product names in this catalog use stylized Unicode ("Mathematical Alphanumeric Symbols", e.g. "𝑺𝑬𝑶𝑼𝑳" instead of "SEOUL") pasted from a social-catalog source. `.toLowerCase()` does not convert these to plain ASCII — they have a *different* code point per letter, not a case variant — so a naive slugify silently produces garbage. Call `.normalize("NFKD")` on the source string before slugifying; this Unicode block has real compatibility decompositions to Latin letters, so NFKD recovers "SEOUL" correctly. `ProductFormSheet.tsx`'s auto-slug effect does this now — reuse the same normalize-then-slugify order for any other name-derived slug generation (categories, brands, etc. — not yet audited for this).
+
 ## Known follow-up (not yet done)
 
 - A handful of `fill` images without `sizes` remain on private/non-indexed account pages (cart, wishlist, profile, order-history, track-order) — low priority since `robots.ts` disallows these routes.
