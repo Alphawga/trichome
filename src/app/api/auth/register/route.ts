@@ -20,9 +20,12 @@ export async function POST(request: NextRequest) {
 
     const validatedData = signUpApiSchema.parse(bodyForValidation);
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
-    });
+    const [existingUser, existingPhone] = await Promise.all([
+      prisma.user.findUnique({ where: { email: validatedData.email } }),
+      validatedData.phone
+        ? prisma.user.findUnique({ where: { phone: validatedData.phone } })
+        : Promise.resolve(null),
+    ]);
 
     if (existingUser) {
       return NextResponse.json(
@@ -34,20 +37,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (validatedData.phone) {
-      const existingPhone = await prisma.user.findUnique({
-        where: { phone: validatedData.phone },
-      });
-
-      if (existingPhone) {
-        return NextResponse.json(
-          {
-            message: "An account with this phone number already exists",
-            field: "phone",
-          },
-          { status: 409 },
-        );
-      }
+    if (existingPhone) {
+      return NextResponse.json(
+        {
+          message: "An account with this phone number already exists",
+          field: "phone",
+        },
+        { status: 409 },
+      );
     }
 
     // Validate password strength

@@ -1,4 +1,4 @@
-import { UserRole, UserStatus } from "@prisma/client";
+import { Prisma, UserRole, UserStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, staffProcedure } from "../trpc";
@@ -23,9 +23,12 @@ export const createUser = adminProcedure
     const { password, permissions, ...userData } = input;
 
     // Check if user already exists
-    const existingUser = await ctx.prisma.user.findUnique({
-      where: { email: input.email },
-    });
+    const [existingUser, existingPhone] = await Promise.all([
+      ctx.prisma.user.findUnique({ where: { email: input.email } }),
+      input.phone
+        ? ctx.prisma.user.findUnique({ where: { phone: input.phone } })
+        : Promise.resolve(null),
+    ]);
 
     if (existingUser) {
       throw new TRPCError({
@@ -34,17 +37,11 @@ export const createUser = adminProcedure
       });
     }
 
-    if (input.phone) {
-      const existingPhone = await ctx.prisma.user.findUnique({
-        where: { phone: input.phone },
+    if (existingPhone) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "User with this phone number already exists",
       });
-
-      if (existingPhone) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "User with this phone number already exists",
-        });
-      }
     }
 
     // Validate password strength
@@ -60,13 +57,26 @@ export const createUser = adminProcedure
     const hashedPassword = await hashPassword(password);
 
     // Create user
-    const user = await ctx.prisma.user.create({
-      data: {
-        ...userData,
-        password_hash: hashedPassword,
-        email_verified_at: new Date(), // Auto-verify admin-created users
-      },
-    });
+    const user = await ctx.prisma.user
+      .create({
+        data: {
+          ...userData,
+          password_hash: hashedPassword,
+          email_verified_at: new Date(), // Auto-verify admin-created users
+        },
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "User with this phone number already exists",
+          });
+        }
+        throw error;
+      });
 
     // Grant permissions if provided
     if (permissions && permissions.length > 0) {
