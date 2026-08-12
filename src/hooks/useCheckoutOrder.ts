@@ -113,6 +113,25 @@ export function useCheckoutOrder(isGuestMode: boolean) {
   });
 
   const activeMutation = isGuestMode ? guestMutation : authenticatedMutation;
+  const authenticatedPreparation = trpc.prepareCheckout.useMutation();
+  const guestPreparation = trpc.prepareGuestCheckout.useMutation();
+
+  const prepareOrder = useCallback(
+    async (input: Omit<CreateOrderInput, "paymentResponse">) => {
+      const payload = {
+        ...input,
+        totals: { ...input.totals, discount: input.totals.discount || 0 },
+        payment_method: input.payment_method || "PAYSTACK",
+        currency: input.currency || "NGN",
+        deliveryMethod: input.deliveryMethod || "DELIVERY",
+      } as const;
+
+      return isGuestMode
+        ? guestPreparation.mutateAsync(payload)
+        : authenticatedPreparation.mutateAsync(payload);
+    },
+    [isGuestMode, authenticatedPreparation, guestPreparation],
+  );
 
   const createOrder = useCallback(
     (input: CreateOrderInput) => {
@@ -145,8 +164,12 @@ export function useCheckoutOrder(isGuestMode: boolean) {
   );
 
   return {
+    prepareOrder,
     createOrder,
-    isLoading: activeMutation.isPending,
+    isLoading:
+      activeMutation.isPending ||
+      authenticatedPreparation.isPending ||
+      guestPreparation.isPending,
     isSuccess: activeMutation.isSuccess,
     isError: activeMutation.isError,
     error: activeMutation.error,

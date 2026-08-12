@@ -56,7 +56,7 @@ export async function notifyNewOrder(
   if (recipients.length === 0) return;
 
   const { sendNewOrderNotificationEmail } = await import("@/lib/email");
-  await sendNewOrderNotificationEmail(recipients, {
+  const result = await sendNewOrderNotificationEmail(recipients, {
     orderNumber,
     orderDate,
     customerName,
@@ -65,4 +65,9 @@ export async function notifyNewOrder(
     itemCount,
     orderUrl,
   });
+  if (!result.success) {
+    throw new Error(
+      result.error || "Failed to send new-order notification email",
+    );
+  }
 }

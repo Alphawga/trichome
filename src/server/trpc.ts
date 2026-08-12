@@ -102,6 +102,23 @@ export const checkoutRateLimited = protectedProcedure.use(
   },
 );
 
+// Preparing an attempt and finalizing it are two separate requests. Keep
+// preparation in its own bucket so one checkout does not consume the order
+// finalization allowance twice.
+export const guestCheckoutPreparationRateLimited = publicProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("guestCheckoutPreparation", ctx.ip, 5, 600);
+    return next();
+  },
+);
+
+export const checkoutPreparationRateLimited = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    await assertNotRateLimited("checkoutPreparation", ctx.user.id, 10, 600);
+    return next();
+  },
+);
+
 // Shipping quote - unauthenticated (guest checkout needs it too), rate limited
 // by IP. More generous than checkout limiters since this fires on every
 // address-field change rather than once on submit.
