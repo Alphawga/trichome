@@ -10,6 +10,12 @@ export interface LocalCartItem {
 
 const CART_STORAGE_KEY = "trichomes_local_cart";
 
+const notifyLocalCartUpdated = (): void => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("localCartUpdated"));
+  }
+};
+
 /**
  * Get cart items from localStorage
  */
@@ -52,6 +58,7 @@ export const addToLocalCart = (product_id: string, quantity: number): void => {
   }
 
   saveLocalCart(cart);
+  notifyLocalCartUpdated();
 };
 
 /**
@@ -70,6 +77,7 @@ export const updateLocalCartItem = (
     } else {
       item.quantity = quantity;
       saveLocalCart(cart);
+      notifyLocalCartUpdated();
     }
   }
 };
@@ -81,6 +89,7 @@ export const removeFromLocalCart = (product_id: string): void => {
   const cart = getLocalCart();
   const filteredCart = cart.filter((item) => item.product_id !== product_id);
   saveLocalCart(filteredCart);
+  notifyLocalCartUpdated();
 };
 
 /**
@@ -89,6 +98,7 @@ export const removeFromLocalCart = (product_id: string): void => {
 export const clearLocalCart = (): void => {
   if (typeof window === "undefined") return;
   localStorage.removeItem(CART_STORAGE_KEY);
+  notifyLocalCartUpdated();
 };
 
 /**
