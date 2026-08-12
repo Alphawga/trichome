@@ -633,6 +633,54 @@ export const createOrderWithPayment = checkoutRateLimited
       };
     }
 
+    const checkoutAttempt = await ctx.prisma.checkoutAttempt.findUnique({
+      where: { reference: paymentResponse.paymentReference },
+      select: { id: true },
+    });
+    if (checkoutAttempt) {
+      const claim = await ctx.prisma.checkoutAttempt.updateMany({
+        where: {
+          id: checkoutAttempt.id,
+          OR: [
+            { status: { in: ["PENDING", "RECOVERY_FAILED"] } },
+            {
+              status: "PROCESSING",
+              updated_at: { lt: new Date(Date.now() - 2 * 60_000) },
+            },
+          ],
+        },
+        data: { status: "PROCESSING" },
+      });
+      if (claim.count === 0) {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const completed = await ctx.prisma.payment.findUnique({
+            where: { reference: paymentResponse.paymentReference },
+            include: {
+              order: {
+                include: {
+                  items: true,
+                  shipping_address: true,
+                  payments: true,
+                },
+              },
+            },
+          });
+          if (completed) {
+            return {
+              order: completed.order,
+              orderNumber: completed.order.order_number,
+              message: "Order already created",
+            };
+          }
+        }
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This payment is already being finalized",
+        });
+      }
+    }
+
     // Verify the charge directly with Paystack — never trust client-reported status
     const verifiedPayment = await verifyPaystackTransaction(
       paymentResponse.paymentReference,
@@ -1108,6 +1156,54 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         orderNumber: existingPayment.order.order_number,
         message: "Order already created",
       };
+    }
+
+    const checkoutAttempt = await ctx.prisma.checkoutAttempt.findUnique({
+      where: { reference: paymentResponse.paymentReference },
+      select: { id: true },
+    });
+    if (checkoutAttempt) {
+      const claim = await ctx.prisma.checkoutAttempt.updateMany({
+        where: {
+          id: checkoutAttempt.id,
+          OR: [
+            { status: { in: ["PENDING", "RECOVERY_FAILED"] } },
+            {
+              status: "PROCESSING",
+              updated_at: { lt: new Date(Date.now() - 2 * 60_000) },
+            },
+          ],
+        },
+        data: { status: "PROCESSING" },
+      });
+      if (claim.count === 0) {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const completed = await ctx.prisma.payment.findUnique({
+            where: { reference: paymentResponse.paymentReference },
+            include: {
+              order: {
+                include: {
+                  items: true,
+                  shipping_address: true,
+                  payments: true,
+                },
+              },
+            },
+          });
+          if (completed) {
+            return {
+              order: completed.order,
+              orderNumber: completed.order.order_number,
+              message: "Order already created",
+            };
+          }
+        }
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This payment is already being finalized",
+        });
+      }
     }
 
     // Verify the charge directly with Paystack — never trust client-reported status

@@ -237,6 +237,16 @@ export async function processPaystackPaymentWebhook(
         orderNumber: result.orderNumber,
       };
     } catch (error) {
+      const errorCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? String(error.code)
+          : undefined;
+      if (errorCode === "CONFLICT" || errorCode === "TOO_MANY_REQUESTS") {
+        return {
+          success: true,
+          message: `Checkout ${attempt.id} is already being processed`,
+        };
+      }
       console.error(`Failed to recover checkout ${attempt.id}:`, error);
       await prisma.checkoutAttempt.update({
         where: { id: attempt.id },

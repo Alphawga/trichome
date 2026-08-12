@@ -442,6 +442,7 @@ function buildCheckoutPrismaMock(
       create: jest
         .fn()
         .mockResolvedValue({ id: "attempt-1", reference: "ref-prepared" }),
+      findUnique: jest.fn().mockResolvedValue(null),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     order: {
@@ -509,6 +510,40 @@ describe("createOrderWithPayment", () => {
     });
 
     expect(result.orderNumber).toBe("ORD-EXISTING");
+    expect(prisma.order.create).not.toHaveBeenCalled();
+    expect(verifyPaystackTransactionMock).not.toHaveBeenCalled();
+  });
+
+  it("waits for the process that already claimed a checkout attempt", async () => {
+    const { prisma } = buildCheckoutPrismaMock();
+    const existingOrder = {
+      id: "order-raced",
+      order_number: "ORD-RACED",
+      items: [],
+      shipping_address: null,
+      payments: [],
+    };
+    prisma.checkoutAttempt.findUnique.mockResolvedValue({ id: "attempt-1" });
+    prisma.checkoutAttempt.updateMany.mockResolvedValue({ count: 0 });
+    prisma.payment.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ order: existingOrder });
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    const result = await caller.createOrderWithPayment({
+      paymentResponse: basePaymentResponse,
+      address: baseAddress,
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15325,
+      },
+    });
+
+    expect(result.orderNumber).toBe("ORD-RACED");
     expect(prisma.order.create).not.toHaveBeenCalled();
     expect(verifyPaystackTransactionMock).not.toHaveBeenCalled();
   });
