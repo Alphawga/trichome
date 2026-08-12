@@ -114,30 +114,45 @@ export const register = publicProcedure
 
 // Get current user profile
 export const getProfile = protectedProcedure.query(async ({ ctx }) => {
-  const user = await ctx.prisma.user.findUnique({
-    where: { id: ctx.user.id },
-    select: {
-      id: true,
-      email: true,
-      first_name: true,
-      last_name: true,
-      name: true,
-      phone: true,
-      image: true,
-      role: true,
-      status: true,
-      email_verified_at: true,
-      phone_verified_at: true,
-      last_login_at: true,
-      created_at: true,
-    },
-  });
+  const [user, savedAddress, latestOrder] = await Promise.all([
+    ctx.prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        name: true,
+        phone: true,
+        image: true,
+        role: true,
+        status: true,
+        email_verified_at: true,
+        phone_verified_at: true,
+        last_login_at: true,
+        created_at: true,
+      },
+    }),
+    ctx.prisma.address.findFirst({
+      where: { user_id: ctx.user.id, phone: { not: null } },
+      orderBy: [{ is_default: "desc" }, { created_at: "desc" }],
+      select: { phone: true },
+    }),
+    ctx.prisma.order.findFirst({
+      where: { user_id: ctx.user.id, phone: { not: null } },
+      orderBy: { created_at: "desc" },
+      select: { phone: true },
+    }),
+  ]);
 
   if (!user) {
     throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
   }
 
-  return user;
+  return {
+    ...user,
+    phone: user.phone || savedAddress?.phone || latestOrder?.phone || null,
+  };
 });
 
 // Update user profile
@@ -236,7 +251,6 @@ export const changePassword = protectedProcedure
     return { message: "Password changed successfully" };
   });
 
-
 export const requestPasswordReset = publicProcedure
   .input(
     z.object({
@@ -262,7 +276,8 @@ export const requestPasswordReset = publicProcedure
     if (!user) {
       return {
         success: true,
-        message: "If an account with that email exists, we have sent a password reset link.",
+        message:
+          "If an account with that email exists, we have sent a password reset link.",
         isOAuthOnly: false,
       };
     }
@@ -271,7 +286,8 @@ export const requestPasswordReset = publicProcedure
     if (!user.password_hash) {
       // Get the OAuth provider name for a helpful message
       const oauthProvider = user.accounts[0]?.provider || "social login";
-      const providerName = oauthProvider.charAt(0).toUpperCase() + oauthProvider.slice(1);
+      const providerName =
+        oauthProvider.charAt(0).toUpperCase() + oauthProvider.slice(1);
 
       return {
         success: true,
@@ -281,20 +297,17 @@ export const requestPasswordReset = publicProcedure
       };
     }
 
-
     const { createPasswordResetToken, getTokenExpirationHours } = await import(
       "@/lib/auth/password-reset-token"
     );
 
     const token = await createPasswordResetToken(input.email);
 
-
     const baseUrl =
       process.env.NEXTAUTH_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}&email=${encodeURIComponent(input.email)}`;
-
 
     const { sendPasswordResetEmail } = await import(
       "@/lib/email/password-reset"
@@ -309,7 +322,8 @@ export const requestPasswordReset = publicProcedure
 
     return {
       success: true,
-      message: "If an account with that email exists, we have sent a password reset link.",
+      message:
+        "If an account with that email exists, we have sent a password reset link.",
       isOAuthOnly: false,
     };
   });

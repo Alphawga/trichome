@@ -1,13 +1,13 @@
 "use client";
 
 import type { Product as PrismaProduct } from "@prisma/client";
-import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PromoCodeSection } from "@/components/checkout/PromoCodeSection";
 import { OrderSummary } from "@/components/orders/OrderSummary";
+import { CloudinaryImage as Image } from "@/components/ui/cloudinary-image";
 import {
   ChevronRightIcon,
   HeartIcon,
@@ -48,23 +48,57 @@ export function CartPageClient() {
 
   // Mutations
   const updateCartMutation = trpc.updateCartItem.useMutation({
-    onSuccess: () => {
-      utils.getCart.invalidate();
-      toast.success("Cart updated");
+    onMutate: async ({ id, quantity }) => {
+      await utils.getCart.cancel();
+      const previous = utils.getCart.getData();
+      utils.getCart.setData(undefined, (cart) => {
+        if (!cart) return cart;
+        const items = cart.items.map((item) =>
+          item.id === id ? { ...item, quantity } : item,
+        );
+        return {
+          ...cart,
+          items,
+          total: items.reduce(
+            (sum, item) => sum + Number(item.product.price) * item.quantity,
+            0,
+          ),
+        };
+      });
+      return { previous };
     },
-    onError: (error) => {
+    onError: (error, _input, context) => {
+      if (context?.previous) utils.getCart.setData(undefined, context.previous);
       toast.error(error.message || "Failed to update cart");
     },
+    onSettled: () => void utils.getCart.invalidate(),
   });
 
   const removeCartMutation = trpc.removeFromCart.useMutation({
-    onSuccess: () => {
-      utils.getCart.invalidate();
-      toast.success("Item removed from cart");
+    onMutate: async ({ id }) => {
+      await utils.getCart.cancel();
+      const previous = utils.getCart.getData();
+      utils.getCart.setData(undefined, (cart) => {
+        if (!cart) return cart;
+        const items = cart.items.filter((item) => item.id !== id);
+        return {
+          ...cart,
+          items,
+          count: items.length,
+          total: items.reduce(
+            (sum, item) => sum + Number(item.product.price) * item.quantity,
+            0,
+          ),
+        };
+      });
+      return { previous };
     },
-    onError: (error) => {
+    onSuccess: () => toast.success("Item removed from cart"),
+    onError: (error, _input, context) => {
+      if (context?.previous) utils.getCart.setData(undefined, context.previous);
       toast.error(error.message || "Failed to remove item");
     },
+    onSettled: () => void utils.getCart.invalidate(),
   });
 
   const addToWishlistMutation = trpc.addToWishlist.useMutation({
@@ -172,7 +206,6 @@ export function CartPageClient() {
         const productId = cartItemId.replace("local-", "");
         updateLocalCartItem(productId, newQuantity);
         setLocalCartItems(getLocalCart());
-        window.dispatchEvent(new Event("localCartUpdated"));
       }
     }
   };
@@ -185,7 +218,6 @@ export function CartPageClient() {
       const productId = cartItemId.replace("local-", "");
       removeFromLocalCart(productId);
       setLocalCartItems(getLocalCart());
-      window.dispatchEvent(new Event("localCartUpdated"));
       toast.success("Item removed from cart");
     }
   };
@@ -194,8 +226,11 @@ export function CartPageClient() {
     if (!isAuthenticated) {
       toast.error("Please sign in to add items to wishlist");
       // Store current page for redirect after sign-in
-      if (typeof window !== 'undefined') {
-        localStorage.setItem("trichomes_redirect_url", window.location.pathname);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "trichomes_redirect_url",
+          window.location.pathname,
+        );
       }
       router.push("/auth/signin");
       return;
@@ -238,9 +273,7 @@ export function CartPageClient() {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="animate-spin h-12 w-12 border-b-2 border-black mx-auto mb-4 rounded-full"></div>
-              <p className="text-gray-600 font-body">
-                Loading cart...
-              </p>
+              <p className="text-gray-600 font-body">Loading cart...</p>
             </div>
           </div>
         </div>
@@ -259,10 +292,11 @@ export function CartPageClient() {
           className="object-cover"
           priority
         />
-        <div 
-          className="absolute inset-0" 
-          style={{ 
-            background: 'linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)'
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(64, 112, 41, 0.9), rgba(64, 112, 41, 0.7), transparent)",
           }}
         />
         <div className="relative h-full mx-auto px-4 sm:px-6 lg:px-8 max-w-[2200px] flex flex-col justify-center">
@@ -277,9 +311,7 @@ export function CartPageClient() {
               Home
             </Link>
             <ChevronRightIcon className="w-4 h-4 text-white/70" />
-            <span className="text-[14px] text-white font-body">
-              Cart
-            </span>
+            <span className="text-[14px] text-white font-body">Cart</span>
           </nav>
         </div>
       </div>
@@ -393,7 +425,6 @@ export function CartPageClient() {
                             handleUpdateQuantity(item.id, item.quantity - 1)
                           }
                           className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-50 transition-all duration-150"
-                          disabled={updateCartMutation.isPending}
                         >
                           <MinusIcon />
                         </button>
@@ -406,7 +437,6 @@ export function CartPageClient() {
                             handleUpdateQuantity(item.id, item.quantity + 1)
                           }
                           className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-50 transition-all duration-150"
-                          disabled={updateCartMutation.isPending}
                         >
                           <PlusIcon />
                         </button>

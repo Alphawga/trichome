@@ -69,9 +69,12 @@ export function useCheckoutOrder(isGuestMode: boolean) {
   const utils = trpc.useUtils();
 
   const authenticatedMutation = trpc.createOrderWithPayment.useMutation({
-    onSuccess: async (data) => {
-      await utils.getCart.invalidate();
-      await utils.getCart.refetch();
+    onSuccess: (data) => {
+      // The server has already deleted the cart. Reflect that immediately in
+      // every mounted cart consumer (header, cart and checkout) without
+      // waiting for another network round trip before redirecting.
+      utils.getCart.setData(undefined, { items: [], total: 0, count: 0 });
+      void utils.getCart.invalidate();
 
       toast.success("Order placed successfully!", {
         description: `Your order number is ${data.orderNumber}`,

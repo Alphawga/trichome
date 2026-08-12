@@ -10,6 +10,7 @@ import { OrderSummary } from "@/components/orders/OrderSummary";
 import { ShippingAddressCard } from "@/components/orders/ShippingAddressCard";
 import { TrackingInfo } from "@/components/orders/TrackingInfo";
 import { ChevronRightIcon } from "@/components/ui/icons";
+import { clearLocalCart } from "@/utils/local-cart";
 import { trpc } from "@/utils/trpc";
 import { useAuth } from "../../contexts/auth-context";
 
@@ -20,6 +21,19 @@ export default function OrderConfirmationClient() {
   const orderNumber = searchParams.get("order");
   const isGuest = searchParams.get("guest") === "true";
   const orderEmail = searchParams.get("email") || "";
+  const utils = trpc.useUtils();
+
+  // This also covers webhook recovery: if the browser callback was lost but
+  // the customer later lands on confirmation, stale client cart state is
+  // cleared even though the webhook finalized the order server-side.
+  useEffect(() => {
+    if (!orderNumber) return;
+    if (isGuest) clearLocalCart();
+    else {
+      utils.getCart.setData(undefined, { items: [], total: 0, count: 0 });
+      void utils.getCart.invalidate();
+    }
+  }, [orderNumber, isGuest, utils]);
 
   // Fetch order by order number (use public endpoint for guest orders)
   const authenticatedOrderQuery = trpc.getOrderByNumber.useQuery(
@@ -298,5 +312,3 @@ export default function OrderConfirmationClient() {
     </div>
   );
 }
-
-
