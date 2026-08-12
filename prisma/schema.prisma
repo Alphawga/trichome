@@ -309,6 +309,22 @@ model Payment {
   @@map("payments")
 }
 
+model CheckoutAttempt {
+  id         String   @id @default(cuid())
+  reference  String   @unique
+  user_id    String?
+  is_guest   Boolean
+  payload    Json
+  status     String   @default("PENDING")
+  order_id   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([status, created_at])
+  @@index([user_id])
+  @@map("checkout_attempts")
+}
+
 model OrderStatusHistory {
   id         String      @id @default(cuid())
   order_id   String

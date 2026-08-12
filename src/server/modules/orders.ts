@@ -15,7 +15,9 @@ import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import { verifyPaystackTransaction } from "@/lib/webhooks/paystack";
 import {
   adminProcedure,
+  checkoutPreparationRateLimited,
   checkoutRateLimited,
+  guestCheckoutPreparationRateLimited,
   guestCheckoutRateLimited,
   protectedProcedure,
   publicProcedure,
@@ -95,6 +97,69 @@ async function computeServerShippingCost(
 function generateOrderNumber(): string {
   return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 }
+
+const preparedCheckoutSchema = z.object({
+  address: z.object({
+    first_name: z.string().min(1),
+    last_name: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().optional(),
+    address_1: z.string().optional(),
+    address_2: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postal_code: z.string().optional(),
+    country: z.string().default("Nigeria"),
+  }),
+  items: z
+    .array(
+      z.object({ product_id: z.string(), quantity: z.number().int().min(1) }),
+    )
+    .min(1),
+  totals: z.object({
+    subtotal: z.number(),
+    shipping: z.number(),
+    tax: z.number(),
+    discount: z.number().default(0),
+    total: z.number().positive(),
+  }),
+  payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
+  currency: z.nativeEnum(Currency).default("NGN"),
+  notes: z.string().optional(),
+  promo_code: z.string().optional(),
+  deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+  pickupStoreId: z.string().optional(),
+});
+
+async function prepareCheckoutAttempt(
+  prismaClient: Prisma.TransactionClient,
+  payload: z.infer<typeof preparedCheckoutSchema>,
+  isGuest: boolean,
+  userId?: string,
+) {
+  const reference = `TRICHOMES-${isGuest ? "GUEST-" : ""}${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  return prismaClient.checkoutAttempt.create({
+    data: {
+      reference,
+      user_id: userId,
+      is_guest: isGuest,
+      payload: payload as Prisma.InputJsonValue,
+    },
+    select: { id: true, reference: true },
+  });
+}
+
+export const prepareCheckout = checkoutPreparationRateLimited
+  .input(preparedCheckoutSchema)
+  .mutation(({ input, ctx }) =>
+    prepareCheckoutAttempt(ctx.prisma, input, false, ctx.user.id),
+  );
+
+export const prepareGuestCheckout = guestCheckoutPreparationRateLimited
+  .input(preparedCheckoutSchema)
+  .mutation(({ input, ctx }) =>
+    prepareCheckoutAttempt(ctx.prisma, input, true),
+  );
 
 // Get user's orders
 export const getMyOrders = protectedProcedure
@@ -470,76 +535,77 @@ export const createOrder = protectedProcedure
 // Create order with payment (after payment success)
 export const createOrderWithPayment = checkoutRateLimited
   .input(
-    z.object({
-      // Client-reported payment info from the Paystack inline popup callback.
-      // paymentStatus/amountPaid are NOT trusted — verified server-side below.
-      paymentResponse: z.object({
-        paymentStatus: z.string(),
-        transactionReference: z.string().optional(),
-        paymentReference: z.string(),
-        amountPaid: z.string().optional(),
-        paymentDescription: z.string().optional(),
-        customerEmail: z.string().email(),
-        customerName: z.string(),
-      }),
-      // Address data
-      address: z.object({
-        first_name: z.string().min(1),
-        last_name: z.string().min(1),
-        email: z.string().email(),
-        phone: z.string().optional(),
-        address_1: z.string().optional(),
-        address_2: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        postal_code: z.string().optional(),
-        country: z.string().default("Nigeria"),
-      }),
-      // Order items from cart
-      items: z.array(
-        z.object({
-          product_id: z.string(),
-          quantity: z.number().int().min(1),
+    z
+      .object({
+        // Client-reported payment info from the Paystack inline popup callback.
+        // paymentStatus/amountPaid are NOT trusted — verified server-side below.
+        paymentResponse: z.object({
+          paymentStatus: z.string(),
+          transactionReference: z.string().optional(),
+          paymentReference: z.string(),
+          amountPaid: z.string().optional(),
+          paymentDescription: z.string().optional(),
+          customerEmail: z.string().email(),
+          customerName: z.string(),
         }),
-      ),
-      // Calculated totals
-      totals: z.object({
-        subtotal: z.number(),
-        shipping: z.number(),
-        tax: z.number(),
-        discount: z.number().default(0),
-        total: z.number(),
-      }),
-      payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
-      currency: z.nativeEnum(Currency).default("NGN"),
-      notes: z.string().optional(),
-      promo_code: z.string().optional(),
-      deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
-      pickupStoreId: z.string().optional(),
-    }).superRefine((data, ctx) => {
-      if (data.deliveryMethod === "DELIVERY") {
-        if (!data.address.address_1 || !data.address.city) {
+        // Address data
+        address: z.object({
+          first_name: z.string().min(1),
+          last_name: z.string().min(1),
+          email: z.string().email(),
+          phone: z.string().optional(),
+          address_1: z.string().optional(),
+          address_2: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          postal_code: z.string().optional(),
+          country: z.string().default("Nigeria"),
+        }),
+        // Order items from cart
+        items: z.array(
+          z.object({
+            product_id: z.string(),
+            quantity: z.number().int().min(1),
+          }),
+        ),
+        // Calculated totals
+        totals: z.object({
+          subtotal: z.number(),
+          shipping: z.number(),
+          tax: z.number(),
+          discount: z.number().default(0),
+          total: z.number(),
+        }),
+        payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
+        currency: z.nativeEnum(Currency).default("NGN"),
+        notes: z.string().optional(),
+        promo_code: z.string().optional(),
+        deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+        pickupStoreId: z.string().optional(),
+      })
+      .superRefine((data, ctx) => {
+        if (data.deliveryMethod === "DELIVERY") {
+          if (!data.address.address_1 || !data.address.city) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["address"],
+              message: "Address is required for delivery orders",
+            });
+          }
+        } else if (!data.pickupStoreId) {
           ctx.addIssue({
             code: "custom",
-            path: ["address"],
-            message: "Address is required for delivery orders",
+            path: ["pickupStoreId"],
+            message: "A pickup store is required for pickup orders",
           });
         }
-      } else if (!data.pickupStoreId) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["pickupStoreId"],
-          message: "A pickup store is required for pickup orders",
-        });
-      }
-    }),
+      }),
   )
   .mutation(async ({ input, ctx }) => {
     const {
       paymentResponse,
       address,
       items: orderItems,
-      totals,
       payment_method,
       currency,
       notes,
@@ -547,6 +613,25 @@ export const createOrderWithPayment = checkoutRateLimited
       deliveryMethod,
       pickupStoreId,
     } = input;
+
+    // Browser retries and Paystack webhooks may race. A payment reference is
+    // globally unique, so returning its existing order makes finalization
+    // idempotent instead of surfacing a duplicate-key failure to the customer.
+    const existingPayment = await ctx.prisma.payment.findUnique({
+      where: { reference: paymentResponse.paymentReference },
+      include: {
+        order: {
+          include: { items: true, shipping_address: true, payments: true },
+        },
+      },
+    });
+    if (existingPayment) {
+      return {
+        order: existingPayment.order,
+        orderNumber: existingPayment.order.order_number,
+        message: "Order already created",
+      };
+    }
 
     // Verify the charge directly with Paystack — never trust client-reported status
     const verifiedPayment = await verifyPaystackTransaction(
@@ -807,6 +892,11 @@ export const createOrderWithPayment = checkoutRateLimited
       },
     });
 
+    await ctx.prisma.checkoutAttempt.updateMany({
+      where: { reference: paymentResponse.paymentReference },
+      data: { status: "ORDER_CREATED", order_id: order.id },
+    });
+
     // Clear cart after order
     await ctx.prisma.cartItem.deleteMany({
       where: { user_id: ctx.user.id },
@@ -836,7 +926,7 @@ export const createOrderWithPayment = checkoutRateLimited
         process.env.NEXT_PUBLIC_APP_URL ||
         "http://localhost:3000";
 
-      await sendOrderConfirmationEmail({
+      const emailResult = await sendOrderConfirmationEmail({
         recipientName:
           order.first_name && order.last_name
             ? `${order.first_name} ${order.last_name}`
@@ -873,6 +963,11 @@ export const createOrderWithPayment = checkoutRateLimited
         trackingNumber: order.tracking_number || undefined,
         orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}`,
       });
+      if (!emailResult.success) {
+        throw new Error(
+          emailResult.error || "Failed to send order confirmation email",
+        );
+      }
     } catch (error) {
       // Log error but don't fail order creation if email fails
       console.error("Failed to send order confirmation email:", error);
@@ -905,6 +1000,11 @@ export const createOrderWithPayment = checkoutRateLimited
       console.error("Failed to send new order notification:", error);
     }
 
+    await ctx.prisma.checkoutAttempt.updateMany({
+      where: { reference: paymentResponse.paymentReference },
+      data: { status: "COMPLETED", order_id: order.id },
+    });
+
     return {
       order,
       orderNumber: order.order_number,
@@ -915,76 +1015,77 @@ export const createOrderWithPayment = checkoutRateLimited
 // Create guest order with payment (for unauthenticated users)
 export const createGuestOrderWithPayment = guestCheckoutRateLimited
   .input(
-    z.object({
-      // Client-reported payment info from the Paystack inline popup callback.
-      // paymentStatus/amountPaid are NOT trusted — verified server-side below.
-      paymentResponse: z.object({
-        paymentStatus: z.string(),
-        transactionReference: z.string().optional(),
-        paymentReference: z.string(),
-        amountPaid: z.string().optional(),
-        paymentDescription: z.string().optional(),
-        customerEmail: z.string().email(),
-        customerName: z.string(),
-      }),
-      // Address data
-      address: z.object({
-        first_name: z.string().min(1),
-        last_name: z.string().min(1),
-        email: z.string().email(),
-        phone: z.string().optional(),
-        address_1: z.string().optional(),
-        address_2: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        postal_code: z.string().optional(),
-        country: z.string().default("Nigeria"),
-      }),
-      // Order items from cart
-      items: z.array(
-        z.object({
-          product_id: z.string(),
-          quantity: z.number().int().min(1),
+    z
+      .object({
+        // Client-reported payment info from the Paystack inline popup callback.
+        // paymentStatus/amountPaid are NOT trusted — verified server-side below.
+        paymentResponse: z.object({
+          paymentStatus: z.string(),
+          transactionReference: z.string().optional(),
+          paymentReference: z.string(),
+          amountPaid: z.string().optional(),
+          paymentDescription: z.string().optional(),
+          customerEmail: z.string().email(),
+          customerName: z.string(),
         }),
-      ),
-      // Calculated totals
-      totals: z.object({
-        subtotal: z.number(),
-        shipping: z.number(),
-        tax: z.number(),
-        discount: z.number().default(0),
-        total: z.number(),
-      }),
-      payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
-      currency: z.nativeEnum(Currency).default("NGN"),
-      notes: z.string().optional(),
-      promo_code: z.string().optional(),
-      deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
-      pickupStoreId: z.string().optional(),
-    }).superRefine((data, ctx) => {
-      if (data.deliveryMethod === "DELIVERY") {
-        if (!data.address.address_1 || !data.address.city) {
+        // Address data
+        address: z.object({
+          first_name: z.string().min(1),
+          last_name: z.string().min(1),
+          email: z.string().email(),
+          phone: z.string().optional(),
+          address_1: z.string().optional(),
+          address_2: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          postal_code: z.string().optional(),
+          country: z.string().default("Nigeria"),
+        }),
+        // Order items from cart
+        items: z.array(
+          z.object({
+            product_id: z.string(),
+            quantity: z.number().int().min(1),
+          }),
+        ),
+        // Calculated totals
+        totals: z.object({
+          subtotal: z.number(),
+          shipping: z.number(),
+          tax: z.number(),
+          discount: z.number().default(0),
+          total: z.number(),
+        }),
+        payment_method: z.nativeEnum(PaymentMethod).default("PAYSTACK"),
+        currency: z.nativeEnum(Currency).default("NGN"),
+        notes: z.string().optional(),
+        promo_code: z.string().optional(),
+        deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).default("DELIVERY"),
+        pickupStoreId: z.string().optional(),
+      })
+      .superRefine((data, ctx) => {
+        if (data.deliveryMethod === "DELIVERY") {
+          if (!data.address.address_1 || !data.address.city) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["address"],
+              message: "Address is required for delivery orders",
+            });
+          }
+        } else if (!data.pickupStoreId) {
           ctx.addIssue({
             code: "custom",
-            path: ["address"],
-            message: "Address is required for delivery orders",
+            path: ["pickupStoreId"],
+            message: "A pickup store is required for pickup orders",
           });
         }
-      } else if (!data.pickupStoreId) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["pickupStoreId"],
-          message: "A pickup store is required for pickup orders",
-        });
-      }
-    }),
+      }),
   )
   .mutation(async ({ input, ctx }) => {
     const {
       paymentResponse,
       address,
       items: orderItems,
-      totals,
       payment_method,
       currency,
       notes,
@@ -992,6 +1093,22 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       deliveryMethod,
       pickupStoreId,
     } = input;
+
+    const existingPayment = await ctx.prisma.payment.findUnique({
+      where: { reference: paymentResponse.paymentReference },
+      include: {
+        order: {
+          include: { items: true, shipping_address: true, payments: true },
+        },
+      },
+    });
+    if (existingPayment) {
+      return {
+        order: existingPayment.order,
+        orderNumber: existingPayment.order.order_number,
+        message: "Order already created",
+      };
+    }
 
     // Verify the charge directly with Paystack — never trust client-reported status
     const verifiedPayment = await verifyPaystackTransaction(
@@ -1220,6 +1337,11 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
       },
     });
 
+    await ctx.prisma.checkoutAttempt.updateMany({
+      where: { reference: paymentResponse.paymentReference },
+      data: { status: "ORDER_CREATED", order_id: order.id },
+    });
+
     // Update product quantities
     for (const item of orderItems) {
       const product = products.find((p) => p.id === item.product_id);
@@ -1244,7 +1366,7 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         process.env.NEXT_PUBLIC_APP_URL ||
         "http://localhost:3000";
 
-      await sendOrderConfirmationEmail({
+      const emailResult = await sendOrderConfirmationEmail({
         recipientName:
           order.first_name && order.last_name
             ? `${order.first_name} ${order.last_name}`
@@ -1281,6 +1403,11 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
         trackingNumber: order.tracking_number || undefined,
         orderUrl: `${baseUrl}/order-confirmation?order=${order.order_number}&guest=true&email=${encodeURIComponent(order.email)}`,
       });
+      if (!emailResult.success) {
+        throw new Error(
+          emailResult.error || "Failed to send order confirmation email",
+        );
+      }
     } catch (error) {
       // Log error but don't fail order creation if email fails
       console.error("Failed to send order confirmation email:", error);
@@ -1312,6 +1439,11 @@ export const createGuestOrderWithPayment = guestCheckoutRateLimited
     } catch (error) {
       console.error("Failed to send new order notification:", error);
     }
+
+    await ctx.prisma.checkoutAttempt.updateMany({
+      where: { reference: paymentResponse.paymentReference },
+      data: { status: "COMPLETED", order_id: order.id },
+    });
 
     return {
       order,
@@ -1694,7 +1826,12 @@ export const adminCreateOrder = adminProcedure
       // Address.user_id is non-nullable (same limitation as guest checkout
       // today), and PICKUP orders never create/link an Address row at all.
       let shippingAddressId: string | undefined;
-      if (userId && deliveryMethod === "DELIVERY" && deliveryAddress1 && deliveryCity) {
+      if (
+        userId &&
+        deliveryMethod === "DELIVERY" &&
+        deliveryAddress1 &&
+        deliveryCity
+      ) {
         const existingAddress = await tx.address.findFirst({
           where: {
             user_id: userId,

@@ -71,7 +71,8 @@ class ResendEmailService implements EmailService {
       const resend = new Resend(apiKey);
 
       const result = await resend.emails.send({
-        from: options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
+        from:
+          options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
         to: Array.isArray(options.to) ? options.to : [options.to],
         subject: options.subject,
         html: options.html,
@@ -83,10 +84,13 @@ class ResendEmailService implements EmailService {
 
       if (result.error) {
         console.error("❌ Email sending failed:", result.error);
-        return {
+        const failure = {
           success: false,
           error: result.error.message,
         };
+        return hasCompleteSmtpConfig()
+          ? new ProductionEmailService().send(options)
+          : failure;
       }
 
       console.log("✅ Email sent successfully:", result.data?.id);
@@ -97,12 +101,23 @@ class ResendEmailService implements EmailService {
       };
     } catch (error) {
       console.error("❌ Email sending failed:", error);
-      return {
+      const failure = {
         success: false,
         error: error instanceof Error ? error.message : "Failed to send email",
       };
+      return hasCompleteSmtpConfig()
+        ? new ProductionEmailService().send(options)
+        : failure;
     }
   }
+}
+
+function hasCompleteSmtpConfig(): boolean {
+  return !!(
+    (process.env.SMTP_SERVER || process.env.SMTP_HOST) &&
+    (process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER) &&
+    process.env.SMTP_PASSWORD
+  );
 }
 
 /**
@@ -113,10 +128,9 @@ class ProductionEmailService implements EmailService {
     // Check for SMTP credentials (support multiple naming conventions)
     const smtpHost = process.env.SMTP_SERVER || process.env.SMTP_HOST;
     const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
-    const smtpUser = process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER;
+    const smtpUser =
+      process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASSWORD;
-
-
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       const missingVars = [];
@@ -125,7 +139,7 @@ class ProductionEmailService implements EmailService {
       if (!smtpPass) missingVars.push("SMTP_PASSWORD");
 
       console.warn(
-        `⚠️ SMTP credentials not fully configured. Missing: ${missingVars.join(", ")}. Falling back to development mode (console log).`
+        `⚠️ SMTP credentials not fully configured. Missing: ${missingVars.join(", ")}. Falling back to development mode (console log).`,
       );
       const devService = new DevelopmentEmailService();
       return devService.send(options);
@@ -146,14 +160,23 @@ class ProductionEmailService implements EmailService {
       });
 
       const mailOptions = {
-        from: options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
+        from:
+          options.from || process.env.EMAIL_FROM || "noreply@trichomesshop.com",
         to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
         replyTo: options.replyTo,
-        cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(", ") : options.cc) : undefined,
-        bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(", ") : options.bcc) : undefined,
+        cc: options.cc
+          ? Array.isArray(options.cc)
+            ? options.cc.join(", ")
+            : options.cc
+          : undefined,
+        bcc: options.bcc
+          ? Array.isArray(options.bcc)
+            ? options.bcc.join(", ")
+            : options.bcc
+          : undefined,
       };
 
       const result = await transporter.sendMail(mailOptions);
@@ -191,18 +214,16 @@ function getEmailService(): EmailService {
   }
 
   const hasEmailProvider = !!(
-    process.env.SENDGRID_API_KEY ||
-    process.env.AWS_SES_REGION ||
-    process.env.SMTP_HOST ||
-    process.env.SMTP_SERVER // Brevo uses SMTP_SERVER
+    (
+      process.env.SENDGRID_API_KEY ||
+      process.env.AWS_SES_REGION ||
+      process.env.SMTP_HOST ||
+      process.env.SMTP_SERVER
+    ) // Brevo uses SMTP_SERVER
   );
 
   // Use production service if SMTP is configured (even in dev for testing)
-  const hasSmtpConfig = !!(
-    (process.env.SMTP_SERVER || process.env.SMTP_HOST) &&
-    (process.env.SMTP_LOGIN || process.env.LOGIN || process.env.SMTP_USER) &&
-    process.env.SMTP_PASSWORD
-  );
+  const hasSmtpConfig = hasCompleteSmtpConfig();
 
   if (hasSmtpConfig || (isProduction && hasEmailProvider)) {
     return new ProductionEmailService();

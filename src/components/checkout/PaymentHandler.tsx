@@ -79,9 +79,8 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
     "idle" | "processing" | "success" | "error"
   >("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const { createOrder, isLoading, isError, error } = useCheckoutOrder(
-    props.isGuestMode,
-  );
+  const { prepareOrder, createOrder, isLoading, isError, error } =
+    useCheckoutOrder(props.isGuestMode);
 
   const initializePayment = useCallback(async () => {
     if (typeof window === "undefined") {
@@ -95,15 +94,27 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
     try {
       await loadPaystackScript();
 
-      const paymentReference = `TRICHOMES-${props.isGuestMode ? "GUEST-" : ""}${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const checkoutPayload = {
+        address: props.address,
+        items: props.items,
+        totals: props.totals,
+        payment_method: props.paymentMethod || "PAYSTACK",
+        currency: props.currency || "NGN",
+        notes: props.notes,
+        promo_code: props.promoCode,
+        deliveryMethod: props.deliveryMethod,
+        pickupStoreId: props.pickupStoreId,
+      } as const;
+      const attempt = await prepareOrder(checkoutPayload);
 
       const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
         email: props.customerEmail,
         amount: Math.round(props.totals.total * 100), // kobo
         currency: props.currency || "NGN",
-        ref: paymentReference,
+        ref: attempt.reference,
         label: props.customerName,
+        metadata: { checkout_attempt_id: attempt.id },
         callback: (response: PaystackResponse) => {
           if (response.status === "success") {
             setPaymentStatus("success");
@@ -120,19 +131,13 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
                 customerEmail: props.customerEmail,
                 customerName: props.customerName,
               },
-              address: props.address,
-              items: props.items,
-              totals: props.totals,
-              payment_method: props.paymentMethod || "PAYSTACK",
-              currency: props.currency || "NGN",
-              notes: props.notes,
-              promo_code: props.promoCode,
-              deliveryMethod: props.deliveryMethod,
-              pickupStoreId: props.pickupStoreId,
+              ...checkoutPayload,
             });
           } else {
             setPaymentStatus("error");
-            setPaymentError(response.message || "Payment not successful. Please try again.");
+            setPaymentError(
+              response.message || "Payment not successful. Please try again.",
+            );
           }
         },
         onClose: () => {
@@ -148,10 +153,12 @@ export function usePaymentHandler(props: PaymentHandlerProps) {
       console.error("Error initializing payment:", err);
       setPaymentStatus("error");
       setPaymentError(
-        err instanceof Error ? err.message : "Failed to initialize payment. Please try again.",
+        err instanceof Error
+          ? err.message
+          : "Failed to initialize payment. Please try again.",
       );
     }
-  }, [props, paymentStatus, createOrder]);
+  }, [props, paymentStatus, prepareOrder, createOrder]);
 
   return {
     initializePayment,

@@ -7,7 +7,7 @@ jest.mock("@/lib/webhooks/paystack", () => ({
 }));
 
 jest.mock("@/lib/email", () => ({
-  sendOrderConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+  sendOrderConfirmationEmail: jest.fn().mockResolvedValue({ success: true }),
 }));
 
 jest.mock("@/lib/notifications/notify-new-order", () => ({
@@ -435,6 +435,15 @@ function buildCheckoutPrismaMock(
     cartItem: {
       deleteMany: jest.fn().mockResolvedValue({}),
     },
+    payment: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    checkoutAttempt: {
+      create: jest
+        .fn()
+        .mockResolvedValue({ id: "attempt-1", reference: "ref-prepared" }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     order: {
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockResolvedValue({
@@ -474,6 +483,60 @@ describe("createOrderWithPayment", () => {
     verifyPaystackTransactionMock.mockReset();
   });
 
+  it("returns the existing order when browser and webhook finalize the same reference", async () => {
+    const { prisma } = buildCheckoutPrismaMock();
+    const existingOrder = {
+      id: "order-existing",
+      order_number: "ORD-EXISTING",
+      items: [],
+      shipping_address: null,
+      payments: [],
+    };
+    prisma.payment.findUnique.mockResolvedValue({ order: existingOrder });
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    const result = await caller.createOrderWithPayment({
+      paymentResponse: basePaymentResponse,
+      address: baseAddress,
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15325,
+      },
+    });
+
+    expect(result.orderNumber).toBe("ORD-EXISTING");
+    expect(prisma.order.create).not.toHaveBeenCalled();
+    expect(verifyPaystackTransactionMock).not.toHaveBeenCalled();
+  });
+
+  it("persists a recoverable checkout attempt before payment opens", async () => {
+    const { prisma } = buildCheckoutPrismaMock();
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    const result = await caller.prepareCheckout({
+      address: baseAddress,
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15325,
+      },
+    });
+
+    expect(result).toEqual({ id: "attempt-1", reference: "ref-prepared" });
+    expect(prisma.checkoutAttempt.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ is_guest: false, user_id: "admin-1" }),
+      }),
+    );
+  });
+
   it("rejects a client-reported discount not backed by a valid promotion", async () => {
     // No promo_code/promotion_id sent, but the client claims a discount —
     // the server must ignore totals.discount and recompute its own, so the
@@ -491,7 +554,13 @@ describe("createOrderWithPayment", () => {
         paymentResponse: basePaymentResponse,
         address: baseAddress,
         items: [{ product_id: "prod-1", quantity: 1 }],
-        totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 1500, total: 13500 },
+        totals: {
+          subtotal: 15000,
+          shipping: 0,
+          tax: 0,
+          discount: 1500,
+          total: 13500,
+        },
       }),
     ).rejects.toThrow(/payment amount mismatch/i);
   });
@@ -543,7 +612,13 @@ describe("createOrderWithPayment", () => {
       paymentResponse: basePaymentResponse,
       address: baseAddress,
       items: [{ product_id: "prod-1", quantity: 1 }],
-      totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 0, total: 15000 },
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15000,
+      },
     });
 
     const createArgs = prisma.order.create.mock.calls[0][0];
@@ -565,7 +640,9 @@ describe("createOrderWithPayment", () => {
   it("does not auto-apply a coded promotion when no code is entered", async () => {
     // Codeless-candidate lookup filters code === null at the query level —
     // a coded promotion is never in the automatic stack without its code.
-    const { prisma } = buildCheckoutPrismaMock({ promotion: { code: "SAVE10" } });
+    const { prisma } = buildCheckoutPrismaMock({
+      promotion: { code: "SAVE10" },
+    });
     // No discount applied — 15000 naira + Paystack fee (15000*1.5%+100=325) = 15325
     verifyPaystackTransactionMock.mockResolvedValue({
       status: "success",
@@ -578,7 +655,13 @@ describe("createOrderWithPayment", () => {
       paymentResponse: basePaymentResponse,
       address: baseAddress,
       items: [{ product_id: "prod-1", quantity: 1 }],
-      totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 0, total: 15000 },
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15000,
+      },
     });
 
     expect(prisma.promotion.update).not.toHaveBeenCalled();
@@ -610,7 +693,13 @@ describe("createGuestOrderWithPayment", () => {
       paymentResponse: basePaymentResponse,
       address: baseAddress,
       items: [{ product_id: "prod-1", quantity: 1 }],
-      totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 0, total: 15000 },
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15000,
+      },
       promo_code: "save10",
     });
 
@@ -642,7 +731,13 @@ describe("createGuestOrderWithPayment", () => {
         paymentResponse: basePaymentResponse,
         address: baseAddress,
         items: [{ product_id: "prod-1", quantity: 1 }],
-        totals: { subtotal: 15000, shipping: 0, tax: 0, discount: 1500, total: 13500 },
+        totals: {
+          subtotal: 15000,
+          shipping: 0,
+          tax: 0,
+          discount: 1500,
+          total: 13500,
+        },
       }),
     ).rejects.toThrow(/payment amount mismatch/i);
   });

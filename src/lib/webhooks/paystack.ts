@@ -144,13 +144,119 @@ export async function processPaystackPaymentWebhook(
   });
 
   if (!payment) {
-    console.error(`Payment not found for reference: ${reference}`);
-    return { success: false, message: "Payment not found" };
+    const attemptId = payload.data.metadata?.checkout_attempt_id;
+    if (typeof attemptId !== "string") {
+      console.error(`Payment not found for reference: ${reference}`);
+      return {
+        success: false,
+        message: "Payment not found and no checkout attempt supplied",
+      };
+    }
+
+    const attempt = await prisma.checkoutAttempt.findFirst({
+      where: { id: attemptId, reference },
+    });
+    if (!attempt) {
+      console.error(`Checkout attempt not found for reference: ${reference}`);
+      return { success: false, message: "Checkout attempt not found" };
+    }
+
+    if (status !== "success") {
+      await prisma.checkoutAttempt.update({
+        where: { id: attempt.id },
+        data: { status: "FAILED" },
+      });
+      return {
+        success: true,
+        message: `Failed checkout ${reference} recorded`,
+      };
+    }
+
+    try {
+      // Dynamic import avoids a module cycle: the orders router uses the
+      // Paystack verifier, while recovery needs to invoke that same validated
+      // order-creation procedure when the browser callback never arrived.
+      const { appRouter } = await import("@/server");
+      const checkoutPayload = attempt.payload as Record<string, unknown>;
+      const paymentResponse = {
+        paymentStatus: "PAID",
+        transactionReference: String(payload.data.id),
+        paymentReference: reference,
+        amountPaid: String(amount / 100),
+        customerEmail: payload.data.customer.email,
+        customerName:
+          `${payload.data.customer.first_name || ""} ${payload.data.customer.last_name || ""}`.trim() ||
+          payload.data.customer.email,
+      };
+
+      let session = null;
+      if (!attempt.is_guest && attempt.user_id) {
+        const user = await prisma.user.findUnique({
+          where: { id: attempt.user_id },
+        });
+        if (!user) throw new Error("Checkout user no longer exists");
+        session = {
+          expires: new Date(Date.now() + 5 * 60_000).toISOString(),
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+            first_name: user.first_name,
+            last_name: user.last_name,
+          },
+        };
+      }
+
+      const caller = appRouter.createCaller({
+        prisma,
+        session,
+        ip: `paystack-recovery:${attempt.id}`,
+      });
+      const recoveryInput = { ...checkoutPayload, paymentResponse };
+      const result = attempt.is_guest
+        ? await caller.createGuestOrderWithPayment(
+            recoveryInput as Parameters<
+              typeof caller.createGuestOrderWithPayment
+            >[0],
+          )
+        : await caller.createOrderWithPayment(
+            recoveryInput as Parameters<
+              typeof caller.createOrderWithPayment
+            >[0],
+          );
+
+      await prisma.checkoutAttempt.update({
+        where: { id: attempt.id },
+        data: { status: "COMPLETED", order_id: result.order.id },
+      });
+      return {
+        success: true,
+        message: "Order recovered from Paystack webhook",
+        orderNumber: result.orderNumber,
+      };
+    } catch (error) {
+      console.error(`Failed to recover checkout ${attempt.id}:`, error);
+      await prisma.checkoutAttempt.update({
+        where: { id: attempt.id },
+        data: { status: "RECOVERY_FAILED" },
+      });
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Checkout recovery failed",
+      };
+    }
   }
 
   const order = payment.order;
 
   if (payment.status === "COMPLETED" && status === "success") {
+    await prisma.checkoutAttempt.updateMany({
+      where: { reference },
+      data: { status: "COMPLETED", order_id: order.id },
+    });
     return {
       success: true,
       message: "Payment already processed",
@@ -167,7 +273,8 @@ export async function processPaystackPaymentWebhook(
       status: newStatus,
       processed_at: paid_at ? new Date(paid_at) : new Date(),
       gateway_response: payload.data as Prisma.InputJsonValue,
-      failure_reason: newStatus === "FAILED" ? `Payment failed: ${status}` : null,
+      failure_reason:
+        newStatus === "FAILED" ? `Payment failed: ${status}` : null,
     },
   });
 
