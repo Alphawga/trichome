@@ -572,6 +572,56 @@ describe("createOrderWithPayment", () => {
     );
   });
 
+  it("rejects a delivery checkout with no state before the customer is charged", async () => {
+    // A stateless delivery address quotes as free shipping client-side (no
+    // rate can be fetched) but falls back to the default state rate on the
+    // server, so the charge would fail the amount check after the debit.
+    const { prisma } = buildCheckoutPrismaMock();
+    const { state: _state, ...addressWithoutState } = baseAddress;
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    await expect(
+      caller.prepareCheckout({
+        address: addressWithoutState,
+        items: [{ product_id: "prod-1", quantity: 1 }],
+        totals: {
+          subtotal: 15000,
+          shipping: 0,
+          tax: 0,
+          discount: 0,
+          total: 15325,
+        },
+      }),
+    ).rejects.toThrow(/must include a state/i);
+    expect(prisma.checkoutAttempt.create).not.toHaveBeenCalled();
+  });
+
+  it("allows a pickup checkout with no delivery address", async () => {
+    const { prisma } = buildCheckoutPrismaMock();
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    await caller.prepareCheckout({
+      address: {
+        first_name: "Jane",
+        last_name: "Doe",
+        email: "customer@example.com",
+        country: "Nigeria",
+      },
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15325,
+      },
+      deliveryMethod: "PICKUP",
+      pickupStoreId: "store-1",
+    });
+
+    expect(prisma.checkoutAttempt.create).toHaveBeenCalled();
+  });
+
   it("rejects a client-reported discount not backed by a valid promotion", async () => {
     // No promo_code/promotion_id sent, but the client claims a discount —
     // the server must ignore totals.discount and recompute its own, so the
@@ -712,6 +762,27 @@ describe("createGuestOrderWithPayment", () => {
   function buildGuestContext(prisma: unknown): Context {
     return { prisma, session: null, ip: "127.0.0.1" } as unknown as Context;
   }
+
+  it("rejects a guest delivery checkout with no state before the customer is charged", async () => {
+    const { prisma } = buildCheckoutPrismaMock();
+    const { state: _state, ...addressWithoutState } = baseAddress;
+    const caller = appRouter.createCaller(buildGuestContext(prisma));
+
+    await expect(
+      caller.prepareGuestCheckout({
+        address: addressWithoutState,
+        items: [{ product_id: "prod-1", quantity: 1 }],
+        totals: {
+          subtotal: 15000,
+          shipping: 0,
+          tax: 0,
+          discount: 0,
+          total: 15325,
+        },
+      }),
+    ).rejects.toThrow(/must include a state/i);
+    expect(prisma.checkoutAttempt.create).not.toHaveBeenCalled();
+  });
 
   it("actually applies a guest-submitted promo_code (previously silently ignored)", async () => {
     const { prisma } = buildCheckoutPrismaMock();

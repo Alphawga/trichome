@@ -34,6 +34,16 @@ Paystack's transaction fee is passed through to the customer, not absorbed. `cal
 
 `checkoutRateLimited`/`guestCheckoutRateLimited` (`src/server/trpc.ts`) call `checkRateLimit()` (`src/lib/rate-limit.ts`), which uses a **module-level `prisma` singleton import**, not `ctx.prisma` — a mocked `ctx.prisma` in a test does **not** intercept it. Any test exercising `createOrderWithPayment`/`createGuestOrderWithPayment` must `jest.mock("@/lib/rate-limit", () => ({ checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }) }))` or the test silently hits the real (often production) database. Same applies to `getShippingRates` (`src/lib/shipping/get-shipping-rate.ts`) if you don't want shipping-cost assertions coupled to the real state-rate table — mock it to a fixed `[{ cost: 0 }]` and let `get-shipping-rate.test.ts` own that logic's own coverage.
 
+## The charged amount is client-computed — the mismatch check is where that surfaces (added 2026-08-29)
+
+`prepareCheckout`/`prepareGuestCheckout` only persist the payload and return a `CheckoutAttempt` reference; the Paystack popup is initialized with the **client's** `props.totals.total * 100` (`PaymentHandler.tsx`), while `createOrderWithPayment`/`createGuestOrderWithPayment` recompute subtotal/discount/shipping/fee from scratch. So any client/server divergence means **the customer is debited and the order is then refused** with `Payment amount mismatch. Expected: X, Received: Y` — and webhook recovery re-runs the same deterministic code, so it fails again and the attempt lands on `RECOVERY_FAILED`. `X - Y` names the divergent component: a round ₦3,000–₦5,000 gap is shipping (₦5,000 = `STATE_SHIPPING_COSTS.default`, i.e. the server saw no usable state).
+
+Never introduce a `?? 0` fallback on a fetched rate/price that feeds the charged amount — "we couldn't quote it" must block submission, not silently charge zero. That exact bug (a missing `state` disabling the client's rate query while the server used the ₦5,000 default) cost a real customer ₦14,624.65 on 2026-08-29.
+
+**Diagnosing a customer-reported checkout failure:** query `CheckoutAttempt` by `reference` — its `payload` JSON holds the full submitted address and totals, which is usually enough to reproduce the divergence arithmetically without any logs. `status` tells you where it died (`PENDING` / `PROCESSING` / `COMPLETED` / `RECOVERY_FAILED`). Note a genuine double-finalize throws `"This payment is already being finalized"` (CONFLICT) and is keyed per-reference, so two *different* customers can never collide — don't accept "two orders clashed" as a cause without checking.
+
+**Honouring a stranded payment:** admin **Create Order + mark paid** with `payment.mode === "verify"` re-verifies the original reference and enforces the same amount check (`orders.ts`), so the entered subtotal/shipping/discount must total exactly what Paystack captured. It sets `Payment.reference` to the original reference, so the webhook reconciles afterwards. It also sends the customer's order confirmation email itself, fire-and-forget. There is **no** resend-confirmation action anywhere — `settings.ts`'s test email only mails a dummy order to the admin's own address.
+
 ## Current gaps (as of 2026-07-15)
 
 - No `.env.example`-documented onboarding beyond the two Paystack vars (now added).
