@@ -131,6 +131,27 @@ const preparedCheckoutSchema = z.object({
   pickupStoreId: z.string().optional(),
 });
 
+// Preparation runs before the Paystack popup opens, so it's the last point
+// where a bad address can be rejected without the customer being charged. A
+// delivery order missing its state gets the default ₦5,000 fallback rate when
+// order creation recomputes shipping — while the client, unable to quote it,
+// charged ₦0 shipping — and the payment then fails the amount check with the
+// money already taken.
+const validatedPreparedCheckoutSchema = preparedCheckoutSchema.superRefine(
+  (payload, ctx) => {
+    if (payload.deliveryMethod !== "DELIVERY") return;
+    for (const field of ["address_1", "city", "state"] as const) {
+      if (!payload.address[field]?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["address", field],
+          message: `A delivery address must include ${field === "address_1" ? "a street address" : `a ${field}`}`,
+        });
+      }
+    }
+  },
+);
+
 async function prepareCheckoutAttempt(
   prismaClient: Prisma.TransactionClient,
   payload: z.infer<typeof preparedCheckoutSchema>,
@@ -150,13 +171,13 @@ async function prepareCheckoutAttempt(
 }
 
 export const prepareCheckout = checkoutPreparationRateLimited
-  .input(preparedCheckoutSchema)
+  .input(validatedPreparedCheckoutSchema)
   .mutation(({ input, ctx }) =>
     prepareCheckoutAttempt(ctx.prisma, input, false, ctx.user.id),
   );
 
 export const prepareGuestCheckout = guestCheckoutPreparationRateLimited
-  .input(preparedCheckoutSchema)
+  .input(validatedPreparedCheckoutSchema)
   .mutation(({ input, ctx }) =>
     prepareCheckoutAttempt(ctx.prisma, input, true),
   );

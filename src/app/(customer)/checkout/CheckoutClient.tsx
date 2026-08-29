@@ -306,6 +306,14 @@ function CheckoutPageContent() {
 
   const selectedRate = shippingRateQuery.data?.rates?.[0];
 
+  // A delivery order can only be charged once a real quote exists. Without
+  // one, `shipping` falls back to 0 and the customer is charged less than
+  // order creation recomputes server-side — Paystack takes the money and the
+  // order then dies on the amount-mismatch check. Covers both a quote that
+  // never ran (incomplete address) and one that errored.
+  const hasShippingQuote =
+    deliveryMethod === "PICKUP" || isFreeShipping || Boolean(selectedRate);
+
   const shipping =
     deliveryMethod === "PICKUP"
       ? 0
@@ -318,7 +326,7 @@ function CheckoutPageContent() {
   );
   const deliveryAddressComplete =
     deliveryMethod === "PICKUP" ||
-    Boolean(formData.address_1 && formData.city);
+    Boolean(formData.address_1 && formData.city && formData.state);
   const pickupSelectionComplete =
     deliveryMethod === "DELIVERY" || Boolean(pickupStoreId);
   const tax = 0; // Tax removed for now (business decision, 2026-07-02)
@@ -778,7 +786,7 @@ function CheckoutPageContent() {
                       htmlFor="state"
                       className="block text-[14px] sm:text-[15px] font-medium text-trichomes-forest mb-1 font-body"
                     >
-                      State
+                      State <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="state"
@@ -882,15 +890,15 @@ function CheckoutPageContent() {
                 )}
 
                 {/* Shipping */}
-                {deliveryMethod === "DELIVERY" && formData.city && formData.state && (
+                {deliveryMethod === "DELIVERY" && (
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
                       Shipping
                     </h3>
                     {!hasCompleteShippingContactDetails ? (
                       <p className="text-sm text-gray-500 font-body">
-                        Complete your name, email, phone number and street
-                        address above to see shipping cost.
+                        Complete your name, email, phone number, street address,
+                        city and state above to see shipping cost.
                       </p>
                     ) : shippingRateQuery.isLoading ? (
                       <p className="text-sm text-gray-500 font-body">
@@ -975,6 +983,7 @@ function CheckoutPageContent() {
                           !pickupSelectionComplete ||
                           paymentHandler.isLoading ||
                           isShippingQuotePending ||
+                          !hasShippingQuote ||
                           isAutoApplyLoading
                         }
                         className="w-full bg-[#1E3024] text-white py-3 sm:py-4 rounded-full hover:bg-[#1E3024]/90 font-semibold disabled:bg-gray-200 disabled:cursor-not-allowed transition-all duration-150 ease-out hover:shadow-lg text-[14px] sm:text-[15px] font-body"
@@ -983,7 +992,9 @@ function CheckoutPageContent() {
                           ? "Processing..."
                           : isShippingQuotePending
                             ? "Calculating shipping..."
-                            : "Continue to Payment"}
+                            : !hasShippingQuote
+                              ? "Shipping cost required"
+                              : "Continue to Payment"}
                       </button>
 
                       <PromoCodeSection
