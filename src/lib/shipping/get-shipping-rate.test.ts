@@ -41,11 +41,27 @@ describe("getShippingRates (static fallback, no TERMINAL_SECRET_KEY)", () => {
     if (originalKey) process.env.TERMINAL_SECRET_KEY = originalKey;
   });
 
-  it("charges the normal Ondo state rate for Akure orders regardless of subtotal", async () => {
+  it("uses the ₦1,500 Akure fallback for parcels up to 1 kg", async () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: { state: "Ondo", city: "Akure" },
-      subtotal: 100000,
+    });
+    expect(rates[0].cost).toBe(1500);
+  });
+
+  it("caps the Akure fallback at ₦2,000 for parcels above 1 kg", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: " ondo state ", city: " AKURE " },
+      weightKg: 4,
+    });
+    expect(rates[0].cost).toBe(2000);
+  });
+
+  it("keeps the normal Ondo fallback outside Akure", async () => {
+    const rates = await getShippingRates({
+      ...baseInput,
+      destination: { state: "Ondo", city: "Ondo Town" },
     });
     expect(rates[0].cost).toBe(4500);
   });
@@ -175,7 +191,7 @@ describe("getShippingRates (TERMINAL_SECRET_KEY set)", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("returns the cheapest carrier's rate on a successful live quote", async () => {
+  it("uses the cheapest live carrier for Akure when Terminal Africa succeeds", async () => {
     jest.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -194,8 +210,8 @@ describe("getShippingRates (TERMINAL_SECRET_KEY set)", () => {
     const rates = await getShippingRates({
       ...baseInput,
       destination: {
-        state: "Lagos",
-        city: "Ikeja",
+        state: "Ondo",
+        city: "Akure",
         addressLine: "2 Test Avenue",
         contactName: "Test User",
         contactEmail: "test@example.com",
