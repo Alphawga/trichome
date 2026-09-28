@@ -3,7 +3,7 @@ import type { ShippingQuoteInput, ShippingRate } from "./types";
 
 const TERMINAL_AFRICA_BASE_URL =
   process.env.TERMINAL_AFRICA_BASE_URL?.trim() ||
-  "https://sandbox.terminal.africa/v1";
+  "https://api.terminal.africa/v1";
 const REQUEST_TIMEOUT_MS = 4000;
 
 interface TerminalAfricaRate {

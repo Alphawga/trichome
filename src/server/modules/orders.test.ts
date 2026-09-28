@@ -27,8 +27,11 @@ jest.mock("@/lib/shipping/get-shipping-rate", () => ({
   getShippingRates: jest.fn().mockResolvedValue([{ cost: 0 }]),
 }));
 
+import { getShippingRates } from "@/lib/shipping/get-shipping-rate";
 import type { Context } from "@/server/context";
 import { appRouter } from "@/server/index";
+
+const getShippingRatesMock = jest.mocked(getShippingRates);
 
 const PRODUCT = {
   id: "prod-1",
@@ -388,8 +391,8 @@ const PROMOTION = {
   usage_count: 0,
   usage_limit_per_user: null,
   show_on_banner: false,
-  applicable_state: null,
-  applicable_city: null,
+  applicable_state: null as string | null,
+  applicable_city: null as string | null,
   display_location: "CHECKOUT",
   created_at: new Date(),
   updated_at: new Date(),
@@ -482,6 +485,7 @@ const basePaymentResponse = {
 describe("createOrderWithPayment", () => {
   beforeEach(() => {
     verifyPaystackTransactionMock.mockReset();
+    getShippingRatesMock.mockClear();
   });
 
   it("returns the existing order when browser and webhook finalize the same reference", async () => {
@@ -720,6 +724,41 @@ describe("createOrderWithPayment", () => {
         discount_amount: 1500,
       },
     });
+  });
+
+  it("gives an eligible location-scoped free-shipping promotion precedence over the delivery quote", async () => {
+    const { prisma } = buildCheckoutPrismaMock({
+      promotion: {
+        code: null,
+        type: "FREE_SHIPPING",
+        value: 0,
+        applicable_state: "Ondo",
+        applicable_city: "Akure",
+      },
+    });
+    verifyPaystackTransactionMock.mockResolvedValue({
+      status: "success",
+      amount: 1532500,
+      reference: "ref-1",
+    });
+    const caller = appRouter.createCaller(buildContext(prisma));
+
+    await caller.createOrderWithPayment({
+      paymentResponse: basePaymentResponse,
+      address: { ...baseAddress, state: "Ondo", city: "Akure" },
+      items: [{ product_id: "prod-1", quantity: 1 }],
+      totals: {
+        subtotal: 15000,
+        shipping: 0,
+        tax: 0,
+        discount: 0,
+        total: 15000,
+      },
+    });
+
+    expect(getShippingRatesMock).not.toHaveBeenCalled();
+    const createArgs = prisma.order.create.mock.calls[0][0];
+    expect(createArgs.data.shipping_cost).toBe(0);
   });
 
   it("does not auto-apply a coded promotion when no code is entered", async () => {

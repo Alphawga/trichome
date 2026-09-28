@@ -8,14 +8,22 @@ import type {
   OrderItem as PrismaOrderItem,
   User,
 } from "@prisma/client";
+import {
+  Banknote,
+  ClipboardList,
+  Clock3,
+  Eye,
+  MoreVertical,
+  Plus,
+  Settings2,
+  Truck,
+} from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import type React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/app/contexts/auth-context";
 import { type Column, DataTable } from "@/components/ui/data-table";
-import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,17 +31,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  EditIcon,
-  ExportIcon,
-  EyeIcon,
-  SearchIcon,
-  TruckIcon,
-} from "@/components/ui/icons";
+import { ExportIcon, SearchIcon } from "@/components/ui/icons";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { type CSVColumn, exportToCSV } from "@/utils/csv-export";
 import { trpc } from "@/utils/trpc";
-import { exportToCSV, type CSVColumn } from "@/utils/csv-export";
 import { CreateOrderSheet } from "./CreateOrderSheet";
 import { OrderViewSheet } from "./OrderViewSheet";
+import {
+  type AdminOrder,
+  getOrderStatusVariant,
+  getPaymentStatusVariant,
+  ORDER_STATUS_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from "./order-display";
 
 type OrderWithRelations = Order & {
   user: Pick<User, "id" | "email" | "first_name" | "last_name"> | null;
@@ -50,68 +60,12 @@ type OrderWithRelations = Order & {
   shipping_address: Address | null;
 };
 
-interface AdminOrder {
-  id: string;
-  dbId: string;
-  customerName: string;
-  customerEmail: string;
-  items: Array<{
-    id: number;
-    name: string;
-    quantity: number;
-    price: number;
-    image: string;
-  }>;
-  subtotal: number;
-  tax: number;
-  shippingCost: number;
-  discount: number;
-  processingFee: number;
-  total: number;
-  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
-  paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded";
-  orderDate: string;
-  shippingAddress: string;
-  trackingNumber?: string;
-}
-
-const mapOrderStatus = (status: OrderStatus): AdminOrder["status"] => {
-  const statusMap: Record<OrderStatus, AdminOrder["status"]> = {
-    PENDING: "Pending",
-    CONFIRMED: "Processing",
-    PROCESSING: "Processing",
-    SHIPPED: "Shipped",
-    DELIVERED: "Delivered",
-    READY_FOR_PICKUP: "Shipped",
-    PICKED_UP: "Delivered",
-    CANCELLED: "Cancelled",
-    RETURNED: "Cancelled",
-    REFUNDED: "Cancelled",
-  };
-  return statusMap[status];
-};
-
-const mapPaymentStatus = (
-  status: PaymentStatus,
-): AdminOrder["paymentStatus"] => {
-  const statusMap: Record<PaymentStatus, AdminOrder["paymentStatus"]> = {
-    PENDING: "Pending",
-    PROCESSING: "Pending",
-    COMPLETED: "Paid",
-    FAILED: "Failed",
-    CANCELLED: "Failed",
-    REFUNDED: "Refunded",
-    PARTIALLY_REFUNDED: "Refunded",
-  };
-  return statusMap[status];
-};
-
 const transformOrder = (order: OrderWithRelations): AdminOrder => {
-  const customerName = order.user
-    ? `${order.user.first_name} ${order.user.last_name}`.trim()
-    : `${order.first_name} ${order.last_name}`.trim();
-
   const customerEmail = order.user?.email || order.email;
+  const customerName = order.user
+    ? [order.user.first_name, order.user.last_name].filter(Boolean).join(" ") ||
+      customerEmail
+    : `${order.first_name} ${order.last_name}`.trim();
 
   const shippingAddress = order.shipping_address
     ? `${order.shipping_address.address_1}${order.shipping_address.address_2 ? `, ${order.shipping_address.address_2}` : ""}, ${order.shipping_address.city}, ${order.shipping_address.state}, ${order.shipping_address.country}`
@@ -119,12 +73,13 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
 
   return {
     id: order.order_number,
-    dbId: order.id,
     customerName,
     customerEmail,
-    items: order.items.map((item, index) => ({
-      id: index + 1,
+    customerPhone: order.phone || order.shipping_address?.phone || null,
+    items: order.items.map((item) => ({
+      id: item.id,
       name: item.product_name,
+      sku: item.product_sku,
       quantity: item.quantity,
       price: Number(item.price),
       image:
@@ -137,9 +92,9 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
     discount: Number(order.discount),
     processingFee: Number(order.processing_fee),
     total: Number(order.total),
-    status: mapOrderStatus(order.status),
-    paymentStatus: mapPaymentStatus(order.payment_status),
-    orderDate: new Date(order.created_at).toLocaleDateString("en-US", {
+    status: order.status,
+    paymentStatus: order.payment_status,
+    orderDate: new Date(order.created_at).toLocaleDateString("en-NG", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -150,6 +105,7 @@ const transformOrder = (order: OrderWithRelations): AdminOrder => {
 };
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") as OrderStatus | null;
   const { isAdmin } = useAuth();
@@ -206,20 +162,17 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleEditOrder = (id: string) => {
-    const order = transformedOrders.find((o) => o.id === id);
-    if (order) {
-      setViewingOrder(order);
-      setViewSheetOpen(true);
-    }
+  const handleManageOrder = (id: string) => {
+    router.push(`/admin/orders/${encodeURIComponent(id)}`);
   };
 
   const handleTrackOrder = (order: AdminOrder) => {
     if (order.trackingNumber) {
       // Open tracking in new window (you could integrate with a specific carrier)
       window.open(
-        `https://track.aftership.com/${order.trackingNumber}`,
+        `https://track.aftership.com/${encodeURIComponent(order.trackingNumber)}`,
         "_blank",
+        "noopener,noreferrer",
       );
     } else {
       toast.info("No tracking number available for this order");
@@ -231,10 +184,14 @@ export default function AdminOrdersPage() {
       { key: "id", label: "Order ID" },
       { key: "customerName", label: "Customer Name" },
       { key: "customerEmail", label: "Customer Email" },
+      { key: (o) => o.customerPhone || "N/A", label: "Customer Phone" },
       { key: (o) => o.items.length, label: "Items Count" },
       { key: (o) => o.total.toLocaleString(), label: "Total (₦)" },
-      { key: "status", label: "Order Status" },
-      { key: "paymentStatus", label: "Payment Status" },
+      { key: (o) => ORDER_STATUS_LABELS[o.status], label: "Order Status" },
+      {
+        key: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+        label: "Payment Status",
+      },
       { key: "orderDate", label: "Order Date" },
       { key: (o) => o.trackingNumber || "N/A", label: "Tracking Number" },
     ];
@@ -242,61 +199,38 @@ export default function AdminOrdersPage() {
     toast.success("Orders exported to CSV");
   };
 
-  // Quick action handlers
-  const handleProcessPending = () => {
-    setStatusFilter("PENDING");
-    setCurrentPage(1);
-    toast.info("Showing pending orders");
-  };
-
-  const handleShowShipped = () => {
-    setStatusFilter("SHIPPED");
-    setCurrentPage(1);
-    toast.info("Showing shipped orders");
-  };
-
   const statuses: Array<OrderStatus | "All"> = [
     "All",
     "PENDING",
+    "CONFIRMED",
     "PROCESSING",
     "SHIPPED",
-    "DELIVERED",
     "READY_FOR_PICKUP",
     "PICKED_UP",
+    "DELIVERED",
+    "RETURNED",
     "CANCELLED",
+    "REFUNDED",
   ];
   const paymentStatuses: Array<PaymentStatus | "All"> = [
     "All",
     "PENDING",
+    "PROCESSING",
     "COMPLETED",
     "FAILED",
+    "CANCELLED",
     "REFUNDED",
+    "PARTIALLY_REFUNDED",
   ];
 
-  // Display labels for filters
   const statusLabels: Record<OrderStatus | "All", string> = {
     All: "All Status",
-    PENDING: "Pending",
-    CONFIRMED: "Confirmed",
-    PROCESSING: "Processing",
-    SHIPPED: "Shipped",
-    DELIVERED: "Delivered",
-    READY_FOR_PICKUP: "Ready for Pickup",
-    PICKED_UP: "Picked Up",
-    CANCELLED: "Cancelled",
-    RETURNED: "Returned",
-    REFUNDED: "Refunded",
+    ...ORDER_STATUS_LABELS,
   };
 
   const paymentLabels: Record<PaymentStatus | "All", string> = {
     All: "All Payment",
-    PENDING: "Pending",
-    PROCESSING: "Processing",
-    COMPLETED: "Paid",
-    FAILED: "Failed",
-    CANCELLED: "Cancelled",
-    REFUNDED: "Refunded",
-    PARTIALLY_REFUNDED: "Partially Refunded",
+    ...PAYMENT_STATUS_LABELS,
   };
 
   // Define table columns
@@ -305,7 +239,12 @@ export default function AdminOrdersPage() {
       header: "Order ID",
       cell: (order) => (
         <div>
-          <span className="font-medium text-gray-900">#{order.id}</span>
+          <Link
+            href={`/admin/orders/${encodeURIComponent(order.id)}`}
+            className="font-semibold text-gray-950 hover:text-[#40702A] hover:underline"
+          >
+            #{order.id}
+          </Link>
           <p className="text-sm text-gray-500">{order.orderDate}</p>
         </div>
       ),
@@ -349,38 +288,16 @@ export default function AdminOrdersPage() {
     {
       header: "Order Status",
       cell: (order) => (
-        <StatusBadge
-          variant={
-            order.status === "Delivered"
-              ? "success"
-              : order.status === "Shipped"
-                ? "info"
-                : order.status === "Processing"
-                  ? "warning"
-                  : order.status === "Pending"
-                    ? "neutral"
-                    : "danger"
-          }
-        >
-          {order.status}
+        <StatusBadge variant={getOrderStatusVariant(order.status)}>
+          {ORDER_STATUS_LABELS[order.status]}
         </StatusBadge>
       ),
     },
     {
       header: "Payment",
       cell: (order) => (
-        <StatusBadge
-          variant={
-            order.paymentStatus === "Paid"
-              ? "success"
-              : order.paymentStatus === "Pending"
-                ? "warning"
-                : order.paymentStatus === "Failed"
-                  ? "danger"
-                  : "neutral"
-          }
-        >
-          {order.paymentStatus}
+        <StatusBadge variant={getPaymentStatusVariant(order.paymentStatus)}>
+          {PAYMENT_STATUS_LABELS[order.paymentStatus]}
         </StatusBadge>
       ),
     },
@@ -392,13 +309,10 @@ export default function AdminOrdersPage() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Actions"
+              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#40702A]"
+              aria-label={`Open actions for order ${order.id}`}
             >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <title>Open actions</title>
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
+              <MoreVertical className="size-5" aria-hidden="true" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -406,28 +320,24 @@ export default function AdminOrdersPage() {
               onClick={() => handleViewOrder(order.id)}
               className="cursor-pointer"
             >
-              <EyeIcon className="w-4 h-4 mr-2" />
-              View Details
+              <Eye className="mr-2 size-4" aria-hidden="true" />
+              Preview
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleEditOrder(order.id)}
+              onClick={() => handleManageOrder(order.id)}
               className="cursor-pointer"
             >
-              <EditIcon className="w-4 h-4 mr-2" />
-              Edit Order
+              <Settings2 className="mr-2 size-4" aria-hidden="true" />
+              Manage order
             </DropdownMenuItem>
-            {(order.status === "Shipped" || order.status === "Delivered") && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleTrackOrder(order)}
-                  className="cursor-pointer"
-                >
-                  <TruckIcon className="w-4 h-4 mr-2" />
-                  Track Shipment
-                </DropdownMenuItem>
-              </>
-            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleTrackOrder(order)}
+              className="cursor-pointer"
+            >
+              <Truck className="mr-2 size-4" aria-hidden="true" />
+              Track shipment
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -448,9 +358,10 @@ export default function AdminOrdersPage() {
           <button
             type="button"
             onClick={() => setCreateSheetOpen(true)}
-            className="px-4 py-2 bg-[#38761d] text-white rounded-lg hover:bg-opacity-90 font-medium"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#38761d] px-4 py-2 font-medium text-white transition-colors hover:bg-[#2f6518]"
           >
-            + Create Order
+            <Plus className="size-4" aria-hidden="true" />
+            Create order
           </button>
         )}
       </div>
@@ -476,8 +387,8 @@ export default function AdminOrdersPage() {
           <>
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <div className="w-6 h-6 text-blue-600">📋</div>
+                <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700">
+                  <ClipboardList className="size-5" aria-hidden="true" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Total Orders</p>
@@ -488,8 +399,8 @@ export default function AdminOrdersPage() {
 
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <div className="w-6 h-6 text-yellow-600">⏳</div>
+                <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700">
+                  <Clock3 className="size-5" aria-hidden="true" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Pending Orders</p>
@@ -500,8 +411,8 @@ export default function AdminOrdersPage() {
 
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <div className="w-6 h-6 text-green-600">💰</div>
+                <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700">
+                  <Banknote className="size-5" aria-hidden="true" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Total Revenue</p>
@@ -514,8 +425,8 @@ export default function AdminOrdersPage() {
 
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <div className="w-6 h-6 text-purple-600">🚚</div>
+                <div className="rounded-lg bg-violet-50 p-2.5 text-violet-700">
+                  <Truck className="size-5" aria-hidden="true" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-500">Shipped Orders</p>
@@ -598,85 +509,11 @@ export default function AdminOrdersPage() {
         onPageChange={(page) => setCurrentPage(page)}
       />
 
-      {/* Quick Actions */}
-      <div className="mt-8 bg-white p-6 rounded-lg border">
-        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
-            type="button"
-            onClick={handleProcessPending}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-yellow-300 transition-colors group"
-          >
-            <div className="text-yellow-600 mb-2 text-2xl group-hover:scale-110 transition-transform">
-              ⏳
-            </div>
-            <p className="font-medium">Process Pending Orders</p>
-            <p className="text-sm text-gray-500">
-              {stats ? `${stats.pending} orders waiting` : "Loading..."}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShowShipped}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors group"
-          >
-            <div className="text-blue-600 mb-2 text-2xl group-hover:scale-110 transition-transform">
-              🚚
-            </div>
-            <p className="font-medium">View Shipped Orders</p>
-            <p className="text-sm text-gray-500">
-              {stats ? `${stats.shipped} orders in transit` : "Loading..."}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-300 transition-colors group"
-          >
-            <div className="text-green-600 mb-2 text-2xl group-hover:scale-110 transition-transform">
-              📊
-            </div>
-            <p className="font-medium">Export Orders Report</p>
-            <p className="text-sm text-gray-500">Download CSV report</p>
-          </button>
-        </div>
-
-        {/* Additional Quick Links */}
-        <div className="mt-4 pt-4 border-t">
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/admin/orders?status=DELIVERED"
-              className="text-sm px-3 py-1.5 bg-green-50 text-green-700 rounded-full hover:bg-green-100 transition-colors"
-            >
-              ✅ Delivered ({stats?.delivered || 0})
-            </Link>
-            <Link
-              href="/admin/orders?status=CANCELLED"
-              className="text-sm px-3 py-1.5 bg-red-50 text-red-700 rounded-full hover:bg-red-100 transition-colors"
-            >
-              ❌ Cancelled ({stats?.cancelled || 0})
-            </Link>
-            <Link
-              href="/admin/analytics"
-              className="text-sm px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors"
-            >
-              📈 View Analytics
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Order View Sheet */}
       <OrderViewSheet
         order={viewingOrder}
         open={viewSheetOpen}
         onOpenChange={setViewSheetOpen}
-        onOrderUpdated={() => {
-          ordersQuery.refetch();
-          statsQuery.refetch();
-        }}
       />
 
       {/* Create Order Sheet */}

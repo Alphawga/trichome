@@ -82,6 +82,10 @@ export const DELIVERY_DAYS: Record<string, number> = {
   default: 3,
 };
 
+const AKURE_LIGHT_DELIVERY_COST = 1500;
+const AKURE_HEAVY_DELIVERY_COST = 2000;
+const AKURE_LIGHT_DELIVERY_MAX_WEIGHT_KG = 1;
+
 /**
  * Normalizes a free-text state name for matching against STATE_SHIPPING_COSTS/
  * DELIVERY_DAYS keys: trims, lowercases, and strips a trailing "state" suffix
@@ -105,13 +109,36 @@ function lookupByNormalizedState<T>(
   return match ? table[match] : undefined;
 }
 
+function isAkureDestination(state?: string, city?: string): boolean {
+  return Boolean(
+    state &&
+      city &&
+      normalizeStateKey(state) === "ondo" &&
+      city.trim().toLowerCase() === "akure",
+  );
+}
+
 /**
  * Calculate shipping cost based on order details
  */
 export function calculateShipping(
   input: ShippingCalculationInput,
 ): ShippingCalculationResult {
-  const { weight = 0, state, country: _country = "Nigeria" } = input;
+  const { weight = 0, state, city, country: _country = "Nigeria" } = input;
+
+  // Local delivery within Akure uses the business's own estimated fee instead
+  // of the wider Ondo State fallback. Live Terminal Africa quotes still take
+  // precedence; this only protects customers when the live quote is unavailable.
+  if (isAkureDestination(state, city)) {
+    return {
+      cost:
+        weight <= AKURE_LIGHT_DELIVERY_MAX_WEIGHT_KG
+          ? AKURE_LIGHT_DELIVERY_COST
+          : AKURE_HEAVY_DELIVERY_COST,
+      isFree: false,
+      estimatedDays: DELIVERY_DAYS.Ondo,
+    };
+  }
 
   // Get base shipping cost for state
   const baseCost =

@@ -895,7 +895,16 @@ function CheckoutPageContent() {
                     <h3 className="text-sm font-medium text-gray-900 mb-3 font-body">
                       Shipping
                     </h3>
-                    {!hasCompleteShippingContactDetails ? (
+                    {isFreeShipping ? (
+                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-sm">
+                        <div className="font-medium text-gray-900 text-sm font-body">
+                          Free delivery promotion applied
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900 font-body">
+                          Free
+                        </div>
+                      </div>
+                    ) : !hasCompleteShippingContactDetails ? (
                       <p className="text-sm text-gray-500 font-body">
                         Complete your name, email, phone number, street address,
                         city and state above to see shipping cost.
